@@ -20,7 +20,6 @@ import {
   UserPen,
 } from "lucide-react"
 
-
 import { NavProjects } from "@/components/nav-projects"
 import { NavUser } from "@/components/nav-user"
 import { TeamSwitcher } from "@/components/team-switcher"
@@ -178,16 +177,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           </SidebarMenuButton>
         </nav>
         <NavProjects projects={data.projects} />
-        <nav className="p-2 ">
-          <SidebarMenuButton asChild>
-            <Link href="/dashboard">
-              <CircleGauge />
-
-              <span className="p-1 text-sm">
-                หน้าหลัก</span>
-
-            </Link>
-          </SidebarMenuButton>
+        <nav className="p-2 space-y-4">
           <SidebarMenuButton asChild>
             <Link href="/">
               <FileMinus />
@@ -222,13 +212,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           </SidebarMenuButton>
 
           <SidebarMenuButton asChild>
-            <Link href="/">
+            <Link href="/support">
               <MessageCircleQuestionMark />
 
               <span className="p-1 text-sm">
                 ให้คำปรึกษา
               </span>
-
             </Link>
           </SidebarMenuButton>
 
@@ -244,7 +233,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           </SidebarMenuButton>
 
           <SidebarMenuButton asChild>
-            <Link href="/">
+            <Link href="/documentmanagement">
               <FileStack />
 
               <span className="p-1 text-sm">
