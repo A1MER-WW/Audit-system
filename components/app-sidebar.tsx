@@ -233,7 +233,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           </SidebarMenuButton>
 
           <SidebarMenuButton asChild>
-            <Link href="/documentmanagement">
+            <Link href="/archive">
               <FileStack />
 
               <span className="p-1 text-sm">
