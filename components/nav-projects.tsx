@@ -107,7 +107,7 @@ export function NavProjects({
 
 
                   <SidebarMenuSub>
-                    <a href="">
+                    <a href="/risk-assessment">
                       <span className="text-sm">การประเมินความเสี่ยงและการจัดลำดับความเสี่ยง</span>
                       <Badge
                         className="h-5 w-5 rounded-full px-1 font-mono tabular-nums"
