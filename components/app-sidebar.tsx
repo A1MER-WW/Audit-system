@@ -9,6 +9,7 @@ import {
   ChartGantt,
   CircleGauge,
   Command,
+  Database,
   FileMinus,
   FileStack,
   FileUp,
@@ -34,8 +35,8 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar"
 import Link from "next/link"
+import { NavMainDatabase } from "./nav-maindatabase"
 
-// This is sample data.
 const data = {
   user: {
     name: "shadcn",
@@ -253,6 +254,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             </Link>
           </SidebarMenuButton>
         </nav>
+        <Link href="/maindatabase">
+          <NavMainDatabase />
+        </Link>
         {/* <NavMain items={data.navMain} /> */}
       </SidebarContent>
       <SidebarFooter>
