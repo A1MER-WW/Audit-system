@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/sidebar"
 import { Collapsible, CollapsibleTrigger } from "./ui/collapsible"
 import { Badge } from "@/components/ui/badge"
+import Link from "next/link"
 
 export function NavProjects({
   projects,
@@ -76,9 +77,9 @@ export function NavProjects({
                   </CollapsibleTrigger>
 
                   <SidebarMenuSub>
-                    <a href="">
+                    <Link href="/planaudit">
                       <span className="text-sm">ทบทวนหัวข้อของงานตรวจสอบทั้งหมด (Audit Universe)</span>
-                    </a>
+                    </Link>
                   </SidebarMenuSub>
 
 
@@ -86,6 +87,12 @@ export function NavProjects({
                     <a href="">
                       <span className="text-sm">สรุปความเห็นหัวข้อของงานตรวจสอบทั้งหมด</span>
                     </a>
+                  </SidebarMenuSub>
+
+                  <SidebarMenuSub>
+                    <Link href="/comment">
+                      <span className="text-sm">แสดงความคิดเห็นหัวข้อของงานตรวจสอบ</span>
+                    </Link>
                   </SidebarMenuSub>
 
                 </Collapsible>

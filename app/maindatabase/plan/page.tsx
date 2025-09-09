@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import {
     Table,
     TableBody,
@@ -10,7 +11,7 @@ import {
     TableRow,
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
-import { Edit, Trash2 } from "lucide-react"
+import { Edit, Trash2, Eye } from "lucide-react"
 
 // ข้อมูลแผนการใช้จ่ายงบประมาณ
 const budgetPlans = [
@@ -48,6 +49,11 @@ const budgetPlans = [
 
 export default function PlanPage() {
     const [plans, setPlans] = useState(budgetPlans)
+    const router = useRouter()
+
+    const handleView = (planId: number, planName: string) => {
+        router.push(`/maindatabase/plan/budgetplan?id=${planId}&name=${encodeURIComponent(planName)}`)
+    }
 
     const handleEdit = (id: number) => {
         console.log("แก้ไขแผน ID:", id)
@@ -86,14 +92,18 @@ export default function PlanPage() {
                             <TableHead className="w-[200px] text-center font-medium text-gray-700">
                                 แก้ไขล่าสุด
                             </TableHead>
-                            <TableHead className="w-[120px] text-center font-medium text-gray-700">
+                            <TableHead className="w-[150px] text-center font-medium text-gray-700">
                                 การดำเนินการ
                             </TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {plans.map((plan, index) => (
-                            <TableRow key={plan.id} className="hover:bg-gray-50">
+                            <TableRow 
+                                key={plan.id} 
+                                className="hover:bg-gray-50 cursor-pointer"
+                                onClick={() => handleView(plan.id, plan.planName)}
+                            >
                                 <TableCell className="text-center font-medium">
                                     {index + 1}
                                 </TableCell>
@@ -114,7 +124,23 @@ export default function PlanPage() {
                                             variant="outline"
                                             size="sm"
                                             className="h-8 w-8 p-0"
-                                            onClick={() => handleEdit(plan.id)}
+                                            onClick={(e) => {
+                                                e.stopPropagation()
+                                                handleView(plan.id, plan.planName)
+                                            }}
+                                            title="ดูรายละเอียด"
+                                        >
+                                            <Eye className="h-4 w-4" />
+                                        </Button>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="h-8 w-8 p-0"
+                                            onClick={(e) => {
+                                                e.stopPropagation()
+                                                handleEdit(plan.id)
+                                            }}
+                                            title="แก้ไข"
                                         >
                                             <Edit className="h-4 w-4" />
                                         </Button>
@@ -122,7 +148,11 @@ export default function PlanPage() {
                                             variant="outline"
                                             size="sm"
                                             className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                                            onClick={() => handleDelete(plan.id)}
+                                            onClick={(e) => {
+                                                e.stopPropagation()
+                                                handleDelete(plan.id)
+                                            }}
+                                            title="ลบ"
                                         >
                                             <Trash2 className="h-4 w-4" />
                                         </Button>
