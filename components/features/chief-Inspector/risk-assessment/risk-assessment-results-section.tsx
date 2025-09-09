@@ -20,13 +20,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import {
-  ChevronDown,
-  ChevronUp,
-  GripVertical,
-  MoveDown,
-  MoveUp,
-} from "lucide-react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import Link from "next/link";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -372,22 +366,19 @@ export default function RiskAssessmentResultsSectionPage({
 
   // เดิม: const rawRows = useMemo(() => (tab === "all" ? allRows : getTabRows(tab)), [tab, allRows, rowsByTab]);
 
-  const rawRows: Row[] = useMemo(
-    () => {
-      let rows = tab === "all" ? allRows : getTabRows(tab);
-      
-      // Apply filters
-      if (filter?.grade) {
-        rows = rows.filter(r => r.grade === filter.grade);
-      }
-      if (filter?.category) {
-        rows = rows.filter(r => getCategory(r) === filter.category);
-      }
-      
-      return rows;
-    },
-    [tab, allRows, rowsByTab, filter]
-  );
+  const rawRows: Row[] = useMemo(() => {
+    let rows = tab === "all" ? allRows : getTabRows(tab);
+
+    // Apply filters
+    if (filter?.grade) {
+      rows = rows.filter((r) => r.grade === filter.grade);
+    }
+    if (filter?.category) {
+      rows = rows.filter((r) => getCategory(r) === filter.category);
+    }
+
+    return rows;
+  }, [tab, allRows, rowsByTab, filter]);
 
   // ✅ NEW: Map คำนวณคะแนน/เกรดให้ทุกแถว
   const evaluatedRows: Row[] = useMemo(
@@ -499,8 +490,6 @@ export default function RiskAssessmentResultsSectionPage({
             <ReorderSection
               tab={tab}
               parents={orderedParents}
-              onMoveUp={moveUp}
-              onMoveDown={moveDown}
               isLoading={isLoading}
               error={!!error}
             />
@@ -656,19 +645,17 @@ function SummarySection(props: {
 function ReorderSection(props: {
   tab: TabKey;
   parents: Row[];
-  onMoveUp: (id: string) => void;
-  onMoveDown: (id: string) => void;
   isLoading: boolean;
   error: boolean;
 }) {
-  const { tab, parents, onMoveUp, onMoveDown, isLoading, error } = props;
+  const { tab, parents, isLoading, error } = props;
 
   return (
     <div className="rounded-xl border overflow-hidden">
       <Table>
         <TableHeader className="sticky top-0 z-10 bg-muted/50">
           <TableRow>
-            <TableHead className="w-[56px]"></TableHead>
+            {/* ลบคอลัมน์ว่างออก */}
             <TableHead className="w-[90px]">ลำดับ</TableHead>
             <TableHead>หน่วยงานที่รับผิดชอบ</TableHead>
             <TableHead className="w-[140px]">หมวดหมู่</TableHead>
@@ -685,37 +672,15 @@ function ReorderSection(props: {
 
         <TableBody>
           {isLoading ? (
-            <RowLoading colSpan={8} />
+            <RowLoading colSpan={7} />
           ) : error ? (
-            <RowError colSpan={8} />
+            <RowError colSpan={7} />
           ) : parents.length === 0 ? (
-            <RowEmpty colSpan={8} />
+            <RowEmpty colSpan={7} />
           ) : (
             parents.map((r) => (
               <TableRow key={r.id}>
-                <TableCell className="text-center">
-                  <div className="flex items-center justify-center gap-1">
-                    <GripVertical className="h-4 w-4 text-muted-foreground" />
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      aria-label="ขึ้น"
-                      onClick={() => onMoveUp(r.id)}
-                      className="h-7 w-7"
-                    >
-                      <MoveUp className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      aria-label="ลง"
-                      onClick={() => onMoveDown(r.id)}
-                      className="h-7 w-7"
-                    >
-                      <MoveDown className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </TableCell>
+                {/* ลบเซลล์คอลัมน์ว่างออก */}
                 <TableCell className="font-mono text-xs md:text-sm">
                   {r.index}
                 </TableCell>

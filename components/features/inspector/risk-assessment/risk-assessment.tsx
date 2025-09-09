@@ -29,16 +29,9 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
-import {
-  ChevronDown,
-  ChevronUp,
-  FileText,
-  ArrowUpDown,
-  Filter,
-  RefreshCcw,
-  Info,
-} from "lucide-react";
+import { ChevronDown, ChevronUp, FileText, Info } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export type TabKey =
   | "all"
@@ -49,6 +42,7 @@ export type TabKey =
   | "activity"
   | "process"
   | "it";
+
 type Row = {
   id: string;
   index: string;
@@ -66,13 +60,13 @@ type Row = {
   status: string;
   hasDoc: boolean;
 };
+
 type ApiResponse = {
   fiscalYears: number[];
   pageTitle: string;
   subtitle: string;
   assessmentName: string;
   statusLine: { label: string; value: string };
-  // เปลี่ยนเป็น Partial เพื่อให้ key ขาดได้ (ตอนโหลด)
   rowsByTab: Partial<Record<Exclude<TabKey, "all">, Row[]>>;
 };
 
@@ -168,6 +162,7 @@ export default function RiskAssessmentPlanningPage({
   fullWidth?: boolean;
   className?: string;
 }) {
+  const router = useRouter();
   const [tab, setTab] = useState<TabKey>("all");
   const [year, setYear] = useState("2568");
   const [query, setQuery] = useState("");
@@ -180,13 +175,14 @@ export default function RiskAssessmentPlanningPage({
 
   const { data, error, isLoading } = useSWR<ApiResponse>(
     `/api/risk-assessment?year=${year}`,
-    fetcher
+    fetcher,
+    {
+      revalidateOnFocus: true,
+      refreshInterval: 1000,
+    }
   );
 
-  const dynamicWorkHead = DYNAMIC_HEAD[tab];
-
   const rowsByTab = data?.rowsByTab ?? {};
-
   const getTabRows = (k: Exclude<TabKey, "all">): Row[] => rowsByTab[k] ?? [];
 
   const allRows: Row[] = useMemo(() => {
@@ -206,23 +202,120 @@ export default function RiskAssessmentPlanningPage({
     [tab, allRows, rowsByTab]
   );
 
-  const hasChildren = (parentIndex: string) =>
-    rawRows.some((rr) => rr.index.startsWith(parentIndex + "."));
+  const gradeFromScore = (s?: number) =>
+    !s || s <= 0 ? "-" : s >= 60 ? "H" : s >= 41 ? "M" : "L";
 
-  const getChildRows = (parentIndex: string) =>
-    rawRows
-      .filter((rr) => rr.index.startsWith(parentIndex + "."))
-      .sort((a, b) => {
-        const pa = a.index.split(".").map(Number);
-        const pb = b.index.split(".").map(Number);
-        if (pa[0] !== pb[0]) return pa[0] - pb[0];
-        return (pa[1] ?? 0) - (pb[1] ?? 0);
-      });
+  // เปิด "จัดกลุ่มหัวข้อซ้ำ" สำหรับทุกแท็บ (รวม all)
+  const groupingEnabled = true;
+
+  // รวมกลุ่มตามหัวข้อเดียวกัน -> parentRows + groupChildren
+  function makeParentRow(topic: string, rows: Row[]): Row {
+    const sorted = [...rows].sort((a, b) => {
+      const A = a.index.split(".").map(Number);
+      const B = b.index.split(".").map(Number);
+      return A[0] !== B[0] ? A[0] - B[0] : (A[1] || 0) - (B[1] || 0);
+    });
+
+    const uniqUnits = Array.from(new Set(sorted.map((r) => r.unit))).filter(
+      Boolean
+    );
+    const unitLabel =
+      uniqUnits.length > 1
+        ? `${uniqUnits[0]} และอีก ${uniqUnits.length - 1} หน่วยงาน`
+        : uniqUnits[0] || "-";
+
+    const maxScore = Math.max(...sorted.map((r) => r.score || 0));
+    const totalScore = sorted.reduce((sum, r) => sum + (r.score || 0), 0);
+    const allDone = sorted.every((r) => r.status === "ประเมินแล้ว");
+    const anyDoing = sorted.some((r) => r.status !== "ยังไม่ได้ประเมิน");
+    const status = allDone
+      ? "ประเมินแล้ว"
+      : anyDoing
+      ? "กำลังประเมิน"
+      : "ยังไม่ได้ประเมิน";
+
+    const base: Row = {
+      id: `group:${tab}:${encodeURIComponent(topic)}`,
+      index: sorted[0]?.index?.split(".")[0] || "-", // ใช้เลขหลักแรกเป็นลำดับพาเรนต์
+      unit: unitLabel,
+      mission: "-",
+      work: "-",
+      project: "-",
+      carry: "-",
+      activity: "-",
+      process: "-",
+      system: "-",
+      itType: "-",
+      score: totalScore,
+      grade: gradeFromScore(totalScore),
+      status,
+      hasDoc: false,
+    };
+    if (tab === "unit") base.mission = topic;
+    else if (tab === "work") base.work = topic;
+    else if (tab === "project") base.project = topic;
+    else if (tab === "carry") base.carry = topic;
+    else if (tab === "activity") base.activity = topic;
+    else if (tab === "process") base.process = topic;
+    else if (tab === "it") base.system = topic;
+    if (tab === "all") {
+      base.work = topic; // หรือจะใส่ลง field ไหนก็ได้ที่คุณใช้ render
+    }
+    return base;
+  }
+
+  const { parentRows, groupChildren } = useMemo(() => {
+    if (!groupingEnabled) {
+      return {
+        parentRows: rawRows,
+        groupChildren: {} as Record<string, Row[]>,
+      };
+    }
+
+    const buckets = new Map<string, Row[]>();
+    for (const r of rawRows) {
+      const topic = topicByTab(r, tab).trim();
+      const key = topic && topic !== "-" ? topic : `__single__:${r.id}`;
+      const list = buckets.get(key) ?? [];
+      list.push(r);
+      buckets.set(key, list);
+    }
+
+    const parents: Row[] = [];
+    const childrenMap: Record<string, Row[]> = {};
+
+    for (const [topic, rows] of buckets) {
+      if (!topic.startsWith("__single__") && rows.length > 1) {
+        const parent = makeParentRow(topic, rows);
+        parents.push(parent);
+
+        // เรียงลูกตาม index และส่งให้เรนเดอร์ 1.1, 1.2, ...
+        const sortedChildren = [...rows].sort((a, b) => {
+          const A = a.index.split(".").map(Number);
+          const B = b.index.split(".").map(Number);
+          return A[0] !== B[0] ? A[0] - B[0] : (A[1] || 0) - (B[1] || 0);
+        });
+        childrenMap[parent.id] = sortedChildren;
+      } else {
+        parents.push(rows[0]);
+      }
+    }
+
+    // เรียงพาเรนต์ตามลำดับเลขหลัก
+    parents.sort((a, b) => {
+      const A = a.index.split(".").map(Number);
+      const B = b.index.split(".").map(Number);
+      return A[0] !== B[0] ? A[0] - B[0] : (A[1] || 0) - (B[1] || 0);
+    });
+
+    return { parentRows: parents, groupChildren: childrenMap };
+  }, [rawRows, tab, groupingEnabled]);
 
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
+  // ฟิลเตอร์/เรียง ใช้จาก parentRows (หลังรวมกลุ่มแล้ว)
   const filtered = useMemo(() => {
-    let dataRows = [...rawRows];
+    let dataRows = [...parentRows];
 
     if (query) {
       const q = query.trim().toLowerCase();
@@ -244,30 +337,22 @@ export default function RiskAssessmentPlanningPage({
       dataRows = dataRows.filter((r) => r.status === status);
     if (onlyIT) dataRows = dataRows.filter((r) => r.itType && r.itType !== "-");
 
-    dataRows = dataRows.filter((r) => !r.index.includes(".")); // hide children
-
     dataRows.sort((a: any, b: any) => {
       const dir = sortAsc ? 1 : -1;
       if (sortBy === "score") return (a.score - b.score) * dir;
       if (sortBy === "unit")
         return String(a.unit).localeCompare(String(b.unit)) * dir;
-      const parseIdx = (s: string) => s.split(".").map(Number);
-      const [a1, a2 = 0] = parseIdx(a.index);
-      const [b1, b2 = 0] = parseIdx(b.index);
+
+      const toNum = (s: string) => s.split(".").map(Number);
+      const [a1, a2 = 0] = toNum(a.index ?? "");
+      const [b1, b2 = 0] = toNum(b.index ?? "");
       if (a1 !== b1) return (a1 - b1) * dir;
       return (a2 - b2) * dir;
     });
 
     return dataRows;
-  }, [rawRows, query, status, onlyIT, sortBy, sortAsc]);
+  }, [parentRows, query, status, onlyIT, sortBy, sortAsc]);
 
-  const toggleSort = (key: typeof sortBy) => {
-    setPage(1);
-    setSortAsc((prev) => (sortBy === key ? !prev : true));
-    setSortBy(key);
-  };
-
-  // Meta defaults (ระหว่างโหลด)
   const pageTitle = data?.pageTitle ?? "วางแผนงานตรวจสอบภายใน";
   const subtitle =
     data?.subtitle ?? "การประเมินความเสี่ยงและการจัดลำดับความเสี่ยง";
@@ -303,6 +388,7 @@ export default function RiskAssessmentPlanningPage({
           <h1 className="text-xl md:text-2xl font-semibold">{pageTitle}</h1>
         </div>
       </div>
+
       <div className="flex items-center gap-2">
         <span className="text-sm text-muted-foreground">ปีงบประมาณ</span>
         <Select
@@ -324,6 +410,7 @@ export default function RiskAssessmentPlanningPage({
           </SelectContent>
         </Select>
       </div>
+
       <Card className="border-dashed">
         <CardHeader className="pb-3">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
@@ -364,14 +451,14 @@ export default function RiskAssessmentPlanningPage({
                     key={k}
                     value={k}
                     className="
-            rounded-none bg-transparent
-            px-0 md:px-2 py-3 text-sm font-medium
-            text-muted-foreground hover:text-foreground
-            border-b-2 border-transparent
-            data-[state=active]:text-primary
-            data-[state=active]:border-primary
-            focus-visible:outline-none
-          "
+                      rounded-none bg-transparent
+                      px-0 md:px-2 py-3 text-sm font-medium
+                      text-muted-foreground hover:text-foreground
+                      border-b-2 border-transparent
+                      data-[state=active]:text-primary
+                      data-[state=active]:border-primary
+                      focus-visible:outline-none
+                    "
                   >
                     {label}
                   </TabsTrigger>
@@ -379,43 +466,6 @@ export default function RiskAssessmentPlanningPage({
               </TabsList>
             </Tabs>
           </div>
-
-          {/* Toolbar
-                    <div className="flex flex-col md:flex-row md:items-center gap-3">
-                        <div className="flex-1 flex items-center gap-2">
-                            <Input
-                                placeholder="ค้นหา: ลำดับ / หน่วยงาน / หัวข้อ"
-                                value={query}
-                                onChange={(e) => { setPage(1); setQuery(e.target.value); }}
-                            />
-                            <Popover>
-                                <PopoverTrigger asChild>
-                                    <Button variant="outline" className="gap-2">
-                                        <Filter className="h-4 w-4" /> ตัวกรอง
-                                    </Button>
-                                </PopoverTrigger>
-                                <PopoverContent align="start" className="w-64">
-                                    <div className="space-y-3">
-                                        <div className="space-y-2">
-                                            <label className="text-sm font-medium">สถานะ</label>
-                                            <Select value={status} onValueChange={(v) => { setPage(1); setStatus(v); }}>
-                                                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                                                <SelectContent>
-                                                    {STATUS_OPTIONS.map((s) => (
-                                                        <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <Checkbox id="onlyIT" checked={onlyIT} onCheckedChange={(v) => { setPage(1); setOnlyIT(Boolean(v)); }} />
-                                            <label htmlFor="onlyIT" className="text-sm">แสดงเฉพาะรายการที่เป็น IT / Non-IT ระบุค่า</label>
-                                        </div>
-                                    </div>
-                                </PopoverContent>
-                            </Popover>
-                        </div>
-                    </div> */}
 
           {/* Table */}
           <div className="rounded-xl border overflow-hidden">
@@ -429,7 +479,7 @@ export default function RiskAssessmentPlanningPage({
                       {DYNAMIC_HEAD[tab]}
                     </span>
                   </TableHead>
-                  <TableHead className="w-[120px]">คะแนนรวม</TableHead>
+                  <TableHead className="w-[120px]">คะแนนประเมิน</TableHead>
                   <TableHead className="w-[80px]">เกรด</TableHead>
                   <TableHead className="w-[170px]">สถานะการประเมินผล</TableHead>
                   <TableHead className="w-[64px] text-center"></TableHead>
@@ -498,9 +548,7 @@ export default function RiskAssessmentPlanningPage({
                         </TableCell>
                         <TableCell className="text-center">
                           <div className="flex justify-center gap-2">
-                            {rawRows.some((rr) =>
-                              rr.index.startsWith(r.index + ".")
-                            ) ? (
+                            {groupChildren[r.id]?.length ? (
                               <ExpandBtn
                                 id={r.id}
                                 expanded={expanded}
@@ -509,11 +557,14 @@ export default function RiskAssessmentPlanningPage({
                             ) : (
                               r.hasDoc && (
                                 <Button
+                                  asChild
                                   variant="ghost"
                                   size="icon"
                                   aria-label="กรอก/ดูเอกสาร"
                                 >
-                                  <FileText className="h-4 w-4" />
+                                  <Link href={`/risk-assessment-form/${r.id}`}>
+                                    <FileText className="h-4 w-4" />
+                                  </Link>
                                 </Button>
                               )
                             )}
@@ -521,55 +572,64 @@ export default function RiskAssessmentPlanningPage({
                         </TableCell>
                       </TableRow>
 
+                      {/* Children rows (1.1, 1.2, ... ) */}
                       {expanded[r.id] &&
-                        getChildRows(r.index).map((c) => (
-                          <TableRow
-                            key={`${r.id}-child-${c.id}`}
-                            className="bg-muted/30"
-                          >
-                            <TableCell className="font-mono text-xs md:text-sm">
-                              {c.index}
-                            </TableCell>
-                            <TableCell className="whitespace-nowrap pl-6">
-                              {c.unit}
-                            </TableCell>
-                            <TableCell className="text-muted-foreground align-top !whitespace-normal break-words">
-                              <span
-                                className="block line-clamp-2 md:line-clamp-3"
-                                style={{
-                                  display: "-webkit-box",
-                                  WebkitBoxOrient: "vertical",
-                                  WebkitLineClamp: 2,
-                                  overflow: "hidden",
-                                }}
-                              >
-                                {topicByTab(c, tab)}
-                              </span>
-                            </TableCell>
-                            <TableCell className="font-medium">
-                              {c.score || "-"}
-                            </TableCell>
-                            <TableCell>
-                              <GradeBadge grade={c.grade} />
-                            </TableCell>
-                            <TableCell>
-                              <StatusBadge value={c.status} />
-                            </TableCell>
-                            <TableCell className="text-center">
-                              <div className="flex justify-center gap-2">
-                                {c.hasDoc && (
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    aria-label="กรอก/ดูเอกสาร"
-                                  >
-                                    <FileText className="h-4 w-4" />
-                                  </Button>
-                                )}
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        ))}
+                        (groupChildren[r.id] ?? []).map((c, i) => {
+                          const displayIndex = `${r.index}.${i + 1}`;
+                          return (
+                            <TableRow
+                              key={`${r.id}-child-${c.id}`}
+                              className="bg-muted/30"
+                            >
+                              <TableCell className="font-mono text-xs md:text-sm">
+                                {displayIndex}
+                              </TableCell>
+                              <TableCell className="whitespace-nowrap pl-6">
+                                {c.unit}
+                              </TableCell>
+                              <TableCell className="text-muted-foreground align-top !whitespace-normal break-words">
+                                <span
+                                  className="block line-clamp-2 md:line-clamp-3"
+                                  style={{
+                                    display: "-webkit-box",
+                                    WebkitBoxOrient: "vertical",
+                                    WebkitLineClamp: 2,
+                                    overflow: "hidden",
+                                  }}
+                                >
+                                  {topicByTab(c, tab)}
+                                </span>
+                              </TableCell>
+                              <TableCell className="font-medium">
+                                {c.score || "-"}
+                              </TableCell>
+                              <TableCell>
+                                <GradeBadge grade={c.grade} />
+                              </TableCell>
+                              <TableCell>
+                                <StatusBadge value={c.status} />
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <div className="flex justify-center gap-2">
+                                  {c.hasDoc && (
+                                    <Button
+                                      asChild
+                                      variant="ghost"
+                                      size="icon"
+                                      aria-label="กรอก/ดูเอกสาร"
+                                    >
+                                      <Link
+                                        href={`/risk-assessment-form/${c.id}`}
+                                      >
+                                        <FileText className="h-4 w-4" />
+                                      </Link>
+                                    </Button>
+                                  )}
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
                     </Fragment>
                   ))
                 )}
@@ -578,7 +638,6 @@ export default function RiskAssessmentPlanningPage({
           </div>
 
           {/* Pagination */}
-
           {shouldPaginate && (
             <div className="flex flex-col md:flex-row items-center justify-between gap-3 pt-2">
               <div className="text-sm text-muted-foreground">
