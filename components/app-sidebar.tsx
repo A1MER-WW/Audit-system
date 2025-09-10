@@ -18,6 +18,7 @@ import {
   Settings2,
   SquareTerminal,
   UserPen,
+  Database,
 } from "lucide-react"
 
 import { NavProjects } from "@/components/nav-projects"
@@ -248,6 +249,16 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
               <span className="p-1 text-sm">
                 จัดการผู้ใช้งาน
+              </span>
+
+            </Link>
+          </SidebarMenuButton>
+          <SidebarMenuButton asChild>
+            <Link href="/master-database/risk-criteria">
+              <Database />
+
+              <span className="p-1 text-sm">
+                ฐานข้อมูลหลัก
               </span>
 
             </Link>
