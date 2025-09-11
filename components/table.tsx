@@ -21,9 +21,6 @@ import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
@@ -35,6 +32,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 import { 
   DownloadOutlined,
@@ -125,8 +124,6 @@ export const columns: ColumnDef<DocumentType>[] = [
     header: "การดำเนินการ",
     enableHiding: false,
     cell: ({ row }) => {
-      const document = row.original
-
       return (
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" className="h-8 w-8 p-0">
@@ -152,6 +149,42 @@ export function DataTableDemo() {
     React.useState<VisibilityState>({})
   const [rowSelection, setRowSelection] = React.useState({})
   const [searchValue, setSearchValue] = React.useState("")
+  const [isFilterDialogOpen, setIsFilterDialogOpen] = React.useState<boolean>(false)
+  const [selectedYear, setSelectedYear] = React.useState<string>("2568")
+  const [filterSelections, setFilterSelections] = React.useState<Record<string, boolean>>({})
+
+  // Filter options
+  const filterOptions = {
+    auditTypes: [
+      'ทั้งหมด',
+      'แผนการปฏิบัติงาน สกท.',
+      'แผนการกำกับดูแล สกท.',
+      'ข้อสังเกตการตรวจสอบทั้งหมด',
+      'แผนงานดีการบริหารทีมที่มีข้อสังเกตการตรวจสอบทั้งหมด',
+      'บัญชีกิจกรรมแผนตรวจสอบต่างๆที่มีกิจกรรมกำหนดกรอบค่าตรวจสอบปรับปรุง',
+      'บัญชีกิจกรรมแผนตรวจสอบต่างๆที่มีกิจกรรมกำหนดกรอบค่าปฏิบัติงาน',
+      'สถานการณ์มีความเสี่ยงจำจัดยังมีความเปลี่ยนแปลงทั้งหมด',
+      'สถานการณ์มีการบริหารจัดการเสี่ยงยังยเพื่อการบำไว้ยทั้งหมด',
+      'สถานการณ์บริหารการบริหารจัดการเสี่ยงการส่งการหารบำไว้ต่อการบริหาร',
+      'แผนการตรวจสอบแรงงานดี',
+      'แผนการตรวจสอบแรงงานสาธารณ',
+      'แผนการปฏิบัติงาน (Audit Program / Engagement Plan)'
+    ],
+    fileTypes: [
+      'ทั้งหมด',
+      'EXCEL',
+      'PDF',
+      'WORD'
+    ]
+  };
+
+  // Handle filter checkbox changes
+  const handleFilterChange = (key: string, checked: boolean) => {
+    setFilterSelections(prev => ({
+      ...prev,
+      [key]: checked
+    }));
+  };
 
   // ใช้ useDocuments hook เพื่อดึงข้อมูลจาก API
   const { documents, loading, error, refetch } = useDocuments({
@@ -203,8 +236,135 @@ export function DataTableDemo() {
           onChange={(event) => setSearchValue(event.target.value)}
           className="max-w-sm"
         />
+        
+        <Dialog open={isFilterDialogOpen} onOpenChange={setIsFilterDialogOpen}>
+          <DialogTrigger asChild>
+            <Button variant="outline" className="border-[#3E52B9] ml-2">
+              กรอง
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-lg max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="text-lg font-semibold">
+                กรอง
+              </DialogTitle>
+            </DialogHeader>
+            
+            <div className="space-y-6">
+              {/* Year Selection */}
+              <div className="space-y-3">
+                <label className="text-sm font-medium">ปีงบประมาณ</label>
+                <Select value={selectedYear} onValueChange={setSelectedYear}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="2567">2567</SelectItem>
+                    <SelectItem value="2568">2568</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Audit Type Selection */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium">เลือกประเภทเอกสาร</label>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="text-blue-600"
+                    onClick={() => setFilterSelections({})}
+                  >
+                    Reset
+                  </Button>
+                </div>
+                <div className="max-h-48 overflow-y-auto space-y-2 border rounded-md p-3">
+                  {filterOptions.auditTypes.map((type, index) => (
+                    <div key={index} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`audit-${index}`}
+                        checked={filterSelections[`audit-${index}`] || false}
+                        onCheckedChange={(checked) => 
+                          handleFilterChange(`audit-${index}`, checked as boolean)
+                        }
+                      />
+                      <label 
+                        htmlFor={`audit-${index}`} 
+                        className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                      >
+                        {type}
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* File Type Selection */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium">รูปแบบไฟล์</label>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="text-blue-600"
+                    onClick={() => {
+                      const newSelections = { ...filterSelections };
+                      filterOptions.fileTypes.forEach((_, index) => {
+                        delete newSelections[`file-${index}`];
+                      });
+                      setFilterSelections(newSelections);
+                    }}
+                  >
+                    Reset
+                  </Button>
+                </div>
+                <div className="space-y-2">
+                  {filterOptions.fileTypes.map((type, index) => (
+                    <div key={index} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`file-${index}`}
+                        checked={filterSelections[`file-${index}`] || false}
+                        onCheckedChange={(checked) => 
+                          handleFilterChange(`file-${index}`, checked as boolean)
+                        }
+                      />
+                      <label 
+                        htmlFor={`file-${index}`} 
+                        className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                      >
+                        {type}
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <DialogFooter className="flex gap-2">
+              <Button 
+                variant="outline" 
+                onClick={() => setIsFilterDialogOpen(false)}
+                className="flex-1"
+              >
+                ยกเลิก
+              </Button>
+              <Button 
+                onClick={() => {
+                  setIsFilterDialogOpen(false);
+                  // Apply filter logic here
+                  console.log('Applied filters:', filterSelections);
+                }}
+                className="bg-[#3E52B9] hover:bg-[#2A3A8F] text-white flex-1"
+              >
+                ปรับใช้
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
         <DropdownMenu>
+           
           <DropdownMenuTrigger asChild>
+            
             <Button variant="outline" className="ml-auto">
               คอลัมน์ <ChevronDown />
             </Button>

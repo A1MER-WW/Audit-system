@@ -3,20 +3,16 @@
 import {
   Database,
   Folder,
-  type LucideIcon,
 } from "lucide-react"
 
 import {
   DropdownMenu,
   DropdownMenuContent,
-
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import {
   SidebarGroup,
-
   SidebarMenu,
-
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarMenuSub,
@@ -34,7 +30,6 @@ export function NavMainDatabase({
 }) {
   const { isMobile } = useSidebar()
 
-  // ถ้าไม่มีข้อมูลให้แสดงแค่ menu เดียว
   if (!icondata || icondata.length === 0) {
     return (
       <SidebarGroup className="group-data-[collapsible=icon]:hidden ">
@@ -90,7 +85,7 @@ export function NavMainDatabase({
                   <SidebarMenuButton>
                     <Folder className="text-muted-foreground" />
                     <Link href="/maindatabase/plan">
-                      <span>แผนการใช้จ่ายงบประมาณที่ได้รับจัดสรร</span>
+                      <span>แผนการใช้จ่ายงบประมาณที่ได้รับจัดสรร (หัวหน้ากลุ่มตรวจสอบภายใน)</span>
                     </Link>
                   </SidebarMenuButton>
                 </Collapsible>

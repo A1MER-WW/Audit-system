@@ -25,7 +25,6 @@ import {
   SelectContent,
   SelectGroup,
   SelectItem,
-  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
@@ -51,6 +50,7 @@ export default function Archive() {
 
       <div className="w-full mt-4 mb-4">
         <span className="text-lg font-semibold">หมวดหมู่เอกสาร</span>
+        <span className="text-lg font-semibold">(ผู้ตรวจสอบ)</span>
         <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
           <TabsList>
             <TabsTrigger value="item01">ระบบการวางแผนงานตรวจสอบภายใน</TabsTrigger>

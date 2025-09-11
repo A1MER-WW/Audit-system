@@ -9,7 +9,6 @@ import {
   ChartGantt,
   CircleGauge,
   Command,
-  Database,
   FileMinus,
   FileStack,
   FileUp,
