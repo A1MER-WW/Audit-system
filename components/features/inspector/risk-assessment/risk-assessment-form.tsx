@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { JSX, useEffect, useMemo, useState } from "react";
 import useSWR, { mutate as globalMutate } from "swr";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -47,16 +47,44 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 
+/** ✅ ใช้ hook แบบเดียวกับหน้าบน */
+import {
+  useAnnualEvaluations,
+  ApiAnnualEvaluation,
+  RiskEvaluation,
+  AuditTopic,
+} from "@/hooks/useAnnualEvaluations";
+
+/** ---------- Types ---------- */
+type LikertModalProps = {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  title: string;
+  name: string;
+  value: number;
+  onSelect: (v: number) => void;
+  options: LikertOption[];
+  levels?: Levels;
+  context?: { dimension: string; item: string };
+};
+
 type RowMeta = {
   id: string;
   index: string;
   unit: string;
   category: string;
   topic: string;
-  status: string;
 };
 
 type ScoreTriplet = { chance: number; impact: number; score: number };
+
+type Levels = {
+  least?: string;
+  low?: string;
+  medium?: string;
+  high?: string;
+  highest?: string;
+};
 
 type AssessmentForm = {
   rowId: string;
@@ -64,34 +92,31 @@ type AssessmentForm = {
   groups: {
     id: string;
     title: string;
-    items: { id: string; label: string; values: ScoreTriplet }[];
+    items: {
+      id: string;
+      label: string;
+      categories?: string[];
+      levels?: Levels;
+      values: ScoreTriplet;
+    }[];
     total?: number;
   }[];
   totalScore: number;
   resultScore: number;
   composite: number;
-  grade: "H" | "M" | "L";
+  grade: "N" | "L" | "M" | "H" | "E";
   status: "กำลังประเมิน" | "ประเมินแล้ว";
 };
 
-type TabKey =
-  | "unit"
-  | "work"
-  | "project"
-  | "carry"
-  | "activity"
-  | "process"
-  | "it";
-type NavRow = { id: string; index: string; hasDoc?: boolean };
-
-type ListApi = {
-  rowsByTab: Partial<Record<TabKey, NavRow[]>>;
-};
-
 type LikertOption = { value: number; label: string; description: string };
-type ScaleApi = {
-  message: string;
-  data: { likelihood: LikertOption[]; impact: LikertOption[] };
+
+/** ---------- ค่าคงที่/Helper ---------- */
+const LABEL_BY_VALUE: Record<number, string> = {
+  1: "น้อยที่สุด",
+  2: "น้อย",
+  3: "ปานกลาง",
+  4: "มาก",
+  5: "มากที่สุด",
 };
 
 const fetcher = async (url: string) => {
@@ -105,48 +130,181 @@ const fetcher = async (url: string) => {
   return j;
 };
 
+const STATUS_LABELS = {
+  DONE: "ประเมินแล้ว",
+  IN_PROGRESS: "กำลังประเมิน",
+  NOT_STARTED: "ยังไม่ได้ประเมิน",
+} as const;
+
+const gradeFromScore = (s?: number) => {
+  if (s == null) return "-"; // ไม่มีคะแนน → แสดง "-"
+  const v = Number(s);
+  if (v >= 80) return "E";
+  if (v >= 60) return "H";
+  if (v >= 40) return "M";
+  if (v >= 20) return "L";
+  return "N";
+};
+
+function normalizeStatus(raw?: string, hasDoc?: boolean, score?: number) {
+  if (hasDoc && (score ?? 0) > 0) return STATUS_LABELS.DONE;
+  const t = String(raw || "").toUpperCase();
+  if (
+    [
+      "DONE",
+      "COMPLETED",
+      "FINISHED",
+      "APPROVED",
+      "SUBMITTED",
+      "EVALUATED",
+      "EVALUATION_COMPLETED",
+    ].includes(t)
+  )
+    return STATUS_LABELS.DONE;
+  if (["IN_PROGRESS", "DOING", "DRAFT", "STARTED", "WORKING"].includes(t))
+    return STATUS_LABELS.IN_PROGRESS;
+  if (
+    !t ||
+    ["NOT_STARTED", "PENDING", "NEW", "TO_DO", "UNASSESSED"].includes(t)
+  )
+    return STATUS_LABELS.NOT_STARTED;
+  return raw || STATUS_LABELS.NOT_STARTED;
+}
+
+/** ---------- สร้าง Groups และ children (ให้ตรงกับหน้าบน) ---------- */
+type LeafRow = {
+  id: string;
+  index: string; // 1.1, 1.2 ...
+  unit: string;
+  topic: string;
+  categoryName: string;
+};
+
+function buildGroupsForNav(evals: ApiAnnualEvaluation[]) {
+  const groups: { parentId: string; children: LeafRow[] }[] = [];
+
+  evals.forEach((a) => {
+    a.RiskEvaluations.forEach((re) => {
+      re.auditTopics.forEach((t) => {
+        const children: LeafRow[] = t.DepartmentAssessmentScore.map((ds) => ({
+          id: `a${a.id}-c${re.id}-t${t.id}-d${ds.department.id}`,
+          index: "", // จะเซ็ตทีหลังตามลำดับ
+          unit: ds.department.departmentName,
+          topic: t.auditTopic,
+          categoryName: re.category.name,
+        }));
+        groups.push({
+          parentId: `group:a${a.id}-c${re.id}-t${t.id}`,
+          children,
+        });
+      });
+    });
+  });
+
+  // ใส่เลขลำดับ 1, 2, ... และลูก 1.1, 1.2 ...
+  groups.forEach((g, gi) => {
+    const parentIndex = `${gi + 1}`;
+    g.children.forEach((c, cj) => {
+      c.index = `${parentIndex}.${cj + 1}`;
+    });
+  });
+
+  return groups;
+}
+
+/** ---------- หน้าแบบฟอร์ม ---------- */
 export default function RiskAssessmentFormPage({ id }: { id: string }) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
-  const { data: scaleRes } = useSWR<ScaleApi>("/api/risk-scales", fetcher);
+
+  /** สเกลคะแนน */
+  const { data: scaleRes } = useSWR<{
+    message: string;
+    data: {
+      likelihood: LikertOption[];
+      impact: LikertOption[];
+      perDimension?: any[];
+    };
+  }>("/api/risk-scales", fetcher);
+
   const LIKELIHOOD_OPTIONS = scaleRes?.data?.likelihood ?? [];
   const IMPACT_OPTIONS = scaleRes?.data?.impact ?? LIKELIHOOD_OPTIONS;
-  const { data: metaRes } = useSWR<{ message: string; data: RowMeta }>(
-    `/api/risk-assessment/${id}`,
-    fetcher
+  const PER_DIMENSION = scaleRes?.data?.perDimension ?? [];
+  const MAX_CHANCE = Math.max(
+    0,
+    ...LIKELIHOOD_OPTIONS.map((o) => o.value ?? 0)
   );
+  const MAX_IMPACT = Math.max(0, ...IMPACT_OPTIONS.map((o) => o.value ?? 0));
 
-  const { data: listRes } = useSWR<ListApi>(
-    "/api/risk-assessment?year=2568",
-    fetcher
-  );
+  function getOptionsFor(
+    dimKey: string,
+    kind: "likelihood" | "impact"
+  ): LikertOption[] {
+    const d = (PER_DIMENSION as any[]).find((x) => x.key === dimKey);
+    if (kind === "likelihood" && d?.likelihood?.length) return d.likelihood;
+    if (kind === "impact" && d?.impact?.length) return d.impact;
+    if (d?.options?.length) return d.options;
+    return kind === "likelihood" ? LIKELIHOOD_OPTIONS : IMPACT_OPTIONS;
+  }
 
-  const flatLeafRows: NavRow[] = listRes?.rowsByTab
-    ? (
-        [
-          ...(listRes.rowsByTab.work ?? []),
-          ...(listRes.rowsByTab.project ?? []),
-          ...(listRes.rowsByTab.carry ?? []),
-          ...(listRes.rowsByTab.activity ?? []),
-          ...(listRes.rowsByTab.process ?? []),
-          ...(listRes.rowsByTab.unit ?? []),
-          ...(listRes.rowsByTab.it ?? []),
-        ] as NavRow[]
-      )
-        .filter((r) => !String(r.index).includes(".") && (r.hasDoc ?? true))
-        .sort((a, b) => compareIndex(a.index, b.index))
-    : [];
+  /** ✅ ใช้ evaluations เพื่อหา meta/prev/next (ตรงกับหน้าบน) */
+  const { annualEvaluations, loading: navLoading } = useAnnualEvaluations({
+    fiscalYear: 2568, // ปรับถ้าจะส่ง year เป็น query ได้
+  });
 
-  // หา index ของหัวข้อปัจจุบัน และคำนวณก่อนหน้า/ถัดไป
-  const currentIdx = flatLeafRows.findIndex((r) => r.id === id);
-  const prevId = currentIdx > 0 ? flatLeafRows[currentIdx - 1]?.id : undefined;
+  const leafRows: LeafRow[] = useMemo(() => {
+    const groups = buildGroupsForNav(annualEvaluations);
+    return groups.flatMap((g) => g.children);
+  }, [annualEvaluations]);
+
+  const currentIdx = leafRows.findIndex((r) => r.id === id);
+  const prevId = currentIdx > 0 ? leafRows[currentIdx - 1]?.id : undefined;
   const nextId =
-    currentIdx >= 0 && currentIdx < flatLeafRows.length - 1
-      ? flatLeafRows[currentIdx + 1]?.id
+    currentIdx >= 0 && currentIdx < leafRows.length - 1
+      ? leafRows[currentIdx + 1]?.id
       : undefined;
 
-  const meta = metaRes?.data;
-  // ฟอร์มการประเมิน (ครั้งแรกจะ 404)
+  /** meta ของบรรทัดปัจจุบัน (แสดงบนหัวตาราง) */
+  const meta: RowMeta | undefined =
+    currentIdx >= 0
+      ? {
+          id,
+          index: leafRows[currentIdx].index,
+          unit: leafRows[currentIdx].unit,
+          category: leafRows[currentIdx].categoryName,
+          topic: leafRows[currentIdx].topic,
+        }
+      : undefined;
+
+  /** Fallback: ดึง meta จาก API เดิมถ้าไม่เจอใน annual evaluations */
+  const { data: fallbackMetaRes } = useSWR<{ message: string; data: RowMeta }>(
+    !meta ? `/api/risk-assessment/${id}` : null,
+    fetcher,
+    { shouldRetryOnError: false }
+  );
+  
+  const effectiveMeta = meta || fallbackMetaRes?.data;
+
+  /** category ปัจจุบัน (ใช้ filter ข้อคำถามรายมิติ) */
+  const currentCategory = effectiveMeta?.category || "";
+  
+  // Debug info สำหรับตรวจสอบ
+  useEffect(() => {
+    console.log("🔍 Risk Assessment Form Debug:");
+    console.log("  📝 Form ID:", id);
+    console.log("  📊 leafRows count:", leafRows.length);
+    console.log("  📍 currentIdx:", currentIdx);
+    console.log("  📋 meta:", meta);
+    console.log("  📋 fallbackMeta:", fallbackMetaRes?.data);
+    console.log("  📋 effectiveMeta:", effectiveMeta);
+    console.log("  🏷️ currentCategory:", currentCategory);
+    // จะ log form status ด้านล่าง
+    if (leafRows.length > 0) {
+      console.log("  📝 First few leafRows:", leafRows.slice(0, 3));
+    }
+  }, [id, leafRows, currentIdx, meta, currentCategory]);
+
+  /** ฟอร์ม (อ่าน/สร้าง/บันทึก) */
   const {
     data: formRes,
     error: formErr,
@@ -159,8 +317,6 @@ export default function RiskAssessmentFormPage({ id }: { id: string }) {
   );
   const form = formRes?.data;
 
-  // ถ้าอยากกดปุ่ม "เริ่มประเมิน" เอง ให้ลบ useEffect ด้านล่าง แล้วแสดงปุ่มแทน
-  // ที่นี่ผมทำแบบ auto-create เมื่อยังไม่เคยประเมิน (404)
   useEffect(() => {
     (async () => {
       if (formErr && (formErr as any).status === 404) {
@@ -172,7 +328,90 @@ export default function RiskAssessmentFormPage({ id }: { id: string }) {
     })();
   }, [formErr, mutate, id]);
 
-  // อัปเดตค่าของ item (chance/impact) แล้วคำนวณ score ทันทีบน client
+  // Debug form loading status  
+  useEffect(() => {
+    if (formErr) {
+      console.log("❌ Form Error:", formErr);
+      if ((formErr as any).status === 404) {
+        console.log("📝 Form not found, will try to create new one");
+      }
+    }
+    if (form) {
+      console.log("✅ Form loaded successfully");
+      console.log("📊 Form groups count:", form.groups?.length);
+      console.log("🎯 Current category for filtering:", currentCategory);
+      
+      // Debug visible groups calculation
+      if (form.groups) {
+        form.groups.forEach((g, idx) => {
+          const visibleItems = g.items.filter((it) => {
+            const cats = it.categories ?? [];
+            if (!cats.length) return true;
+            if (!currentCategory) return true;
+            if (currentCategory === "IT/Non-IT") {
+              return (
+                cats.includes("IT/Non-IT") ||
+                cats.includes("IT") ||
+                cats.includes("Non-IT")
+              );
+            }
+            return cats.includes(currentCategory);
+          });
+          console.log(`  📂 Group ${g.id} (${g.title}): ${visibleItems.length}/${g.items.length} items visible`);
+        });
+      }
+    }
+  }, [formErr, form, currentCategory]);
+
+  // ✅ โหลดค่าจาก localStorage เมื่อฟอร์มโหลดเสร็จแล้ว (เพื่อจำค่าที่ประเมินไปแล้ว)
+  useEffect(() => {
+    if (!form) return;
+    
+    try {
+      const savedStatus = localStorage.getItem(`assessment_status_${id}`);
+      if (savedStatus && ["กำลังประเมิน", "ประเมินแล้ว"].includes(savedStatus) && form.status !== savedStatus) {
+        console.log(`🔄 Restoring assessment status from localStorage: ${savedStatus}`);
+        
+        // อัพเดทฟอร์มด้วยสถานะที่บันทึกไว้
+        const updatedForm: AssessmentForm = { 
+          ...form, 
+          status: savedStatus as "กำลังประเมิน" | "ประเมินแล้ว" 
+        };
+        mutate({ message: "OK", data: updatedForm }, { revalidate: false });
+      }
+    } catch (error) {
+      console.warn("Cannot access localStorage:", error);
+    }
+  }, [form, id, mutate]);
+
+  /** คะแนน → เกรด */
+  const SCORE_RULES = { highMin: 60, mediumMin: 41 };
+  // คะแนน composite เป็นเปอร์เซ็นต์ 0..100
+  const toGrade = (s: number): "N" | "L" | "M" | "H" | "E" => {
+    if (s >= 80) return "E";
+    if (s >= 60) return "H";
+    if (s >= 40) return "M";
+    if (s >= 20) return "L";
+    return "N"; // 0–19
+  };
+
+  /** ตรวจว่ากรอกครบของมิติ/รายการที่เกี่ยวข้องกับ category นี้หรือยัง */
+  function isFormComplete() {
+    if (!form) return false;
+    const relevantItems = form.groups.flatMap((g) =>
+      g.items.filter((it) => {
+        const cats = it.categories ?? [];
+        return cats.length === 0 || cats.includes(currentCategory);
+      })
+    );
+    const allFilled =
+      relevantItems.length > 0 &&
+      relevantItems.every(
+        (it) => (it.values?.chance ?? 0) > 0 && (it.values?.impact ?? 0) > 0
+      );
+    return allFilled;
+  }
+
   function setItemValue(
     groupIndex: number,
     itemIndex: number,
@@ -180,6 +419,7 @@ export default function RiskAssessmentFormPage({ id }: { id: string }) {
   ) {
     if (!form) return;
     const next: AssessmentForm = structuredClone(form);
+
     const item = next.groups[groupIndex].items[itemIndex];
     const chance = patch.chance ?? item.values.chance ?? 0;
     const impact = patch.impact ?? item.values.impact ?? 0;
@@ -187,39 +427,156 @@ export default function RiskAssessmentFormPage({ id }: { id: string }) {
     item.values.impact = impact;
     item.values.score = chance * impact;
 
-    next.groups[groupIndex].total = next.groups[groupIndex].items.reduce(
-      (s, it) => s + (it.values.score ?? 0),
+    const relevantItems = next.groups.flatMap((g) =>
+      g.items.filter((it) => {
+        const cats = it.categories ?? [];
+        return cats.length === 0 || cats.includes(currentCategory);
+      })
+    );
+    const relevantScore = relevantItems.reduce(
+      (sum, it) => sum + (it.values.score || 0),
       0
     );
-    next.totalScore = next.groups.reduce((s, g) => s + (g.total ?? 0), 0);
-    next.resultScore = next.totalScore;
+    const visibleCount = relevantItems.length;
+    const maxPossibleScore = MAX_CHANCE * MAX_IMPACT * visibleCount;
 
-    const max = next.groups.reduce((s, g) => s + g.items.length, 0) * 25;
-    next.composite = max ? Math.round((next.resultScore / max) * 100) : 0;
+    next.totalScore = relevantScore;
+    next.resultScore = relevantScore;
+    next.composite = maxPossibleScore
+      ? Math.round((relevantScore / maxPossibleScore) * 100)
+      : 0;
+
+    const allFilled =
+      visibleCount > 0 &&
+      relevantItems.every(
+        (it) => (it.values?.chance ?? 0) > 0 && (it.values?.impact ?? 0) > 0
+      );
+
+    next.status = allFilled ? "ประเมินแล้ว" : "กำลังประเมิน";
+    next.grade = toGrade(next.composite);
+
+    // ✅ บันทึกสถานะและข้อมูลการประเมินลง localStorage ทุกครั้งที่มีการเปลี่ยนแปลง
+    try {
+      localStorage.setItem(`assessment_status_${id}`, next.status);
+      localStorage.setItem(`assessment_data_${id}`, JSON.stringify({
+        status: next.status,
+        totalScore: next.totalScore,
+        composite: next.composite,
+        grade: next.grade,
+        lastUpdated: new Date().toISOString()
+      }));
+    } catch (error) {
+      console.warn("Cannot save to localStorage:", error);
+    }
 
     mutate({ message: "OK", data: next }, { revalidate: false });
   }
+
+  /** เฉพาะกลุ่ม/ข้อที่ “เกี่ยวข้องกับ category ปัจจุบัน” */
+  const visibleGroups = form
+    ? form.groups
+        .map((g, gi) => {
+          const itemsVisible = g.items
+            .map((it, ii) => ({ it, ii }))
+            .filter(({ it }) => {
+              const cats = it.categories ?? [];
+              if (!cats.length) return true;
+              if (!currentCategory) return true;
+
+              // กรณีพิเศษ: รวม IT + Non-IT เข้าด้วยกัน
+              if (currentCategory === "IT/Non-IT") {
+                return (
+                  cats.includes("IT/Non-IT") ||
+                  cats.includes("IT") ||
+                  cats.includes("Non-IT")
+                );
+              }
+
+              return cats.includes(currentCategory);
+            });
+
+          return { gi, id: g.id, title: g.title, itemsVisible };
+        })
+        .filter((g) => g.itemsVisible.length > 0)
+    : [];
+
+  const visibleItemCount = visibleGroups.reduce(
+    (s, g) => s + g.itemsVisible.length,
+    0
+  );
+  const MAX_PER_ITEM = MAX_CHANCE * MAX_IMPACT; // ปกติ 25
+  const visibleBaseMax = visibleItemCount * MAX_PER_ITEM;
 
   async function save() {
     if (!form) return;
     setSaving(true);
     try {
+      const next: AssessmentForm = structuredClone(form);
+
+      const relevantItems = next.groups.flatMap((g) =>
+        g.items.filter((it) => {
+          const cats = it.categories ?? [];
+          if (!cats.length) return true;
+          if (!currentCategory) return true;
+          return cats.includes(currentCategory);
+        })
+      );
+
+      const relevantScore = relevantItems.reduce(
+        (sum, it) => sum + (it.values.score || 0),
+        0
+      );
+      const visibleCount = relevantItems.length;
+      const maxPossibleScore = MAX_CHANCE * MAX_IMPACT * visibleCount;
+
+      next.totalScore = relevantScore;
+      next.resultScore = relevantScore;
+      next.composite = maxPossibleScore
+        ? Math.round((relevantScore / maxPossibleScore) * 100)
+        : 0;
+
+      const allFilled =
+        visibleCount > 0 &&
+        relevantItems.every(
+          (it) => (it.values?.chance ?? 0) > 0 && (it.values?.impact ?? 0) > 0
+        );
+
+      next.status = allFilled ? "ประเมินแล้ว" : "กำลังประเมิน";
+      next.grade = toGrade(next.composite);
+
       await toast.promise(
         (async () => {
           const r = await fetch(`/api/risk-assessment/${id}/form`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(form),
+            body: JSON.stringify(next),
           });
           const j = await r.json();
           if (!r.ok) throw new Error(j?.message || "บันทึกไม่สำเร็จ");
-
-          await mutate(j, { revalidate: false });
-
+          await mutate(j, { revalidate: true });
+          
+          // ✅ บันทึกสถานะและข้อมูลการประเมินลง localStorage เพื่อให้หน้า risk-evaluation แสดงข้อมูลที่ถูกต้อง
+          try {
+            localStorage.setItem(`assessment_status_${id}`, next.status);
+            localStorage.setItem(`assessment_data_${id}`, JSON.stringify({
+              status: next.status,
+              totalScore: next.totalScore,
+              composite: next.composite,
+              grade: next.grade,
+              lastUpdated: new Date().toISOString()
+            }));
+            console.log(`💾 Saved assessment data: ${id} -> ${next.status} (${next.composite}%)`);
+          } catch (error) {
+            console.warn("Cannot save to localStorage:", error);
+          }
+          
+          // ✅ Invalidate all related caches
           await globalMutate(
             (key: string) =>
               typeof key === "string" &&
-              key.startsWith("/api/risk-assessment?"),
+              (key.startsWith("/api/risk-assessment?") || 
+               key.startsWith("/api/annual-evaluations") ||
+               key.includes(id)),
             undefined,
             { revalidate: true }
           );
@@ -235,9 +592,29 @@ export default function RiskAssessmentFormPage({ id }: { id: string }) {
     }
   }
 
-  const baseMax = form
-    ? form.groups.reduce((s, g) => s + g.items.length, 0) * 25
-    : 0;
+  // helper UI
+  function levelsToOptions(levels?: Levels | null): LikertOption[] | null {
+    if (!levels) return null;
+    const map: Record<number, string | undefined> = {
+      1: levels.least,
+      2: levels.low,
+      3: levels.medium,
+      4: levels.high,
+      5: levels.highest,
+    };
+    if (!Object.values(map).some(Boolean)) return null;
+    return [1, 2, 3, 4, 5].map((v) => ({
+      value: v,
+      label: LABEL_BY_VALUE[v],
+      description: map[v] || "",
+    }));
+  }
+
+  function valueToLevelKey(v: number): keyof Levels | undefined {
+    return (
+      { 1: "least", 2: "low", 3: "medium", 4: "high", 5: "highest" } as const
+    )[v];
+  }
 
   function LikertModal({
     open,
@@ -247,15 +624,9 @@ export default function RiskAssessmentFormPage({ id }: { id: string }) {
     value,
     onSelect,
     options,
-  }: {
-    open: boolean;
-    onOpenChange: (v: boolean) => void;
-    title: string;
-    name: string;
-    value: number;
-    onSelect: (v: number) => void;
-    options: LikertOption[];
-  }) {
+    levels,
+    context,
+  }: LikertModalProps): JSX.Element {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent
@@ -271,6 +642,14 @@ export default function RiskAssessmentFormPage({ id }: { id: string }) {
             <DialogDescription>แตะเพื่อเลือกระดับคะแนน</DialogDescription>
           </DialogHeader>
 
+          {context ? (
+            <div className="mb-3 rounded-xl border bg-muted/40 px-4 py-2 text-sm">
+              <div className="text-muted-foreground">
+                เรื่อง: <span className="text-foreground">{context.item}</span>
+              </div>
+            </div>
+          ) : null}
+
           <RadioGroup
             value={String(value || 0)}
             onValueChange={(v) => {
@@ -282,12 +661,15 @@ export default function RiskAssessmentFormPage({ id }: { id: string }) {
             {options.map((opt) => {
               const id = `${name}-${opt.value}`;
               const active = value === opt.value;
+              const key = valueToLevelKey(opt.value);
+              const desc = (key && levels?.[key]) || opt.description;
+
               return (
                 <Label
                   key={id}
                   htmlFor={id}
                   className={cn(
-                    "flex cursor-pointer items-start gap-3 rounded-2xl border p-4 transition",
+                    "flex cursor-pointer items-center gap-3 rounded-2xl border p-4 min-h-[56px] transition",
                     active
                       ? "bg-primary/10 border-primary/40 shadow-sm"
                       : "hover:bg-muted/40"
@@ -296,15 +678,15 @@ export default function RiskAssessmentFormPage({ id }: { id: string }) {
                   <RadioGroupItem
                     id={id}
                     value={String(opt.value)}
-                    className="mt-1.5 h-5 w-5 shrink-0"
+                    className="h-5 w-5 shrink-0"
                   />
-                  <div className="grid grid-cols-[auto,1fr] gap-3 w-full">
-                    <div className="font-semibold text-foreground whitespace-nowrap">
+                  <div className="flex w-full flex-col gap-1 sm:flex-row sm:items-center sm:gap-4">
+                    <div className="font-semibold text-foreground sm:min-w-[90px] whitespace-nowrap">
                       {opt.label}
                     </div>
-                    <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line break-words">
-                      {opt.description}
-                    </p>
+                    <div className="text-sm text-muted-foreground sm:flex-1 whitespace-normal break-words">
+                      {desc}
+                    </div>
                   </div>
                 </Label>
               );
@@ -321,12 +703,16 @@ export default function RiskAssessmentFormPage({ id }: { id: string }) {
     value,
     onChange,
     options,
+    levels,
+    context,
   }: {
     label: string;
     name: string;
     value: number;
     onChange: (v: number) => void;
     options: LikertOption[];
+    levels?: Levels;
+    context?: { dimension: string; item: string };
   }) {
     const [open, setOpen] = useState(false);
     return (
@@ -338,7 +724,6 @@ export default function RiskAssessmentFormPage({ id }: { id: string }) {
         >
           {value || "-"}
         </Button>
-
         <LikertModal
           open={open}
           onOpenChange={setOpen}
@@ -347,16 +732,28 @@ export default function RiskAssessmentFormPage({ id }: { id: string }) {
           value={value || 0}
           onSelect={onChange}
           options={options}
+          levels={levels}
+          context={context}
         />
       </>
     );
   }
 
-  function compareIndex(a: string, b: string) {
-    const A = a.split(".").map(Number);
-    const B = b.split(".").map(Number);
-    if (A[0] !== B[0]) return A[0] - B[0];
-    return (A[1] ?? 0) - (B[1] ?? 0);
+  function getGroupStatus(itemsVisible: { it: any }[]) {
+    const total = itemsVisible.length;
+    const done =
+      total > 0 &&
+      itemsVisible.every(
+        ({ it }) => (it.values?.chance ?? 0) > 0 && (it.values?.impact ?? 0) > 0
+      );
+
+    return {
+      done,
+      text: done ? "ประเมินแล้ว" : "รอประเมิน",
+      className: done
+        ? "bg-emerald-100 text-emerald-700 border border-emerald-200"
+        : "bg-amber-100 text-amber-800 border border-amber-200",
+    };
   }
 
   return (
@@ -368,13 +765,7 @@ export default function RiskAssessmentFormPage({ id }: { id: string }) {
           size="icon"
           className="rounded-full"
           aria-label="ย้อนกลับ"
-          onClick={() => {
-            if (typeof window !== "undefined" && window.history.length > 1) {
-              router.back();
-            } else {
-              router.push("/risk-assessment");
-            }
-          }}
+          onClick={() => router.push("/risk-assessment")}
         >
           <ArrowLeft className="h-5 w-5" />
         </Button>
@@ -387,32 +778,48 @@ export default function RiskAssessmentFormPage({ id }: { id: string }) {
         </span>
       </div>
 
-      {/* Header meta */}
+      {/* Header meta (ดึงจาก evaluations → leafRows แทน meta API เดิม) */}
       <Card className="border-dashed">
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-24">ลำดับ</TableHead>
-                <TableHead>หน่วยงาน</TableHead>
-                <TableHead>หมวดหมู่</TableHead>
-                <TableHead>หัวข้องานตรวจสอบ</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              <TableRow>
-                <TableCell>{meta?.index ?? "-"}</TableCell>
-                <TableCell>{meta?.unit ?? "-"}</TableCell>
-                <TableCell>{meta?.category ?? "-"}</TableCell>
-                <TableCell className="text-primary">
-                  {meta?.topic ?? "-"}
-                </TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
+          {navLoading ? (
+            <div className="space-y-3">
+              <div className="flex items-center space-x-2 mb-3">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                <span className="text-sm text-muted-foreground">กำลังโหลดข้อมูลหัวข้อ...</span>
+              </div>
+              <div className="grid grid-cols-4 gap-4">
+                <div className="h-4 bg-muted animate-pulse rounded"></div>
+                <div className="h-4 bg-muted animate-pulse rounded"></div>
+                <div className="h-4 bg-muted animate-pulse rounded"></div>
+                <div className="h-4 bg-muted animate-pulse rounded"></div>
+              </div>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-24">ลำดับ</TableHead>
+                  <TableHead>หน่วยงาน</TableHead>
+                  <TableHead>หมวดหมู่</TableHead>
+                  <TableHead>หัวข้องานตรวจสอบ</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                <TableRow>
+                  <TableCell>{effectiveMeta?.index ?? "-"}</TableCell>
+                  <TableCell>{effectiveMeta?.unit ?? "-"}</TableCell>
+                  <TableCell>{effectiveMeta?.category ?? "-"}</TableCell>
+                  <TableCell className="text-primary">
+                    {effectiveMeta?.topic ?? "-"}
+                  </TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
-      {/* ปุ่มนำทางหัวข้อ */}
+
+      {/* ปุ่มนำทางหัวข้อ (prev/next จาก leafRows) */}
       <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
         <Button
           variant="outline"
@@ -439,23 +846,25 @@ export default function RiskAssessmentFormPage({ id }: { id: string }) {
         </Button>
       </div>
 
-      {/* ถ้ายังโหลดฟอร์มอยู่ */}
+      {/* Loading / Creating form */}
       {formLoading && (
-        <div className="text-sm text-muted-foreground">
-          กำลังโหลดแบบประเมิน...
+        <div className="flex items-center space-x-3 p-4 bg-muted/30 rounded-lg border">
+          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary"></div>
+          <div className="text-sm text-muted-foreground">
+            กำลังโหลดแบบประเมิน...
+          </div>
         </div>
       )}
-
-      {/* ถ้ายังไม่มีฟอร์มและกำลังสร้าง */}
       {formErr && (formErr as any).status === 404 && (
-        <div className="flex items-center justify-between">
-          <div className="text-sm text-muted-foreground">
+        <div className="flex items-center space-x-3 p-4 bg-blue-50 rounded-lg border border-blue-200">
+          <div className="animate-pulse rounded-full h-5 w-5 bg-blue-300"></div>
+          <div className="text-sm text-blue-700">
             ยังไม่เคยประเมินสำหรับหัวข้อนี้ — กำลังเตรียมแบบฟอร์มว่าง...
           </div>
         </div>
       )}
 
-      {/* ฟอร์ม (จะแสดงเมื่อมี form แล้ว) */}
+      {/* ฟอร์ม */}
       {form && (
         <>
           <Card>
@@ -468,73 +877,102 @@ export default function RiskAssessmentFormPage({ id }: { id: string }) {
                 defaultValue={form.groups.map((g) => g.id)}
                 className="w-full"
               >
-                {form.groups.map((group, gi) => (
+                {/** แสดงเฉพาะ items ที่เกี่ยวข้องกับ category ปัจจุบัน */}
+                {visibleGroups.map((group) => (
                   <AccordionItem
                     key={group.id}
                     value={group.id}
                     className="border rounded-xl px-4"
                   >
                     <AccordionTrigger className="text-left py-4 font-semibold">
-                      <div className="flex items-center gap-2">
-                        <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-bold">
-                          {group.id}
-                        </span>
-                        {group.title}
-                        <span className="ml-2 text-xs text-muted-foreground">
-                          ({group.items.length})
-                        </span>
+                      <div className="flex w-full items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-bold">
+                            {group.id}
+                          </span>
+                          {group.title}
+                          <span className="ml-2 text-xs text-muted-foreground">
+                            ({group.itemsVisible.length})
+                          </span>
+                        </div>
+                        {(() => {
+                          const st = getGroupStatus(group.itemsVisible);
+                          return (
+                            <span
+                              className={cn(
+                                "rounded-full px-2.5 py-1 text-xs font-medium",
+                                st.className
+                              )}
+                            >
+                              {st.text}
+                            </span>
+                          );
+                        })()}
                       </div>
                     </AccordionTrigger>
+
                     <AccordionContent>
                       <div className="space-y-3 pb-4">
-                        {group.items.map((it, ii) => (
+                        {group.itemsVisible.map(({ it, ii }) => (
                           <div key={it.id} className="rounded-xl border p-4">
                             <div className="flex items-start justify-between gap-4">
                               <p className="text-sm leading-6 flex-1">
                                 {it.label}
                               </p>
+
                               <div className="grid grid-cols-3 gap-2 w-[300px] text-center">
-                                {/* โอกาส */}
                                 <div>
                                   <div className="text-xs text-muted-foreground">
                                     โอกาส
                                   </div>
                                   <ScorePicker
-                                    label="โอกาส"
+                                    label={`โอกาส – ${group.title}`}
                                     name={`${group.id}-${it.id}-chance`}
                                     value={it.values.chance ?? 0}
                                     onChange={(v) =>
-                                      setItemValue(gi, ii, { chance: v })
+                                      setItemValue(group.gi, ii, { chance: v })
                                     }
-                                    options={LIKELIHOOD_OPTIONS}
+                                    options={getOptionsFor(
+                                      group.id,
+                                      "likelihood"
+                                    )}
+                                    context={{
+                                      dimension: group.title,
+                                      item: it.label,
+                                    }}
                                   />
                                 </div>
-                                {/* ผลกระทบ */}
+
                                 <div>
                                   <div className="text-xs text-muted-foreground">
                                     ผลกระทบ
                                   </div>
                                   <ScorePicker
-                                    label="ผลกระทบ"
+                                    label={`ผลกระทบ – ${group.title}`}
                                     name={`${group.id}-${it.id}-impact`}
                                     value={it.values.impact ?? 0}
                                     onChange={(v) =>
-                                      setItemValue(gi, ii, { impact: v })
+                                      setItemValue(group.gi, ii, { impact: v })
                                     }
-                                    options={IMPACT_OPTIONS}
+                                    options={
+                                      levelsToOptions((it as any).levels) ??
+                                      getOptionsFor(group.id, "impact")
+                                    }
+                                    context={{
+                                      dimension: group.title,
+                                      item: it.label,
+                                    }}
                                   />
                                 </div>
-                                {/* คะแนน */}
+
                                 <div>
                                   <div className="text-xs text-muted-foreground">
                                     คะแนน
                                   </div>
-
                                   {(() => {
                                     const noPick =
                                       (it.values?.chance ?? 0) === 0 &&
                                       (it.values?.impact ?? 0) === 0;
-
                                     return (
                                       <Input
                                         readOnly
@@ -565,13 +1003,14 @@ export default function RiskAssessmentFormPage({ id }: { id: string }) {
                 <div className="rounded-lg bg-blue-50 p-3 text-sm font-medium">
                   ผลการประเมิน
                 </div>
+
                 <div className="flex items-center justify-between">
                   <div className="text-sm text-foreground">คะแนน</div>
                   <div className="flex items-center gap-8">
                     <StatStack
                       label="คะแนนเต็มที่ประเมิน"
-                      help="(ระดับโอกาสสูงสุด 5 × ผลกระทบสูงสุด 5) × จำนวนปัจจัยเสี่ยงทั้งหมด"
-                      value={baseMax}
+                      help="(ระดับโอกาสสูงสุด × ผลกระทบสูงสุด) × จำนวนปัจจัยเสี่ยงที่แสดง"
+                      value={visibleBaseMax}
                     />
                     <StatStack
                       label="ผลรวมคะแนนประเมิน"
@@ -598,7 +1037,9 @@ export default function RiskAssessmentFormPage({ id }: { id: string }) {
           </Card>
 
           <div className="flex justify-end gap-2">
-            <Button onClick={save}>บันทึก</Button>
+            <Button onClick={save} disabled={saving}>
+              {saving ? "กำลังบันทึก..." : "บันทึก"}
+            </Button>
           </div>
         </>
       )}
@@ -606,33 +1047,7 @@ export default function RiskAssessmentFormPage({ id }: { id: string }) {
   );
 }
 
-/* ---------------- UI ย่อย ---------------- */
-function NumberSelect({
-  value,
-  onValueChange,
-}: {
-  value: number;
-  onValueChange: (v: number) => void;
-}) {
-  return (
-    <Select
-      value={String(value)}
-      onValueChange={(v) => onValueChange(Number(v))}
-    >
-      <SelectTrigger className="w-20 mx-auto">
-        <SelectValue placeholder="-" />
-      </SelectTrigger>
-      <SelectContent>
-        {[0, 1, 2, 3, 4, 5].map((n) => (
-          <SelectItem key={n} value={String(n)}>
-            {n}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  );
-}
-
+/* ---------- UI ย่อย ---------- */
 function StatStack({
   label,
   value,

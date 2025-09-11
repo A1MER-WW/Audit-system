@@ -35,12 +35,9 @@ import {
   ChevronDown,
   ChevronRight,
   ChevronUp,
-  Filter,
   GripVertical,
   Info,
-  MoveDown,
-  MoveUp,
-  CheckCircle2,
+  FileText,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -72,7 +69,7 @@ type Row = {
   itType: "IT" | "Non-IT" | "-" | "";
   score: number;
   maxScore?: number; // สำหรับแท็บหน่วยงาน
-  grade: "H" | "M" | "L" | "-";
+  grade: "E" | "H" | "M" | "L" | "N" | "-";
   status: string;
   hasDoc: boolean;
 };
@@ -87,10 +84,10 @@ type ApiResponse = {
 };
 
 type OuterTab = "summary" | "reorder" | "unitRanking";
+type UnitSortDir = "desc" | "asc";
 
 /* ======================== Constants ======================== */
-const fetcher = (url: string) =>
-  fetch(url).then((r) => r.json() as Promise<ApiResponse>);
+const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 const DYNAMIC_HEAD: Record<TabKey, string> = {
   all: "หัวข้อของงานตรวจสอบ",
@@ -120,14 +117,8 @@ const OUTER_TABS: Record<OuterTab, string> = {
   unitRanking: "ผลลำดับความเสี่ยงหน่วยงาน",
 };
 
-const STATUS_OPTIONS = [
-  { label: "ทั้งหมด", value: "all" },
-  { label: "กำลังประเมิน", value: "กำลังประเมิน" },
-  { label: "ประเมินแล้ว", value: "ประเมินแล้ว" },
-  { label: "ยังไม่ได้ประเมิน", value: "ยังไม่ได้ประเมิน" },
-];
 
-/* ======================== Small UI Helpers ======================== */
+
 function StatusBadge({ value }: { value: string }) {
   const map: Record<string, string> = {
     กำลังประเมิน: "bg-blue-100 text-blue-700 border-blue-200",
@@ -146,14 +137,15 @@ function StatusBadge({ value }: { value: string }) {
 }
 
 function GradeBadge({ grade }: { grade: Row["grade"] }) {
-  if (!grade || grade === "-")
+  if (!grade || grade === "-" || grade === "N")
     return <span className="text-muted-foreground">-</span>;
   const map = {
+    E: { txt: "Excellent", cls: "bg-purple-100 text-purple-700 border-purple-200" },
     H: { txt: "High", cls: "bg-red-100 text-red-700 border-red-200" },
     M: { txt: "Medium", cls: "bg-amber-100 text-amber-700 border-amber-200" },
     L: { txt: "Low", cls: "bg-sky-100 text-sky-700 border-sky-200" },
   } as const;
-  const it = map[grade];
+  const it = map[grade as keyof typeof map];
   return (
     <Badge variant="outline" className={cn("rounded-full px-2", it.cls)}>
       {it.txt}
@@ -180,6 +172,125 @@ function topicByTab(row: Row, tab: TabKey): string {
       row.mission,
     ].find((v) => v && v !== "-") || "-"
   );
+}
+
+const STATUS_LABELS = {
+  DONE: "ประเมินแล้ว",
+  IN_PROGRESS: "กำลังประเมิน",
+  NOT_STARTED: "ยังไม่ได้ประเมิน",
+} as const;
+
+// === Grouping helpers (copy วางใต้ topicByTab) ===
+// ระบบการให้เกรดตามคะแนน:
+// E (Excellent): 80-100 คะแนน
+// H (High): 60-79 คะแนน  
+// M (Medium): 40-59 คะแนน
+// L (Low): 20-39 คะแนน
+// N (None/Not Assessed): 0-19 คะแนน
+const gradeFromScore = (s?: number) =>
+  !s || s <= 0 ? "N" : s >= 80 ? "E" : s >= 60 ? "H" : s >= 40 ? "M" : s >= 20 ? "L" : "N";
+
+// แปลงสถานะฝั่ง API ให้เป็นฉลากที่ UI เข้าใจ (คงคำว่า "แก้ไข" ไว้เพื่อแสดง badge ได้)
+function normalizeStatus(raw?: string) {
+  if (!raw) return STATUS_LABELS.NOT_STARTED;
+  const t = String(raw).trim();
+  if (["ประเมินแล้ว", "กำลังประเมิน", "ยังไม่ได้ประเมิน", "แก้ไข"].includes(t))
+    return t;
+
+  const u = t.toUpperCase();
+  if (
+    [
+      "DONE",
+      "COMPLETED",
+      "FINISHED",
+      "SUBMITTED",
+      "EVALUATED",
+      "EVALUATION_COMPLETED",
+    ].includes(u)
+  ) {
+    return STATUS_LABELS.DONE;
+  }
+  if (["IN_PROGRESS", "DOING", "DRAFT", "STARTED", "WORKING"].includes(u)) {
+    return STATUS_LABELS.IN_PROGRESS;
+  }
+  if (["NOT_STARTED", "PENDING", "NEW", "TO_DO", "UNASSESSED"].includes(u)) {
+    return STATUS_LABELS.NOT_STARTED;
+  }
+  return t; // ไม่รู้จักก็แสดงตามเดิม
+}
+function deriveStatus(r: Row) {
+  // ถ้ามีเอกสารและมีคะแนน > 0 ให้ถือว่าเสร็จแล้ว
+  if (r.hasDoc && (r.score ?? 0) > 0) return STATUS_LABELS.DONE;
+  return normalizeStatus(r.status);
+}
+function statusBucket(s: string): "DONE" | "IN_PROGRESS" | "NOT_STARTED" {
+  if (s === "ประเมินแล้ว") return "DONE";
+  if (s === "ยังไม่ได้ประเมิน") return "NOT_STARTED";
+  // รวม "กำลังประเมิน" และ "แก้ไข" และอื่น ๆ ที่ไม่ใช่สองค่านี้เป็น IN_PROGRESS
+  return "IN_PROGRESS";
+}
+function makeParentRow(tab: TabKey, topic: string, rows: Row[]): Row {
+  const sorted = [...rows].sort((a, b) => {
+    const A = a.index.split(".").map(Number);
+    const B = b.index.split(".").map(Number);
+    return A[0] !== B[0] ? A[0] - B[0] : (A[1] || 0) - (B[1] || 0);
+  });
+
+  const uniqUnits = Array.from(new Set(sorted.map((r) => r.unit))).filter(
+    Boolean
+  );
+  const unitLabel =
+    uniqUnits.length > 1
+      ? `${uniqUnits[0]} และอีก ${uniqUnits.length - 1} หน่วยงาน`
+      : uniqUnits[0] || "-";
+
+  const totalScore = sorted.reduce((sum, r) => sum + (r.score || 0), 0);
+
+  // คิดสถานะพาเรนต์จากสถานะของลูก (ใช้ deriveStatus + statusBucket)
+  const buckets = sorted.map((r) => statusBucket(deriveStatus(r)));
+  const allDone = buckets.every((b) => b === "DONE");
+  const hasInProgress = buckets.some((b) => b === "IN_PROGRESS");
+  const hasDone = buckets.some((b) => b === "DONE");
+  const hasNotStarted = buckets.some((b) => b === "NOT_STARTED");
+
+  let status: string;
+  if (allDone) {
+    status = STATUS_LABELS.DONE;
+  } else if (hasInProgress || (hasDone && hasNotStarted)) {
+    // ผสม DONE + NOT_STARTED หรือมี IN_PROGRESS/แก้ไข ใด ๆ => กำลังประเมิน
+    status = STATUS_LABELS.IN_PROGRESS;
+  } else {
+    status = STATUS_LABELS.NOT_STARTED;
+  }
+
+  const base: Row = {
+    id: `group:${tab}:${encodeURIComponent(topic)}`,
+    index: sorted[0]?.index?.split(".")[0] || "-",
+    unit: unitLabel,
+    mission: "-",
+    work: "-",
+    project: "-",
+    carry: "-",
+    activity: "-",
+    process: "-",
+    system: "-",
+    itType: "-",
+    score: totalScore,
+    grade: gradeFromScore(totalScore),
+    status,
+    hasDoc: false,
+  };
+
+  if (tab === "unit") base.mission = topic;
+  else if (tab === "work") base.work = topic;
+  else if (tab === "project") base.project = topic;
+  else if (tab === "carry") base.carry = topic;
+  else if (tab === "activity") base.activity = topic;
+  else if (tab === "process") base.process = topic;
+  else if (tab === "it") base.system = topic;
+  if (tab === "all") base.work = topic;
+
+  return base;
 }
 
 /* ======================== Mock Builder ======================== */
@@ -218,17 +329,17 @@ function buildMockRows(): Partial<Record<Exclude<TabKey, "all">, Row[]>> {
       index: "1",
       unit: "สลก.",
       work: "มาตรการควบคุมการใช้งบประมาณ",
-      score: 65,
-      grade: "H",
-      status: "แก้ไข",
+      score: 85,
+      grade: "E", // 85 -> E (80-100 = E)
+      status: "ประเมินแล้ว",
     }),
     mk({
       id: "w1-1",
       index: "1.1",
       unit: "สลก.",
       work: "แผนงานจัดซื้อจัดจ้าง",
-      score: 55,
-      grade: "M",
+      score: 72,
+      grade: "H", // 72 -> H (60-79 = H)
       status: "ประเมินแล้ว",
     }),
     mk({
@@ -236,82 +347,146 @@ function buildMockRows(): Partial<Record<Exclude<TabKey, "all">, Row[]>> {
       index: "2",
       unit: "ชพน.",
       work: "งานพัสดุ",
-      score: 56,
-      grade: "H",
-      status: "แก้ไข",
+      score: 46,
+      grade: "M", // 46 -> M (40-59 = M)
+      status: "ประเมินแล้ว",
+    }),
+    mk({
+      id: "w3",
+      index: "3",
+      unit: "ศกส.",
+      work: "งานบริหารงานบุคคล",
+      score: 22,
+      grade: "L", // 22 -> L (20-39 = L)
+      status: "ประเมินแล้ว",
+    }),
+    mk({
+      id: "w4",
+      index: "4",
+      unit: "ศสท.1",
+      work: "งานสารบรรณ",
+      score: 15,
+      grade: "N", // 15 -> N (0-19 = N)
+      status: "ประเมินแล้ว",
     }),
   ];
 
   const project = [
     mk({
       id: "p1",
-      index: "3",
+      index: "5",
       unit: "ศกส.",
       project: "โครงการพัฒนาฐานข้อมูลเกษตรกร",
-      score: 54,
-      grade: "M",
-      status: "แก้ไข",
+      score: 67,
+      grade: "H", // 67 -> H (60-79 = H)
+      status: "ประเมินแล้ว",
+    }),
+    mk({
+      id: "p2",
+      index: "6",
+      unit: "ชพน.",
+      project: "โครงการยกระดับการบริการ",
+      score: 41,
+      grade: "M", // 41 -> M (40-59 = M)
+      status: "ประเมินแล้ว",
     }),
   ];
 
   const activity = [
     mk({
       id: "a1",
-      index: "4",
+      index: "7",
       unit: "ชพน.ในสังกัด",
       activity: "ผลผลิต 1: พัฒนาระบบข้อมูล",
-      score: 51,
-      grade: "M",
-      status: "แก้ไข",
+      score: 83,
+      grade: "E", // 83 -> E (80-100 = E)
+      status: "ประเมินแล้ว",
+    }),
+    mk({
+      id: "a2",
+      index: "8", 
+      unit: "สลก.",
+      activity: "ผลผลิต 2: ปรับปรุงกระบวนการ",
+      score: 38,
+      grade: "L", // 38 -> L (20-39 = L)
+      status: "ประเมินแล้ว",
     }),
   ];
 
   const process = [
     mk({
       id: "pr1",
-      index: "5",
+      index: "9",
       unit: "ศกส.",
       process: "กระบวนงาน: บัญชีการเงิน",
+      score: 61,
+      grade: "H", // 61 -> H (60-79 = H)
+      status: "ประเมินแล้ว",
+    }),
+    mk({
+      id: "pr2",
+      index: "10",
+      unit: "ชพน.",
+      process: "กระบวนงาน: การควบคุมภายใน",
       score: 44,
-      grade: "M",
-      status: "แก้ไข",
+      grade: "M", // 44 -> M (40-59 = M)
+      status: "ประเมินแล้ว",
     }),
   ];
 
   const unit = [
     mk({
       id: "u1",
-      index: "6",
+      index: "11",
       unit: "ศกส.",
       mission: "ภารกิจ: บริหารจัดการ",
-      score: 10,
-      grade: "L",
-      status: "แก้ไข",
+      score: 52,
+      grade: "M", // 52 -> M (40-59 = M)
+      status: "ประเมินแล้ว",
+    }),
+    mk({
+      id: "u2",
+      index: "12",
+      unit: "สลก.",
+      mission: "ภารกิจ: การเงินและงบประมาณ",
+      score: 29,
+      grade: "L", // 29 -> L (20-39 = L)
+      status: "ประเมินแล้ว",
     }),
   ];
 
   const it = [
     mk({
       id: "it1",
-      index: "7",
+      index: "13",
       unit: "ศกส.",
       system: "Big Data Analytics",
-      score: 10,
-      grade: "L",
-      status: "แก้ไข",
+      score: 74,
+      grade: "H", // 74 -> H (60-79 = H)
+      status: "ประเมินแล้ว",
       itType: "IT",
+    }),
+    mk({
+      id: "it2",
+      index: "14",
+      unit: "ชพน.",
+      system: "ระบบบริหารเอกสาร",
+      score: 35,
+      grade: "L", // 35 -> L (20-39 = L)
+      status: "ประเมินแล้ว",
+      itType: "Non-IT",
     }),
   ];
 
   const carry = [
     mk({
       id: "c1",
-      index: "8",
+      index: "15",
       unit: "ศกส.",
       carry: "กันเงินเหลื่อมปีระบบ Coaching Platform",
-      score: 10,
-      grade: "L",
-      status: "แก้ไข",
+      score: 18,
+      grade: "N", // 18 -> N (0-19 = N)
+      status: "ประเมินแล้ว",
     }),
   ];
 
@@ -336,18 +511,89 @@ export default function RiskAssessmentResultsPage({
 }: ResultsProps) {
   // callback: ปุ่ม “เสนอหัวหน้าหน่วยตรวจสอบ”
   function onClickSubmit() {
-    if (outerTab === "reorder") {
-      setOpenReasonDialog(true);
-    } else {
-      setOpenSubmitDialog(true);
-    }
+    // เปิด submit dialog ไม่ว่าจะเป็นแท็บไหน
+    setOpenSubmitDialog(true);
   }
 
   // เดิมมี handleConfirm อยู่แล้ว แก้นิดหน่อยให้ปิด SubmitDialog
   const handleConfirm = async () => {
-    // TODO: call API ส่งเสนอหัวหน้า (กรณี summary/unitRanking)
-    console.log("ยืนยันส่งเสนอหัวหน้าเรียบร้อย");
-    setOpenSubmitDialog(false);
+    try {
+      // เตรียมข้อมูลการส่งตามประเภท
+      let submissionData;
+      
+      if (outerTab === "reorder") {
+        // สำหรับ reorder: ส่งข้อมูลการจัดลำดับ
+        const originalOrder = paginatedParents.map(r => r.id);
+        const newOrder = orderIds || originalOrder;
+        const hasChanges = JSON.stringify(originalOrder) !== JSON.stringify(newOrder);
+        const changedItems = Object.keys(reasonById);
+        
+        submissionData = {
+          action: "submit_reorder",
+          year,
+          tab,
+          originalOrder,
+          newOrder,
+          changedItem: changedItems.length > 0 ? changedItems[0] : null,
+          reason: Object.values(reasonById).join("; ") || "การจัดลำดับตามความเสี่ยง",
+          hasChanges,
+          data: orderedParents.length > 0 ? orderedParents : paginatedParents,
+          reasonById, // ส่งข้อมูลเหตุผลทั้งหมด
+          metadata: {
+            pageTitle,
+            subtitle,
+            assessmentName,
+            statusLine,
+            totalItems: orderedParents.length > 0 ? orderedParents.length : paginatedParents.length,
+            reorderTime: new Date().toISOString()
+          }
+        };
+      } else {
+        // สำหรับ summary และ unitRanking
+        submissionData = {
+          action: outerTab === "summary" ? "submit_summary" : "submit_unit_ranking",
+          year,
+          tab,
+          data: filteredParents,
+          metadata: {
+            pageTitle,
+            subtitle,
+            assessmentName,
+            statusLine,
+            totalItems: filteredParents.length,
+            submissionTime: new Date().toISOString()
+          }
+        };
+      }
+
+      console.log("🚀 Submitting assessment results to chief:", submissionData);
+      
+      const response = await fetch(`/api/chief-risk-assessment-results?year=${year}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(submissionData),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to submit to chief");
+      }
+
+      const result = await response.json();
+      console.log("✅ Submission successful:", result);
+      
+      // ปิด dialog
+      setOpenSubmitDialog(false);
+      
+      // นำทางไปหน้า overview-of-the-assessment-results พร้อมระบุว่าข้อมูลมาจาก Inspector
+      const actionParam = outerTab === "reorder" ? "&action=reorder" : "";
+      router.push(`/overview-of-the-assessment-results?fromInspector=true${actionParam}`);
+    } catch (error) {
+      console.error("Error submitting to chief:", error);
+      // ยังคงปิด dialog แม้เกิดข้อผิดพลาด
+      setOpenSubmitDialog(false);
+    }
   };
 
   // handler สำหรับ dialog เหตุผลปรับลำดับ (แท็บ reorder)
@@ -355,18 +601,33 @@ export default function RiskAssessmentResultsPage({
     note: string;
     acknowledged: boolean;
   }) {
-    // TODO: เรียก API ส่งผลการ 'จัดลำดับใหม่' + โน้ต
-    // ตัวอย่าง payload: { note: "...", acknowledged: true }
-    console.log("submit change-order:", payload);
+    const newIds = pendingOrderIds ?? orderedParents.map((r) => r.id);
 
-    // ตัวอย่าง pseudo:
-    // await api.post(`/api/risk-assessment/${year}/submit-reorder`, {
-    //   order: orderedParents.map(r => r.id),   // ถ้าต้องการแนบลำดับใหม่
-    //   note: payload.note,
-    //   acknowledged: payload.acknowledged,
-    // });
+    console.log("🔄 Confirming reorder with reason:", {
+      originalOrder: orderedParents.map(r => r.id),
+      newOrder: newIds,
+      changedItem: pendingMovedId,
+      reason: payload.note.trim()
+    });
 
+    // คอมมิตลำดับใหม่
+    setOrderIds(newIds);
+
+    // เก็บเหตุผลสำหรับรายการที่ถูกย้าย
+    if (pendingMovedId) {
+      setReasonById((prev) => ({
+        ...prev,
+        [pendingMovedId]: payload.note.trim() || "เปลี่ยนลำดับความเสี่ยง",
+      }));
+    }
+
+    // ปิด popup + เคลียร์สถานะชั่วคราว
     setOpenReasonDialog(false);
+    setPendingOrderIds(null);
+    setPreviewOrderIds(null);
+    setPendingMovedId(null);
+
+    console.log("✅ Reorder applied with reason - staying on current page");
   }
   const router = useRouter();
 
@@ -376,6 +637,7 @@ export default function RiskAssessmentResultsPage({
 
   const outerTab = outerTabProp ?? outerTabUncontrolled;
   const setOuterTab = onOuterTabChange ?? setOuterTabUncontrolled;
+  const [unitSortDir, setUnitSortDir] = useState<UnitSortDir>("desc");
 
   // -------- Inner tabs (ประเภท) --------
   const [tab, setTab] = useState<TabKey>("all");
@@ -390,24 +652,65 @@ export default function RiskAssessmentResultsPage({
   const [open, setOpen] = useState(false);
   const [openSubmitDialog, setOpenSubmitDialog] = useState(false); // สำหรับ RiskSubmitConfirmDialog
   const [openReasonDialog, setOpenReasonDialog] = useState(false); // สำหรับ ChangeOrderReasonDialog
+  const [pendingOrderIds, setPendingOrderIds] = useState<string[] | null>(null);
+  const [pendingMovedId, setPendingMovedId] = useState<string | null>(null);
+  const [reasonById, setReasonById] = useState<Record<string, string>>({});
+  const [previewOrderIds, setPreviewOrderIds] = useState<string[] | null>(null);
+  
+  // ใช้ useSWR กับ API endpoint ใหม่  
   const { data, error, isLoading } = useSWR<ApiResponse>(
-    `/api/risk-assessment?year=${year}`,
+    `/api/risk-assessment-results?year=${year}`,
     fetcher
   );
 
-  // rows
-  const rowsByTab = Object.values(data?.rowsByTab ?? {}).some(
-    (v) => (v?.length ?? 0) > 0
-  )
-    ? (data!.rowsByTab as ApiResponse["rowsByTab"])
-    : buildMockRows();
+  function handleReorderByDrag(newIds: string[], movedId: string) {
+    console.log("🔄 Drag reorder detected:", {
+      originalOrder: paginatedParents.map(r => r.id),
+      newOrder: newIds,
+      movedItem: movedId
+    });
+
+    // เก็บข้อมูลการเปลี่ยนแปลงไว้รอ confirm
+    setPreviewOrderIds(newIds);
+    setPendingOrderIds(newIds);
+    setPendingMovedId(movedId);
+    
+    // เปิด popup ให้ใส่เหตุผล
+    setOpenReasonDialog(true);
+
+    console.log("✅ Reorder dialog opened for reason input");
+  }
+
+  function handleUpdateReason(id: string, reason: string) {
+    setReasonById((prev) => ({
+      ...prev,
+      [id]: reason
+    }));
+  }
+  // rows จาก API หรือ fallback เป็น mock
+  const rowsByTab = useMemo(() => {
+    console.log("🔄 Risk Assessment Results - Data received:", data);
+    
+    const hasApiData = Object.values(data?.rowsByTab ?? {}).some(
+      (v) => (v?.length ?? 0) > 0
+    );
+    
+    if (hasApiData) {
+      console.log("✅ Using API data");
+      console.log("📊 Rows by tab from API:", Object.keys(data!.rowsByTab));
+      Object.entries(data!.rowsByTab).forEach(([tab, rows]) => {
+        console.log(`  ${tab}: ${rows?.length || 0} rows`);
+      });
+      return data!.rowsByTab as ApiResponse["rowsByTab"];
+    } else {
+      console.log("⚠️ No API data, using mock rows");
+      return buildMockRows();
+    }
+  }, [data]);
 
   const pageTitle = data?.pageTitle ?? "วางแผนงานตรวจสอบภายใน";
-  const subtitle =
-    data?.subtitle ?? "การประเมินความเสี่ยงและการจัดลำดับความเสี่ยง";
-  const assessmentName =
-    data?.assessmentName ??
-    `ผลการประเมินความเสี่ยง แผนการตรวจสอบประจำปี ${year}`;
+  const subtitle = data?.subtitle ?? "การประเมินความเสี่ยงและการจัดลำดับความเสี่ยง";
+  const assessmentName = data?.assessmentName ?? `ผลการประเมินความเสี่ยง แผนการตรวจสอบประจำปี ${year}`;
   const fiscalYears = data?.fiscalYears ?? [Number(year)];
   const statusLine = data?.statusLine ?? { label: "สถานะ:", value: "-" };
 
@@ -428,13 +731,60 @@ export default function RiskAssessmentResultsPage({
     () => (tab === "all" ? allRows : getTabRows(tab)),
     [tab, allRows, rowsByTab]
   );
+  // === Group rows by duplicated topic ===
+  const groupingEnabled = true;
+
+  const { parentRows, groupChildren } = useMemo(() => {
+    if (!groupingEnabled) {
+      return {
+        parentRows: rawRows,
+        groupChildren: {} as Record<string, Row[]>,
+      };
+    }
+
+    const buckets = new Map<string, Row[]>();
+    for (const r of rawRows) {
+      const topic = topicByTab(r, tab).trim();
+      const key = topic && topic !== "-" ? topic : `__single__:${r.id}`;
+      const list = buckets.get(key) ?? [];
+      list.push(r);
+      buckets.set(key, list);
+    }
+
+    const parents: Row[] = [];
+    const childrenMap: Record<string, Row[]> = {};
+
+    for (const [topic, rows] of buckets) {
+      if (!topic.startsWith("__single__") && rows.length > 1) {
+        const parent = makeParentRow(tab, topic, rows);
+        parents.push(parent);
+
+        const sortedChildren = [...rows].sort((a, b) => {
+          const A = a.index.split(".").map(Number);
+          const B = b.index.split(".").map(Number);
+          return A[0] !== B[0] ? A[0] - B[0] : (A[1] || 0) - (B[1] || 0);
+        });
+        childrenMap[parent.id] = sortedChildren;
+      } else {
+        parents.push(rows[0]);
+      }
+    }
+
+    // เรียงพาเรนต์ตาม index หลัก
+    parents.sort((a, b) => {
+      const A = a.index.split(".").map(Number);
+      const B = b.index.split(".").map(Number);
+      return A[0] !== B[0] ? A[0] - B[0] : (A[1] || 0) - (B[1] || 0);
+    });
+
+    return { parentRows: parents, groupChildren: childrenMap };
+  }, [rawRows, tab]);
 
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   // สำหรับ summary + reorder: filter เฉพาะ parent ในหน้าหลัก
   const filteredParents = useMemo(() => {
-    let dataRows = [...rawRows];
-
+    let dataRows = [...parentRows];
     if (query) {
       const q = query.trim().toLowerCase();
       dataRows = dataRows.filter((r) =>
@@ -457,15 +807,19 @@ export default function RiskAssessmentResultsPage({
 
     // เฉพาะ parent
     dataRows = dataRows.filter((r) => !r.index.includes("."));
-
+    const usedSortBy = outerTab === "summary" ? "index" : sortBy;
+    const usedSortAsc = outerTab === "summary" ? true : sortAsc;
     dataRows.sort((a: any, b: any) => {
-      const dir = sortAsc ? 1 : -1;
-      if (sortBy === "score") return (a.score - b.score) * dir;
-      if (sortBy === "unit")
+      const dir = usedSortAsc ? 1 : -1;
+
+      if (usedSortBy === "score") return (a.score - b.score) * dir;
+      if (usedSortBy === "unit")
         return String(a.unit).localeCompare(String(b.unit)) * dir;
+
+      // usedSortBy === "index"
       const parseIdx = (s: string) => s.split(".").map(Number);
-      const [a1, a2 = 0] = parseIdx(a.index);
-      const [b1, b2 = 0] = parseIdx(b.index);
+      const [a1, a2 = 0] = parseIdx(a.index ?? "");
+      const [b1, b2 = 0] = parseIdx(b.index ?? "");
       if (a1 !== b1) return (a1 - b1) * dir;
       return (a2 - b2) * dir;
     });
@@ -494,11 +848,27 @@ export default function RiskAssessmentResultsPage({
 
   /* ---------- Reorder state & actions ---------- */
   const [orderIds, setOrderIds] = useState<string[] | null>(null);
+
   const orderedParents = useMemo(() => {
-    if (!orderIds) return paginatedParents;
-    const map = new Map(paginatedParents.map((r) => [r.id, r]));
-    return orderIds.map((id) => map.get(id)!).filter(Boolean);
-  }, [orderIds, paginatedParents]);
+    // ลิสต์ฐาน (หน้านี้หลัง filter+paginate แล้ว)
+    const base = paginatedParents;
+
+    // helper แปลง id[] -> Row[]
+    const mapFrom = (ids: string[]) => {
+      const m = new Map(base.map((r) => [r.id, r]));
+      return ids.map((id) => m.get(id)!).filter(Boolean);
+    };
+
+    // ลำดับที่ใช้แสดงผล:
+    // 1) ถ้ามีพรีวิวจากการลาก ให้ใช้พรีวิวก่อน
+    if (previewOrderIds) return mapFrom(previewOrderIds);
+
+    // 2) ถ้ามีลำดับที่ “คอมมิตแล้ว” (จากการยืนยันก่อนหน้า) ก็ใช้
+    if (orderIds) return mapFrom(orderIds);
+
+    // 3) ค่าเริ่มต้น = ลำดับเดิม
+    return base;
+  }, [previewOrderIds, orderIds, paginatedParents]);
 
   const ensureOrderInit = () => {
     if (!orderIds) setOrderIds(paginatedParents.map((r) => r.id));
@@ -509,16 +879,6 @@ export default function RiskAssessmentResultsPage({
       const arr = [...(prev ?? paginatedParents.map((r) => r.id))];
       const i = arr.indexOf(id);
       if (i > 0) [arr[i - 1], arr[i]] = [arr[i], arr[i - 1]];
-      return arr;
-    });
-  };
-  const moveDown = (id: string) => {
-    ensureOrderInit();
-    setOrderIds((prev) => {
-      const arr = [...(prev ?? paginatedParents.map((r) => r.id))];
-      const i = arr.indexOf(id);
-      if (i >= 0 && i < arr.length - 1)
-        [arr[i + 1], arr[i]] = [arr[i], arr[i + 1]];
       return arr;
     });
   };
@@ -612,7 +972,15 @@ export default function RiskAssessmentResultsPage({
               {/* Dialog: กรณีแท็บ reorder */}
               <ChangeOrderReasonDialog
                 open={openReasonDialog}
-                onOpenChange={setOpenReasonDialog}
+                onOpenChange={(v) => {
+                  setOpenReasonDialog(v);
+                  if (!v) {
+                    // ยกเลิก -> ทิ้งพรีวิว/คิว
+                    setPendingOrderIds(null);
+                    setPreviewOrderIds(null);
+                    setPendingMovedId(null); // <-- เคลียร์ด้วย
+                  }
+                }}
                 onConfirm={handleConfirmChangeOrder}
               />
             </>
@@ -627,23 +995,53 @@ export default function RiskAssessmentResultsPage({
         </CardHeader>
 
         <CardContent className="space-y-4">
-          {/* ---------- TABS ชั้นนอก (3 โหมด) ---------- */}
-          <Tabs
-            value={outerTab}
-            onValueChange={(v) => setOuterTab(v as OuterTab)}
-          >
-            <TabsList className="mb-2 w-full justify-start bg-transparent h-auto p-0 border-b border-border">
-              {Object.entries(OUTER_TABS).map(([k, label]) => (
-                <TabsTrigger
-                  key={k}
-                  value={k}
-                  className="rounded-none bg-transparent px-0 md:px-3 py-3 text-sm font-medium text-muted-foreground hover:text-foreground border-b-2 border-transparent data-[state=active]:text-primary data-[state=active]:border-primary"
+          {/* ---------- TABS ชั้นนอก (3 โหมด) + Sort Control ขวา ---------- */}
+          <div className="flex items-center justify-between mb-2">
+            <div className="overflow-x-auto">
+              <Tabs
+                value={outerTab}
+                onValueChange={(v) => setOuterTab(v as OuterTab)}
+              >
+                {/* เอาเส้นขอบล่างออก และเว้นช่องไฟระหว่างแท็บแบบกว้าง ๆ */}
+                <TabsList className="bg-transparent h-auto p-0 border-0 gap-8">
+                  {Object.entries(OUTER_TABS).map(([k, label]) => (
+                    <TabsTrigger
+                      key={k}
+                      value={k}
+                      className={cn(
+                        "px-3 py-2 text-sm rounded-lg bg-transparent text-foreground/80 hover:text-foreground",
+                        "data-[state=active]:bg-indigo-600 data-[state=active]:text-white",
+                        "border-0"
+                      )}
+                    >
+                      {label}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+              </Tabs>
+            </div>
+
+            {/* คอนโทรล “เรียงตามคะแนนประเมิน” ด้านขวา (แสดงเฉพาะ unitRanking) */}
+            {outerTab === "unitRanking" && (
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">
+                  เรียงตามคะแนนประเมิน
+                </span>
+                <Select
+                  value={unitSortDir}
+                  onValueChange={(v) => setUnitSortDir(v as UnitSortDir)}
                 >
-                  {label}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
+                  <SelectTrigger className="w-[160px]">
+                    <SelectValue placeholder="มากไปน้อย" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="desc">มากไปน้อย</SelectItem>
+                    <SelectItem value="asc">น้อยไปมาก</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </div>
 
           {/* ---------- TABS ชั้นใน (ประเภทข้อมูล) ---------- */}
           <div className="overflow-x-auto">
@@ -669,73 +1067,6 @@ export default function RiskAssessmentResultsPage({
             </Tabs>
           </div>
 
-          {/* ---------- FILTERS แถวเดียว ---------- */}
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div className="flex items-center gap-2">
-              <Input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="ค้นหา ลำดับ/หน่วยงาน/หัวข้อ..."
-                className="w-[260px]"
-              />
-              <Select value={status} onValueChange={setStatus}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="สถานะ" />
-                </SelectTrigger>
-                <SelectContent>
-                  {STATUS_OPTIONS.map((op) => (
-                    <SelectItem key={op.value} value={op.value}>
-                      {op.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <label className="flex items-center gap-2 rounded-md px-2 py-2">
-                <Checkbox
-                  checked={onlyIT}
-                  onCheckedChange={(v) => setOnlyIT(!!v)}
-                />
-                <span className="text-sm">เฉพาะ IT</span>
-              </label>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  if (sortBy === "score") setSortAsc((s) => !s);
-                  setSortBy("score");
-                }}
-                className={cn(sortBy === "score" && "border-primary")}
-              >
-                คะแนน {sortBy === "score" ? (sortAsc ? "↑" : "↓") : ""}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  if (sortBy === "unit") setSortAsc((s) => !s);
-                  setSortBy("unit");
-                }}
-                className={cn(sortBy === "unit" && "border-primary")}
-              >
-                หน่วยงาน {sortBy === "unit" ? (sortAsc ? "↑" : "↓") : ""}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  if (sortBy === "index") setSortAsc((s) => !s);
-                  setSortBy("index");
-                }}
-                className={cn(sortBy === "index" && "border-primary")}
-              >
-                ลำดับ {sortBy === "index" ? (sortAsc ? "↑" : "↓") : ""}
-              </Button>
-            </div>
-          </div>
-
           {/* ---------- CONTENT: แยกตาม outerTab ---------- */}
           {outerTab === "summary" && (
             <SummarySection
@@ -746,6 +1077,7 @@ export default function RiskAssessmentResultsPage({
               setExpanded={setExpanded}
               isLoading={isLoading}
               error={!!error}
+              groupChildren={groupChildren} // << เพิ่ม
             />
           )}
 
@@ -753,8 +1085,9 @@ export default function RiskAssessmentResultsPage({
             <ReorderSection
               tab={tab}
               parents={orderedParents}
-              onMoveUp={moveUp}
-              onMoveDown={moveDown}
+              onReorderByDrag={handleReorderByDrag}
+              reasonById={reasonById} // << เพิ่ม prop
+              onUpdateReason={handleUpdateReason} // << เพิ่ม callback สำหรับอัพเดตเหตุผล
               isLoading={isLoading}
               error={!!error}
             />
@@ -767,6 +1100,7 @@ export default function RiskAssessmentResultsPage({
               allRows={rawRows}
               isLoading={isLoading}
               error={!!error}
+              unitSortDir={unitSortDir}
             />
           )}
 
@@ -833,34 +1167,25 @@ export default function RiskAssessmentResultsPage({
 
 /* ======================== Sections ======================== */
 
-// 1) Summary แบบเดิม (เพิ่ม expand แสดงลูก)
 function SummarySection(props: {
   tab: TabKey;
   parents: Row[];
-  allRows: Row[];
+  allRows: Row[]; // unused (คงพารามิเตอร์ไว้)
   expanded: Record<string, boolean>;
   setExpanded: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
   isLoading: boolean;
   error: boolean;
+  groupChildren: Record<string, Row[]>;
 }) {
-  const { tab, parents, allRows, expanded, setExpanded, isLoading, error } =
-    props;
-
-  // Define getChildRows in this scope
-  const getChildRows = (rows: Row[], parentIndex: string) =>
-    rows
-      .filter((rr) => rr.index.startsWith(parentIndex + "."))
-      .sort((a, b) => {
-        const pa = a.index.split(".").map(Number);
-        const pb = b.index.split(".").map(Number);
-        if (pa[0] !== pb[0]) return pa[0] - pb[0];
-        return (pa[1] ?? 0) - (pb[1] ?? 0);
-      });
-
-  const hasChild = (idx: string) =>
-    allRows.some((rr) => rr.index.startsWith(idx + "."));
-
-  const getChild = (idx: string) => getChildRows(allRows, idx);
+  const {
+    tab,
+    parents,
+    expanded,
+    setExpanded,
+    isLoading,
+    error,
+    groupChildren,
+  } = props;
 
   return (
     <div className="rounded-xl border overflow-hidden">
@@ -891,6 +1216,10 @@ function SummarySection(props: {
           ) : (
             parents.map((r) => {
               const isHigh = r.grade === "H";
+              const children = groupChildren[r.id] ?? [];
+              const hasChildren = children.length > 0;
+              const isOpen = !!expanded[r.id];
+
               return (
                 <Fragment key={r.id}>
                   <TableRow className={cn(isHigh && "bg-red-50/50")}>
@@ -924,66 +1253,84 @@ function SummarySection(props: {
                     </TableCell>
                     <TableCell className="text-center">
                       <div className="flex justify-center gap-2">
-                        {hasChild(r.index) ? (
+                        {hasChildren ? (
                           <ExpandBtn
                             id={r.id}
                             expanded={expanded}
                             setExpanded={setExpanded}
                           />
                         ) : (
-                          <Button
-                            asChild
-                            variant="ghost"
-                            size="sm"
-                            className="px-2"
-                          >
-                            <Link href={`/risk-assessment/${r.id}/edit`}>
-                              แก้ไข
-                            </Link>
-                          </Button>
+                          r.hasDoc && (
+                            <Button
+                              asChild
+                              variant="ghost"
+                              size="icon"
+                              aria-label="กรอก/ดูเอกสาร"
+                            >
+                              <Link href={`/risk-assessment-form/${r.id}`}>
+                                <FileText className="h-4 w-4" />
+                              </Link>
+                            </Button>
+                          )
                         )}
                       </div>
                     </TableCell>
                   </TableRow>
 
-                  {expanded[r.id] &&
-                    getChild(r.index).map((c: Row) => (
-                      <TableRow
-                        key={`${r.id}-child-${c.id}`}
-                        className="bg-muted/30"
-                      >
-                        <TableCell className="font-mono text-xs md:text-sm">
-                          {c.index}
-                        </TableCell>
-                        <TableCell className="whitespace-nowrap pl-6">
-                          {c.unit}
-                        </TableCell>
-                        <TableCell className="text-muted-foreground align-top !whitespace-normal break-words">
-                          {topicByTab(c, tab)}
-                        </TableCell>
-                        <TableCell className="font-medium">
-                          {c.score ?? "-"}
-                        </TableCell>
-                        <TableCell>
-                          <GradeBadge grade={c.grade} />
-                        </TableCell>
-                        <TableCell>
-                          <StatusBadge value={c.status} />
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <Button
-                            asChild
-                            variant="ghost"
-                            size="sm"
-                            className="px-2"
-                          >
-                            <Link href={`/risk-assessment/${c.id}/edit`}>
-                              แก้ไข
-                            </Link>
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                  {isOpen &&
+                    hasChildren &&
+                    children.map((c, i) => {
+                      const displayIndex = `${r.index}.${i + 1}`;
+                      return (
+                        <TableRow
+                          key={`${r.id}-child-${c.id}`}
+                          className="bg-muted/30"
+                        >
+                          <TableCell className="font-mono text-xs md:text-sm">
+                            {displayIndex}
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap pl-6">
+                            {c.unit}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground align-top !whitespace-normal break-words">
+                            <span
+                              className="block line-clamp-2 md:line-clamp-3"
+                              style={{
+                                display: "-webkit-box",
+                                WebkitBoxOrient: "vertical",
+                                WebkitLineClamp: 2,
+                                overflow: "hidden",
+                              }}
+                            >
+                              {topicByTab(c, tab)}
+                            </span>
+                          </TableCell>
+                          <TableCell className="font-medium">
+                            {c.score ?? "-"}
+                          </TableCell>
+                          <TableCell>
+                            <GradeBadge grade={c.grade} />
+                          </TableCell>
+                          <TableCell>
+                            <StatusBadge value={deriveStatus(c)} />
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {c.hasDoc && (
+                              <Button
+                                asChild
+                                variant="ghost"
+                                size="icon"
+                                aria-label="กรอก/ดูเอกสาร"
+                              >
+                                <Link href={`/risk-assessment-form/${c.id}`}>
+                                  <FileText className="h-4 w-4" />
+                                </Link>
+                              </Button>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                 </Fragment>
               );
             })
@@ -994,23 +1341,72 @@ function SummarySection(props: {
   );
 }
 
-// 2) Reorder (มีคอลัมน์ซ้ายไว้ย้ายลำดับด้วยปุ่มขึ้น/ลง)
 function ReorderSection(props: {
   tab: TabKey;
   parents: Row[];
-  onMoveUp: (id: string) => void;
-  onMoveDown: (id: string) => void;
+  onReorderByDrag: (newIds: string[], movedId: string) => void; // <-- เพิ่ม movedId
+  reasonById: Record<string, string>;
+  onUpdateReason?: (id: string, reason: string) => void; // <-- เพิ่ม callback สำหรับอัพเดตเหตุผล
   isLoading: boolean;
   error: boolean;
 }) {
-  const { tab, parents, onMoveUp, onMoveDown, isLoading, error } = props;
+  const { tab, parents, onReorderByDrag, isLoading, error, reasonById, onUpdateReason } = props;
+
+  const arrayMove = (arr: string[], from: number, to: number) => {
+    const a = [...arr];
+    const [m] = a.splice(from, 1);
+    a.splice(to, 0, m);
+    return a;
+  };
+
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [openEditDialog, setOpenEditDialog] = useState(false);
+  const ids = useMemo(() => parents.map((r) => r.id), [parents]);
+  const indexOf = (id: string) => ids.indexOf(id);
+
+  const handleDragStart = (e: React.DragEvent, id: string) => {
+    e.dataTransfer.setData("text/plain", id);
+    e.dataTransfer.effectAllowed = "move";
+    setDraggingId(id);
+  };
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+  };
+  const handleDropOnRow = (e: React.DragEvent, overId: string) => {
+    e.preventDefault();
+    const fromId = e.dataTransfer.getData("text/plain") || draggingId;
+    if (!fromId || fromId === overId) return;
+
+    const from = indexOf(fromId);
+    const to = indexOf(overId);
+    if (from < 0 || to < 0 || from === to) return;
+
+    const newIds = arrayMove(ids, from, to);
+    onReorderByDrag(newIds, fromId); // <-- ส่ง movedId ขึ้นไป
+    setDraggingId(null);
+  };
+
+  const handleEditReason = (id: string) => {
+    setEditingId(id);
+    setOpenEditDialog(true);
+  };
+
+  const handleConfirmEdit = (payload: { note: string; acknowledged: boolean }) => {
+    if (editingId && onUpdateReason) {
+      onUpdateReason(editingId, payload.note);
+    }
+    setOpenEditDialog(false);
+    setEditingId(null);
+  };
 
   return (
     <div className="rounded-xl border overflow-hidden">
       <Table>
         <TableHeader className="sticky top-0 z-10 bg-muted/50">
           <TableRow>
-            <TableHead className="w-[56px]"></TableHead>
+            <TableHead className="w-[44px]"></TableHead>
             <TableHead className="w-[90px]">ลำดับ</TableHead>
             <TableHead>หน่วยงาน</TableHead>
             <TableHead className="align-middle !whitespace-normal break-words leading-snug">
@@ -1020,43 +1416,42 @@ function ReorderSection(props: {
             </TableHead>
             <TableHead className="w-[120px]">คะแนนประเมิน</TableHead>
             <TableHead className="w-[120px]">เกรด</TableHead>
-            <TableHead className="w-[170px]">สถานะการประเมินผล</TableHead>
+            {/* เปลี่ยนจาก "สถานะการประเมินผล" เป็น "เหตุผล" */}
+            <TableHead className="w-[220px]">เหตุผล</TableHead>
+            <TableHead className="w-[100px]">แก้ไข</TableHead>
           </TableRow>
         </TableHeader>
 
         <TableBody>
           {isLoading ? (
-            <RowLoading colSpan={7} />
+            <RowLoading colSpan={8} />
           ) : error ? (
-            <RowError colSpan={7} />
+            <RowError colSpan={8} />
           ) : parents.length === 0 ? (
-            <RowEmpty colSpan={7} />
+            <RowEmpty colSpan={8} />
           ) : (
-            parents.map((r, i) => (
-              <TableRow key={r.id}>
+            parents.map((r) => (
+              <TableRow
+                key={r.id}
+                onDragOver={handleDragOver}
+                onDrop={(e) => handleDropOnRow(e, r.id)}
+                className={cn(
+                  draggingId === r.id && "opacity-60",
+                  "cursor-default select-none"
+                )}
+              >
                 <TableCell className="text-center">
-                  <div className="flex items-center justify-center gap-1">
+                  <button
+                    aria-label="ลากเพื่อจัดลำดับ"
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, r.id)}
+                    className="h-7 w-7 inline-flex items-center justify-center rounded hover:bg-muted cursor-grab active:cursor-grabbing"
+                    title="ลากเพื่อจัดลำดับ"
+                  >
                     <GripVertical className="h-4 w-4 text-muted-foreground" />
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      aria-label="ขึ้น"
-                      onClick={() => onMoveUp(r.id)}
-                      className="h-7 w-7"
-                    >
-                      <MoveUp className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      aria-label="ลง"
-                      onClick={() => onMoveDown(r.id)}
-                      className="h-7 w-7"
-                    >
-                      <MoveDown className="h-4 w-4" />
-                    </Button>
-                  </div>
+                  </button>
                 </TableCell>
+
                 <TableCell className="font-mono text-xs md:text-sm">
                   {r.index}
                 </TableCell>
@@ -1068,14 +1463,35 @@ function ReorderSection(props: {
                 <TableCell>
                   <GradeBadge grade={r.grade} />
                 </TableCell>
-                <TableCell>
-                  <StatusBadge value={r.status} />
+
+                {/* คอลัมน์เหตุผล: ถ้าไม่มีให้แสดง "-" */}
+                <TableCell className="text-muted-foreground align-top !whitespace-normal break-words">
+                  {reasonById[r.id]?.trim() ? reasonById[r.id] : "-"}
+                </TableCell>
+
+                {/* คอลัมน์แก้ไข */}
+                <TableCell className="text-center">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleEditReason(r.id)}
+                    className="h-8 px-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50"
+                  >
+                    แก้ไข
+                  </Button>
                 </TableCell>
               </TableRow>
             ))
           )}
         </TableBody>
       </Table>
+
+      {/* Dialog สำหรับแก้ไขเหตุผล */}
+      <ChangeOrderReasonDialog
+        open={openEditDialog}
+        onOpenChange={setOpenEditDialog}
+        onConfirm={handleConfirmEdit}
+      />
     </div>
   );
 }
@@ -1087,8 +1503,9 @@ function UnitRankingSection(props: {
   allRows: Row[]; // ใช้รวมทุกหมวด/ทุกแท็บย่อย
   isLoading: boolean;
   error: boolean;
+  unitSortDir: UnitSortDir; // << เพิ่ม
 }) {
-  const { tab, allRows, isLoading, error } = props;
+  const { tab, allRows, isLoading, error, unitSortDir } = props;
 
   // ระบุหมวดของแถว
   const getCategory = (r: Row): string => {
@@ -1102,7 +1519,6 @@ function UnitRankingSection(props: {
     return "-";
   };
 
-  // รวม “ทุกเรื่อง” ต่อหน่วยงาน (ตัดแถวที่ไม่มีหัวข้อจริง)
   const topicOf = (r: Row) => topicByTab(r, tab) || "-";
   const isTopicRow = (r: Row) => topicOf(r) !== "-" && topicOf(r).trim() !== "";
 
@@ -1114,13 +1530,10 @@ function UnitRankingSection(props: {
       arr.push(r);
       m.set(r.unit, arr);
     }
-    // สร้างอ็อบเจ็กต์สำหรับแสดงผล
+
     const result = Array.from(m.entries()).map(([unit, rows]) => {
-      // เรียง “เรื่อง” ในหน่วยงาน (คะแนนมาก -> น้อย)
       rows.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
-      // นับหมวด
       const catSet = new Set(rows.map(getCategory));
-      // รวมคะแนน
       const sumMax = rows.reduce(
         (acc, r) =>
           acc +
@@ -1134,13 +1547,16 @@ function UnitRankingSection(props: {
       );
       return { unit, rows, categories: catSet, sumMax, sumScore };
     });
-    // เรียงหน่วยงานตาม “ผลรวมคะแนนประเมิน” มาก -> น้อย (คือ “ลำดับ”)
-    result.sort((a, b) => b.sumScore - a.sumScore);
+
+    // ใช้ทิศทางจาก unitSortDir
+    result.sort((a, b) =>
+      unitSortDir === "desc" ? b.sumScore - a.sumScore : a.sumScore - b.sumScore
+    );
+
     return result;
-  }, [allRows, tab]);
+  }, [allRows, tab, unitSortDir]);
 
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-
   return (
     <div className="rounded-xl border overflow-hidden">
       <Table>

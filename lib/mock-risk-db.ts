@@ -8,7 +8,7 @@ export const YEAR_DEFAULT = 2568;
 /** โครงสร้าง override บนแถวใน List (คะแนน/เกรด/สถานะ) */
 export type RowOverride = {
   score?: number;
-  grade?: "H" | "M" | "L" | "-";
+  grade?: "E" | "H" | "M" | "L" | "N" | "-";
   status?: string;
 };
 

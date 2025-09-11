@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
 type Props = {
-  grade?: "H" | "M" | "L";
+  grade?: "E" | "H" | "M" | "L" | "N";
   category?: string;
   onClear: () => void;
 };

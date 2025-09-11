@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import useSWR from "swr";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -22,10 +23,11 @@ import { Info } from "lucide-react";
 
 /** ---------- Types ---------- */
 type RiskSlice = {
-  key: "veryHigh" | "high" | "medium" | "low" | "veryLow";
+  key: "excellent" | "high" | "medium" | "low" | "none";
   name: string;
   value: number;
   color: string;
+  grade: "E" | "H" | "M" | "L" | "N";
 };
 
 type StackedRow = {
@@ -46,6 +48,43 @@ type MatrixRow = {
   veryHigh: number;// มากที่สุด (5)
 };
 
+// API types
+type Row = {
+  id: string;
+  index: string;
+  unit: string;
+  mission: string;
+  work: string;
+  project: string;
+  carry: string;
+  activity: string;
+  process: string;
+  system: string;
+  itType: "IT" | "Non-IT" | "-" | "";
+  score: number;
+  maxScore?: number;
+  grade: "E" | "H" | "M" | "L" | "N" | "-";
+  status: string;
+  hasDoc: boolean;
+};
+
+type ApiResponse = {
+  fiscalYears: number[];
+  pageTitle: string;
+  subtitle: string;
+  assessmentName: string;
+  statusLine: { label: string; value: string };
+  rowsByTab: Partial<Record<string, Row[]>>;
+  submissionInfo?: {
+    action: string;
+    submissionTime?: string;
+    itemCount?: number;
+  };
+};
+
+// API fetcher
+const fetcher = (url: string) => fetch(url).then((r) => r.json() as Promise<ApiResponse>);
+
 
 
 /** ---------- Main Section ---------- */
@@ -55,10 +94,10 @@ type DashboardProps = {
   donut?: RiskSlice[];
   stacked?: StackedRow[];
   matrix?: MatrixRow[];
-  onGradeClick?: (grade: "H" | "M" | "L") => void;
+  onGradeClick?: (grade: "E" | "H" | "M" | "L" | "N") => void;
   onCategoryClick?: (category: string) => void;
   activeFilter?: {
-    grade?: "H" | "M" | "L";
+    grade?: "E" | "H" | "M" | "L" | "N";
     category?: string;
   };
 };
@@ -66,14 +105,118 @@ type DashboardProps = {
 export default function DashboardSection({
   year,
   statusText,
-  donut = defaultDonut,
-  stacked = defaultStacked,
-  matrix = defaultMatrix,
+  donut: donutProp,
+  stacked: stackedProp,
+  matrix: matrixProp,
   onGradeClick,
   onCategoryClick,
   activeFilter,
 }: DashboardProps) {
   const [showMatrixReport, setShowMatrixReport] = useState(true);
+
+  // ดึงข้อมูลจาก API
+  const { data, error, isLoading } = useSWR<ApiResponse>(
+    `/api/chief-risk-assessment-results?year=${year}`,
+    fetcher
+  );
+
+  // คำนวณข้อมูลจริงจาก API
+  const { donut, stacked, matrix, actualStatusText } = useMemo(() => {
+    if (!data || error || isLoading) {
+      return {
+        donut: donutProp || defaultDonut,
+        stacked: stackedProp || defaultStacked,
+        matrix: matrixProp || defaultMatrix,
+        actualStatusText: statusText || "-"
+      };
+    }
+
+    // รวมทุกแถวจากทุกแท็บ
+    const allRows: Row[] = Object.values(data.rowsByTab).flat().filter((row): row is Row => row !== undefined && row !== null);
+    
+    // นับจำนวนตามเกรด (รวมทุกเกรด)
+    const gradeCounts = allRows.reduce((acc, row) => {
+      if (row.grade === "E") acc.excellent++;
+      else if (row.grade === "H") acc.high++;
+      else if (row.grade === "M") acc.medium++;
+      else if (row.grade === "L") acc.low++;
+      else if (row.grade === "N") acc.none++;
+      return acc;
+    }, { excellent: 0, high: 0, medium: 0, low: 0, none: 0 });
+
+    // สร้างข้อมูลโดนัท (แสดงเฉพาะเกรดที่มีข้อมูล - ใช้สีที่ตรงกัน)
+    const calculatedDonut: RiskSlice[] = [];
+    
+    if (gradeCounts.excellent > 0) {
+      calculatedDonut.push({ key: "excellent", name: "มากที่สุด", value: gradeCounts.excellent, color: gradeColors.E, grade: "E" });
+    }
+    if (gradeCounts.high > 0) {
+      calculatedDonut.push({ key: "high", name: "มาก", value: gradeCounts.high, color: gradeColors.H, grade: "H" });
+    }
+    if (gradeCounts.medium > 0) {
+      calculatedDonut.push({ key: "medium", name: "ปานกลาง", value: gradeCounts.medium, color: gradeColors.M, grade: "M" });
+    }
+    if (gradeCounts.low > 0) {
+      calculatedDonut.push({ key: "low", name: "น้อย", value: gradeCounts.low, color: gradeColors.L, grade: "L" });
+    }
+    if (gradeCounts.none > 0) {
+      calculatedDonut.push({ key: "none", name: "ไม่ประเมิน", value: gradeCounts.none, color: gradeColors.N, grade: "N" });
+    }
+
+    // จัดกลุ่มตามประเภท (รองรับทุกเกรด)
+    const categoryMap = new Map<string, { E: number; H: number; M: number; L: number; N: number }>();
+    
+    allRows.forEach(row => {
+      let category = "อื่นๆ";
+      if (row.work && row.work !== "-") category = "งาน";
+      else if (row.project && row.project !== "-") category = "โครงการ";
+      else if (row.carry && row.carry !== "-") category = "โครงการกันเงินเหลื่อมปี";
+      else if (row.activity && row.activity !== "-") category = "กิจกรรม";
+      else if (row.process && row.process !== "-") category = "กระบวนงาน";
+      else if (row.system && row.system !== "-") category = "IT/Non-IT";
+      else if (row.mission && row.mission !== "-") category = "หน่วยงาน";
+
+      if (!categoryMap.has(category)) {
+        categoryMap.set(category, { E: 0, H: 0, M: 0, L: 0, N: 0 });
+      }
+      
+      const counts = categoryMap.get(category)!;
+      if (row.grade === "E") counts.E++;
+      else if (row.grade === "H") counts.H++;
+      else if (row.grade === "M") counts.M++;
+      else if (row.grade === "L") counts.L++;
+      else if (row.grade === "N") counts.N++;
+    });
+
+    // สร้างข้อมูลแท่งซ้อน (รวมทุกเกรด)
+    const calculatedStacked: StackedRow[] = Array.from(categoryMap.entries()).map(([name, counts]) => ({
+      name,
+      veryHigh: counts.E, // Excellent -> veryHigh
+      high: counts.H,     // High -> high 
+      medium: counts.M,   // Medium -> medium
+      low: counts.L,      // Low -> low
+      veryLow: counts.N   // None -> veryLow
+    }));
+
+    // สร้างข้อมูลเมทริกซ์ (ใช้ข้อมูลจริงจาก API)
+    const calculatedMatrix: MatrixRow[] = Array.from(categoryMap.entries()).map(([category, counts]) => {
+      return {
+        category,
+        veryLow: counts.N,   // None/Not Assessed
+        low: counts.L,       // Low Risk
+        medium: counts.M,    // Medium Risk  
+        high: counts.H,      // High Risk
+        veryHigh: counts.E   // Excellent Risk
+      };
+    });
+
+    return {
+      donut: calculatedDonut,
+      stacked: calculatedStacked,
+      matrix: calculatedMatrix,
+      actualStatusText: data.statusLine?.value || statusText || "-"
+    };
+  }, [data, error, isLoading, donutProp, stackedProp, matrixProp, statusText]);
 
   const total = useMemo(
     () => donut.reduce((s, d) => s + d.value, 0),
@@ -93,7 +236,22 @@ export default function DashboardSection({
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Info className="h-4 w-4" />
               <span className="text-amber-600 font-medium">สถานะ:</span>
-              <span className="text-amber-600">{statusText ?? "-"}</span>
+              <span className="text-amber-600">{actualStatusText}</span>
+              
+              {/* แสดงข้อมูลเพิ่มเติมเมื่อได้รับข้อมูลจาก Inspector */}
+              {data?.submissionInfo && (
+                <div className="ml-4 flex items-center gap-2">
+                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                  <span className="text-green-700 font-medium">
+                    ได้รับข้อมูลแล้ว ({data.submissionInfo.itemCount} รายการ)
+                  </span>
+                  {data.submissionInfo.submissionTime && (
+                    <span className="text-gray-500 text-xs">
+                      {new Date(data.submissionInfo.submissionTime).toLocaleString('th-TH')}
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </CardHeader>
@@ -135,19 +293,25 @@ export default function DashboardSection({
                         nameKey="name"
                         innerRadius={70}
                         outerRadius={110}
+                        stroke="#fff"
                         strokeWidth={2}
+                        label={(entry: any) => {
+                          const value = entry.value || 0;
+                          const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : "0.0";
+                          return `${percentage}%`;
+                        }}
+                        labelLine={true}
                       >
                         {donut.map((d) => (
                           <Cell 
                             key={d.key} 
                             fill={d.color}
+                            stroke="#fff"
+                            strokeWidth={2}
                             style={{ cursor: onGradeClick ? 'pointer' : 'default' }}
                             onClick={() => {
                               if (!onGradeClick) return;
-                              const grade = d.key === "veryHigh" ? "H" : 
-                                          d.key === "high" ? "M" : 
-                                          d.key === "medium" ? "L" : undefined;
-                              if (grade) onGradeClick(grade);
+                              onGradeClick(d.grade);
                             }}
                           />
                         ))}
@@ -168,10 +332,8 @@ export default function DashboardSection({
                 {/* legend แบบ 2 คอลัมน์ */}
                 <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
                   {donut.map((d) => {
-                    const grade = d.key === "veryHigh" ? "H" : 
-                                d.key === "high" ? "M" : 
-                                d.key === "medium" ? "L" : undefined;
-                    const isActive = grade === activeFilter?.grade;
+                    const isActive = d.grade === activeFilter?.grade;
+                    const percentage = total > 0 ? ((d.value / total) * 100).toFixed(1) : "0.0";
                     
                     return (
                       <div 
@@ -181,7 +343,7 @@ export default function DashboardSection({
                           onGradeClick && "cursor-pointer hover:bg-gray-50 p-1 rounded",
                           isActive && "bg-gray-100"
                         )}
-                        onClick={() => grade && onGradeClick?.(grade)}
+                        onClick={() => onGradeClick?.(d.grade)}
                       >
                         <span
                           className="inline-block h-3 w-3 rounded-sm"
@@ -190,6 +352,7 @@ export default function DashboardSection({
                         />
                         <span className="text-muted-foreground">{d.name}</span>
                         <span className="ml-auto font-medium">{d.value}</span>
+                        <span className="text-sm text-muted-foreground">({percentage}%)</span>
                       </div>
                     );
                   })}
@@ -215,8 +378,21 @@ export default function DashboardSection({
                       <Bar 
                         dataKey="veryHigh" 
                         stackId="a" 
-                        name="High Risk (H)" 
-                        fill={colors.veryHigh}
+                        name="มากที่สุด (E)" 
+                        fill={gradeColors.E}
+                        fillOpacity={activeFilter?.grade === "E" || !activeFilter?.grade ? 1 : 0.3}
+                        onClick={(data) => {
+                          if (!onGradeClick || !onCategoryClick || !data?.name) return;
+                          onGradeClick("E");
+                          onCategoryClick(data.name);
+                        }}
+                        style={{ cursor: (onGradeClick && onCategoryClick) ? 'pointer' : 'default' }}
+                      />
+                      <Bar 
+                        dataKey="high" 
+                        stackId="a" 
+                        name="มาก (H)" 
+                        fill={gradeColors.H}
                         fillOpacity={activeFilter?.grade === "H" || !activeFilter?.grade ? 1 : 0.3}
                         onClick={(data) => {
                           if (!onGradeClick || !onCategoryClick || !data?.name) return;
@@ -226,10 +402,10 @@ export default function DashboardSection({
                         style={{ cursor: (onGradeClick && onCategoryClick) ? 'pointer' : 'default' }}
                       />
                       <Bar 
-                        dataKey="high" 
+                        dataKey="medium" 
                         stackId="a" 
-                        name="Medium Risk (M)" 
-                        fill={colors.high}
+                        name="ปานกลาง (M)" 
+                        fill={gradeColors.M}
                         fillOpacity={activeFilter?.grade === "M" || !activeFilter?.grade ? 1 : 0.3}
                         onClick={(data) => {
                           if (!onGradeClick || !onCategoryClick || !data?.name) return;
@@ -239,14 +415,27 @@ export default function DashboardSection({
                         style={{ cursor: (onGradeClick && onCategoryClick) ? 'pointer' : 'default' }}
                       />
                       <Bar 
-                        dataKey="medium" 
+                        dataKey="low" 
                         stackId="a" 
-                        name="Low Risk (L)" 
-                        fill={colors.medium}
+                        name="น้อย (L)" 
+                        fill={gradeColors.L}
                         fillOpacity={activeFilter?.grade === "L" || !activeFilter?.grade ? 1 : 0.3}
                         onClick={(data) => {
                           if (!onGradeClick || !onCategoryClick || !data?.name) return;
                           onGradeClick("L");
+                          onCategoryClick(data.name);
+                        }}
+                        style={{ cursor: (onGradeClick && onCategoryClick) ? 'pointer' : 'default' }}
+                      />
+                      <Bar 
+                        dataKey="veryLow" 
+                        stackId="a" 
+                        name="ไม่ประเมิน (N)" 
+                        fill={gradeColors.N}
+                        fillOpacity={activeFilter?.grade === "N" || !activeFilter?.grade ? 1 : 0.3}
+                        onClick={(data) => {
+                          if (!onGradeClick || !onCategoryClick || !data?.name) return;
+                          onGradeClick("N");
                           onCategoryClick(data.name);
                         }}
                         style={{ cursor: (onGradeClick && onCategoryClick) ? 'pointer' : 'default' }}
@@ -371,28 +560,39 @@ function MatrixReport({ data }: { data: MatrixRow[] }) {
 }
 
 /** ---------- Palette ---------- */
-const colors = {
-  veryHigh: "#EF4444", // red-500 - High Risk (H)
-  high: "#F97316",     // orange-500 - Medium Risk (M) 
-  medium: "#0EA5E9",   // sky-500 - Low Risk (L)
-  low: "#10B981",      // emerald-500 - Not used
-  veryLow: "#3B82F6",  // blue-500 - Not used
+// ระบบสีที่ตรงกับภาพตัวอย่าง และสอดคล้องกันระหว่าง Donut, Bar chart และ Matrix
+const gradeColors = {
+  // ตามลำดับความเสี่ยง: สูงไปต่ำ
+  E: "#9333EA", // purple-600 - Excellent (มากที่สุด) 
+  H: "#EF4444", // red-500 - High Risk (มาก)
+  M: "#F97316", // orange-500 - Medium Risk (ปานกลาง) 
+  L: "#10B981", // emerald-500 - Low Risk (น้อย)
+  N: "#6B7280"  // gray-500 - Not Assessed (ไม่ประเมิน)
 };
 
-// เฉดสีหลักสำหรับเมทริกซ์ (ใช้กับ color-mix ด้านบน)
+// สำหรับ Donut/Bar chart (ใช้ key mapping เดิม)
+const colors = {
+  veryHigh: gradeColors.H, // High Risk (H) - แดง
+  high: gradeColors.M,     // Medium Risk (M) - ส้ม
+  medium: gradeColors.L,   // Low Risk (L) - เขียว
+  low: "#3B82F6",         // ไม่ใช้แล้ว
+  veryLow: gradeColors.N,  // Not Assessed (N) - เทา
+};
+
+// เฉดสีหลักสำหรับเมทริกซ์ (ตรงกับสีหลัก)
 const colorsScale = {
-  veryHigh: "oklch(0.65 0.22 27)",   // โทนแดง - High Risk (H)
-  high:     "oklch(0.74 0.18 50)",   // โทนส้ม - Medium Risk (M)
-  medium:   "oklch(0.70 0.15 230)",  // โทนฟ้า - Low Risk (L)
-  low:      "oklch(0.80 0.10 150)",  // โทนเขียว - Not used
-  veryLow:  "oklch(0.70 0.13 265)",  // โทนน้ำเงิน - Not used
+  veryHigh: "#9333EA", // Excellent (E) - ม่วง
+  high:     "#EF4444", // High Risk (H) - แดง  
+  medium:   "#F97316", // Medium Risk (M) - ส้ม
+  low:      "#10B981", // Low Risk (L) - เขียว
+  veryLow:  "#6B7280"  // Not Assessed (N) - เทา
 } as const;
 
 /** ---------- Mock data (แก้ตามจริงได้) ---------- */
 const defaultDonut: RiskSlice[] = [
-  { key: "veryHigh", name: "High Risk (H)",     value: 37, color: colors.veryHigh },
-  { key: "high",     name: "Medium Risk (M)",   value: 44, color: colors.high },
-  { key: "medium",   name: "Low Risk (L)",      value: 30, color: colors.medium },
+  { key: "high", name: "มาก", value: 37, color: gradeColors.H, grade: "H" },
+  { key: "medium", name: "ปานกลาง", value: 44, color: gradeColors.M, grade: "M" },
+  { key: "low", name: "น้อย", value: 30, color: gradeColors.L, grade: "L" },
 ];
 
 const defaultStacked: StackedRow[] = [

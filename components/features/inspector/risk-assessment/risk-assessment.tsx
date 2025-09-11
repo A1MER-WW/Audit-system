@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import useSWR from "swr";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -31,7 +31,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { ChevronDown, ChevronUp, FileText, Info } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 export type TabKey =
   | "all"
@@ -173,14 +173,47 @@ export default function RiskAssessmentPlanningPage({
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 200;
 
-  const { data, error, isLoading } = useSWR<ApiResponse>(
+  const { data, error, isLoading, mutate } = useSWR<ApiResponse>(
     `/api/risk-assessment?year=${year}`,
     fetcher,
     {
       revalidateOnFocus: true,
-      refreshInterval: 1000,
+      revalidateOnReconnect: true,
+      revalidateIfStale: true,
     }
   );
+
+  // --- Revalidate triggers ---
+  const searchParams = useSearchParams();
+
+  // 2.1 โฟกัสหน้าต่าง/แท็บ -> revalidate
+  useEffect(() => {
+    const onFocus = () => mutate();
+    const onVisible = () => {
+      if (!document.hidden) mutate();
+    };
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [mutate]);
+
+  // 2.2 รองรับ redirect กลับมาพร้อม query (?revalidate=1)
+  useEffect(() => {
+    if (searchParams?.get("revalidate") === "1") mutate();
+  }, [searchParams, mutate]);
+
+  // 2.3 (ออปชัน) รองรับข้ามแท็บ โดยยิง localStorage flag จากหน้าฟอร์ม
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === "risk:formSaved") mutate();
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, [mutate]);
+  // --- End revalidate triggers ---
 
   const rowsByTab = data?.rowsByTab ?? {};
   const getTabRows = (k: Exclude<TabKey, "all">): Row[] => rowsByTab[k] ?? [];
@@ -202,13 +235,50 @@ export default function RiskAssessmentPlanningPage({
     [tab, allRows, rowsByTab]
   );
 
+  /** แผนที่ค่าสถานะ (ไทย/อังกฤษ) ให้เหลือ 3 ค่าหลักใน UI */
+  const STATUS_LABELS = {
+    DONE: "ประเมินแล้ว",
+    IN_PROGRESS: "กำลังประเมิน",
+    NOT_STARTED: "ยังไม่ได้ประเมิน",
+  } as const;
+
+  function normalizeStatus(raw?: string) {
+    if (!raw) return STATUS_LABELS.NOT_STARTED;
+    const thai = ["ประเมินแล้ว", "กำลังประเมิน", "ยังไม่ได้ประเมิน"];
+    if (thai.includes(raw)) return raw as (typeof thai)[number];
+
+    const t = raw.toUpperCase();
+    if (
+      [
+        "DONE",
+        "COMPLETED",
+        "FINISHED",
+        "APPROVED",
+        "SUBMITTED",
+        "EVALUATED",
+        "EVALUATION_COMPLETED",
+      ].includes(t)
+    )
+      return STATUS_LABELS.DONE;
+    if (["IN_PROGRESS", "DOING", "DRAFT", "STARTED", "WORKING"].includes(t))
+      return STATUS_LABELS.IN_PROGRESS;
+    if (["NOT_STARTED", "PENDING", "NEW", "TO_DO", "UNASSESSED"].includes(t))
+      return STATUS_LABELS.NOT_STARTED;
+
+    // fallback: ถ้าไม่รู้จัก คืนค่าเดิม (แต่ UI ยังมี fallback ชั้นถัดไป)
+    return raw;
+  }
+
   const gradeFromScore = (s?: number) =>
     !s || s <= 0 ? "-" : s >= 60 ? "H" : s >= 41 ? "M" : "L";
 
-  // เปิด "จัดกลุ่มหัวข้อซ้ำ" สำหรับทุกแท็บ (รวม all)
+  function deriveStatus(r: Row) {
+    if (r.hasDoc && (r.score ?? 0) > 0) return STATUS_LABELS.DONE;
+    return normalizeStatus(r.status);
+  }
+
   const groupingEnabled = true;
 
-  // รวมกลุ่มตามหัวข้อเดียวกัน -> parentRows + groupChildren
   function makeParentRow(topic: string, rows: Row[]): Row {
     const sorted = [...rows].sort((a, b) => {
       const A = a.index.split(".").map(Number);
@@ -226,13 +296,27 @@ export default function RiskAssessmentPlanningPage({
 
     const maxScore = Math.max(...sorted.map((r) => r.score || 0));
     const totalScore = sorted.reduce((sum, r) => sum + (r.score || 0), 0);
-    const allDone = sorted.every((r) => r.status === "ประเมินแล้ว");
-    const anyDoing = sorted.some((r) => r.status !== "ยังไม่ได้ประเมิน");
-    const status = allDone
-      ? "ประเมินแล้ว"
-      : anyDoing
-      ? "กำลังประเมิน"
-      : "ยังไม่ได้ประเมิน";
+    const childrenStatuses = sorted.map(deriveStatus);
+    const allDone = childrenStatuses.every((s) => s === STATUS_LABELS.DONE);
+    const someDone = childrenStatuses.some((s) => s === STATUS_LABELS.DONE);
+    const someNotStarted = childrenStatuses.some(
+      (s) => s === STATUS_LABELS.NOT_STARTED
+    );
+    const someDoing = childrenStatuses.some(
+      (s) => s === STATUS_LABELS.IN_PROGRESS
+    );
+    const anyDoing = childrenStatuses.some(
+      (s) => s !== STATUS_LABELS.NOT_STARTED && s !== STATUS_LABELS.DONE
+    );
+
+    let status: string;
+    if (allDone) {
+      status = STATUS_LABELS.DONE;
+    } else if (someDoing || (someDone && someNotStarted)) {
+      status = STATUS_LABELS.IN_PROGRESS;
+    } else {
+      status = STATUS_LABELS.NOT_STARTED;
+    }
 
     const base: Row = {
       id: `group:${tab}:${encodeURIComponent(topic)}`,
@@ -259,7 +343,7 @@ export default function RiskAssessmentPlanningPage({
     else if (tab === "process") base.process = topic;
     else if (tab === "it") base.system = topic;
     if (tab === "all") {
-      base.work = topic; // หรือจะใส่ลง field ไหนก็ได้ที่คุณใช้ render
+      base.work = topic;
     }
     return base;
   }
@@ -289,7 +373,6 @@ export default function RiskAssessmentPlanningPage({
         const parent = makeParentRow(topic, rows);
         parents.push(parent);
 
-        // เรียงลูกตาม index และส่งให้เรนเดอร์ 1.1, 1.2, ...
         const sortedChildren = [...rows].sort((a, b) => {
           const A = a.index.split(".").map(Number);
           const B = b.index.split(".").map(Number);
@@ -301,7 +384,6 @@ export default function RiskAssessmentPlanningPage({
       }
     }
 
-    // เรียงพาเรนต์ตามลำดับเลขหลัก
     parents.sort((a, b) => {
       const A = a.index.split(".").map(Number);
       const B = b.index.split(".").map(Number);
@@ -313,7 +395,6 @@ export default function RiskAssessmentPlanningPage({
 
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
-  // ฟิลเตอร์/เรียง ใช้จาก parentRows (หลังรวมกลุ่มแล้ว)
   const filtered = useMemo(() => {
     let dataRows = [...parentRows];
 
@@ -370,6 +451,24 @@ export default function RiskAssessmentPlanningPage({
     ? filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
     : filtered;
 
+  const evaluableRows = useMemo(
+    () => allRows.filter((r) => r.hasDoc),
+    [allRows]
+  );
+
+  const allEvaluated = useMemo(
+    () =>
+      evaluableRows.length > 0 &&
+      evaluableRows.every((r) => deriveStatus(r) === STATUS_LABELS.DONE),
+    [evaluableRows]
+  );
+
+  const remainingCount = useMemo(
+    () =>
+      evaluableRows.filter((r) => deriveStatus(r) !== STATUS_LABELS.DONE)
+        .length,
+    [evaluableRows]
+  );
   return (
     <div
       className={cn(
@@ -380,7 +479,8 @@ export default function RiskAssessmentPlanningPage({
       )}
     >
       <div className="text-sm text-muted-foreground">
-        วางแผนงานตรวจสอบภายใน / {subtitle}
+        วางแผนงานตรวจสอบภายใน /{" "}
+        <span className="text-sm text-foreground font-medium">{subtitle}</span>
       </div>
 
       <div className="flex items-center justify-between gap-3">
@@ -424,8 +524,28 @@ export default function RiskAssessmentPlanningPage({
             >
               <Link href={"/risk-assessment-results"}>ผลการประเมิน</Link>
             </Button>
+            {/* <Button
+  size="sm"
+  className="rounded-md text-white disabled:opacity-60 disabled:cursor-not-allowed bg-indigo-600 hover:bg-indigo-700"
+  disabled={!allEvaluated || !!error || isLoading}
+  onClick={() => {
+    if (!allEvaluated) {
+      // ใช้ toast ของคุณได้ ถ้ามี; ตรงนี้ใช้ alert แบบง่าย
+      alert(`ยังประเมินไม่ครบทุกหัวข้อ (เหลือ ${remainingCount} หัวข้อ)`);
+      return;
+    }
+    // ไปหน้าผลการประเมิน
+    router.push("/risk-assessment-results");
+  }}
+>
+  ผลการประเมิน
+</Button> */}
           </div>
-
+          {/* {!allEvaluated && (
+            <div className="text-xs text-muted-foreground text-right mt-1">
+              ต้องประเมินให้ครบทุกหัวข้อก่อน (เหลือ {remainingCount})
+            </div>
+          )} */}
           <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
             <Info className="h-4 w-4" />
             <span className="font-medium text-foreground">
@@ -541,10 +661,10 @@ export default function RiskAssessmentPlanningPage({
                           {r.score || "-"}
                         </TableCell>
                         <TableCell>
-                          <GradeBadge grade={r.grade} />
+                          <GradeBadge grade={gradeFromScore(r.score)} />
                         </TableCell>
                         <TableCell>
-                          <StatusBadge value={r.status} />
+                          <StatusBadge value={deriveStatus(r)} />
                         </TableCell>
                         <TableCell className="text-center">
                           <div className="flex justify-center gap-2">
@@ -604,11 +724,12 @@ export default function RiskAssessmentPlanningPage({
                                 {c.score || "-"}
                               </TableCell>
                               <TableCell>
-                                <GradeBadge grade={c.grade} />
+                                <GradeBadge grade={gradeFromScore(c.score)} />
                               </TableCell>
                               <TableCell>
-                                <StatusBadge value={c.status} />
+                                <StatusBadge value={deriveStatus(c)} />
                               </TableCell>
+
                               <TableCell className="text-center">
                                 <div className="flex justify-center gap-2">
                                   {c.hasDoc && (

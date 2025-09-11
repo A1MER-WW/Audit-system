@@ -49,7 +49,7 @@ type Row = {
   itType: "IT" | "Non-IT" | "-" | "";
   score: number;
   maxScore?: number;
-  grade: "H" | "M" | "L" | "-";
+  grade: "E" | "H" | "M" | "L" | "N" | "-";
   status: string;
   hasDoc: boolean;
 };
@@ -61,6 +61,19 @@ type ApiResponse = {
   assessmentName: string;
   statusLine: { label: string; value: string };
   rowsByTab: Partial<Record<Exclude<TabKey, "all">, Row[]>>;
+  submissionInfo?: {
+    action?: string;
+    submissionTime?: string;
+    itemCount?: number;
+  };
+  reorderInfo?: {
+    originalOrder?: string[];
+    newOrder?: string[];
+    changedItem?: string;
+    reason?: string;
+    hasChanges?: boolean;
+    reasonById?: Record<string, string>;
+  };
 };
 
 type OuterTab = "summary" | "reorder" | "unitRanking";
@@ -91,14 +104,16 @@ const TAB_LABELS: Record<TabKey, string> = {
   it: "IT และ Non-IT",
 };
 
-// กติกาให้เกรด (ปรับได้ตามนโยบาย)
-const SCORE_RULES = { highMin: 60, mediumMin: 41 };
+// กติกาให้เกรด (ตามตารางใหม่)
+const SCORE_RULES = { excellentMin: 80, highMin: 60, mediumMin: 40, lowMin: 20 };
 
 // แปลงคะแนน -> เกรด
 function computeGrade(score: number): Row["grade"] {
+  if (score >= SCORE_RULES.excellentMin) return "E";
   if (score >= SCORE_RULES.highMin) return "H";
   if (score >= SCORE_RULES.mediumMin) return "M";
-  return "L";
+  if (score >= SCORE_RULES.lowMin) return "L";
+  return "N";
 }
 
 // คำนวณคะแนนของแถว
@@ -130,9 +145,11 @@ function GradeBadge({ grade }: { grade: Row["grade"] }) {
   if (!grade || grade === "-")
     return <span className="text-muted-foreground">-</span>;
   const map = {
+    E: { txt: "Excellent", cls: "bg-emerald-100 text-emerald-700 border-emerald-200" },
     H: { txt: "High", cls: "bg-red-100 text-red-700 border-red-200" },
     M: { txt: "Medium", cls: "bg-amber-100 text-amber-700 border-amber-200" },
     L: { txt: "Low", cls: "bg-sky-100 text-sky-700 border-sky-200" },
+    N: { txt: "Needs Improvement", cls: "bg-slate-100 text-slate-700 border-slate-200" },
   } as const;
   const it = map[grade];
   return (
@@ -299,7 +316,7 @@ type ResultsProps = {
   outerTab?: OuterTab;
   onOuterTabChange?: (v: OuterTab) => void;
   filter?: {
-    grade?: "H" | "M" | "L";
+    grade?: "E" | "H" | "M" | "L" | "N";
     category?: string;
   };
 };
@@ -338,16 +355,30 @@ export default function RiskAssessmentResultsSectionPage({
   const [page, setPage] = useState(1);
 
   const { data, error, isLoading } = useSWR<ApiResponse>(
-    `/api/risk-assessment?year=${year}&scored=true`,
+    `/api/chief-risk-assessment-results?year=${year}`,
     fetcher
   );
 
-  // rows
-  const rowsByTab = Object.values(data?.rowsByTab ?? {}).some(
-    (v) => (v?.length ?? 0) > 0
-  )
-    ? (data!.rowsByTab as ApiResponse["rowsByTab"])
-    : buildMockRows();
+  // rows - ตรวจสอบข้อมูลการจัดลำดับใหม่
+  const rowsByTab = useMemo(() => {
+    console.log("🔄 Chief Inspector - Processing data:", {
+      hasData: !!data,
+      hasRowsByTab: !!data?.rowsByTab,
+      hasReorderInfo: !!data?.reorderInfo,
+      action: data?.submissionInfo?.action
+    });
+
+    if (Object.values(data?.rowsByTab ?? {}).some((v) => (v?.length ?? 0) > 0)) {
+      console.log("✅ Using submitted data from Inspector");
+      if (data?.reorderInfo?.hasChanges) {
+        console.log("🔄 Data includes reorder changes");
+      }
+      return data!.rowsByTab as ApiResponse["rowsByTab"];
+    } else {
+      console.log("⚠️ No submitted data, using mock rows");
+      return buildMockRows();
+    }
+  }, [data]);
 
   const getTabRows = (k: Exclude<TabKey, "all">): Row[] => rowsByTab[k] ?? [];
 
@@ -492,6 +523,7 @@ export default function RiskAssessmentResultsSectionPage({
               parents={orderedParents}
               isLoading={isLoading}
               error={!!error}
+              reorderInfo={data?.reorderInfo}
             />
           )}
 
@@ -647,60 +679,125 @@ function ReorderSection(props: {
   parents: Row[];
   isLoading: boolean;
   error: boolean;
+  reorderInfo?: {
+    originalOrder?: string[];
+    newOrder?: string[];
+    changedItem?: string;
+    reason?: string;
+    hasChanges?: boolean;
+    reasonById?: Record<string, string>;
+  };
 }) {
-  const { tab, parents, isLoading, error } = props;
+  const { tab, parents, isLoading, error, reorderInfo } = props;
 
   return (
-    <div className="rounded-xl border overflow-hidden">
-      <Table>
-        <TableHeader className="sticky top-0 z-10 bg-muted/50">
-          <TableRow>
-            {/* ลบคอลัมน์ว่างออก */}
-            <TableHead className="w-[90px]">ลำดับ</TableHead>
-            <TableHead>หน่วยงานที่รับผิดชอบ</TableHead>
-            <TableHead className="w-[140px]">หมวดหมู่</TableHead>
-            <TableHead className="align-middle !whitespace-normal break-words leading-snug">
-              <span className="block max-w-[18rem] md:max-w-[32rem]">
-                หัวข้อ
-              </span>
-            </TableHead>
-            <TableHead className="w-[120px]">คะแนนประเมิน</TableHead>
-            <TableHead className="w-[120px]">เกรด</TableHead>
-            <TableHead className="w-[200px]">เหตุผล</TableHead>
-          </TableRow>
-        </TableHeader>
+    <div className="space-y-4">
+      {/* แสดงข้อมูลการจัดลำดับใหม่ */}
+      {reorderInfo?.hasChanges && (
+        <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="flex items-start space-x-2">
+            <div className="w-3 h-3 bg-blue-500 rounded-full mt-1 flex-shrink-0"></div>
+            <div className="flex-1">
+              <h4 className="font-medium text-blue-900 mb-2">การจัดลำดับความเสี่ยงใหม่</h4>
+              <div className="text-sm text-blue-800 space-y-1">
+                <p><span className="font-medium">รายการที่มีการเปลี่ยนแปลง:</span> {reorderInfo.changedItem || "ไม่ระบุ"}</p>
+                <p><span className="font-medium">เหตุผลการจัดลำดับใหม่:</span> {reorderInfo.reason || "ไม่ระบุเหตุผล"}</p>
+                <p><span className="font-medium">จำนวนรายการทั้งหมด:</span> {parents.length} รายการ</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
-        <TableBody>
-          {isLoading ? (
-            <RowLoading colSpan={7} />
-          ) : error ? (
-            <RowError colSpan={7} />
-          ) : parents.length === 0 ? (
-            <RowEmpty colSpan={7} />
-          ) : (
-            parents.map((r) => (
-              <TableRow key={r.id}>
-                {/* ลบเซลล์คอลัมน์ว่างออก */}
-                <TableCell className="font-mono text-xs md:text-sm">
-                  {r.index}
-                </TableCell>
-                <TableCell className="whitespace-nowrap">{r.unit}</TableCell>
-                <TableCell className="whitespace-nowrap text-muted-foreground">
-                  {getCategory(r)}
-                </TableCell>
-                <TableCell className="text-muted-foreground align-top !whitespace-normal break-words">
-                  {topicByTab(r, tab)}
-                </TableCell>
-                <TableCell className="font-medium">{r.score ?? "-"}</TableCell>
-                <TableCell>
-                  <GradeBadge grade={r.grade} />
-                </TableCell>
-                <TableCell className="text-muted-foreground">-</TableCell>
-              </TableRow>
-            ))
-          )}
-        </TableBody>
-      </Table>
+      <div className="rounded-xl border overflow-hidden">
+        <Table>
+          <TableHeader className="sticky top-0 z-10 bg-muted/50">
+            <TableRow>
+              <TableHead className="w-[90px]">ลำดับใหม่</TableHead>
+              <TableHead>หน่วยงานที่รับผิดชอบ</TableHead>
+              <TableHead className="w-[140px]">หมวดหมู่</TableHead>
+              <TableHead className="align-middle !whitespace-normal break-words leading-snug">
+                <span className="block max-w-[18rem] md:max-w-[32rem]">
+                  หัวข้อ
+                </span>
+              </TableHead>
+              <TableHead className="w-[120px]">คะแนนประเมิน</TableHead>
+              <TableHead className="w-[120px]">เกรด</TableHead>
+              <TableHead className="w-[200px]">สถานะการเปลี่ยนแปลง</TableHead>
+            </TableRow>
+          </TableHeader>
+
+          <TableBody>
+            {isLoading ? (
+              <RowLoading colSpan={7} />
+            ) : error ? (
+              <RowError colSpan={7} />
+            ) : parents.length === 0 ? (
+              <RowEmpty colSpan={7} />
+            ) : (
+              parents.map((r, index) => {
+                // ตรวจสอบว่ารายการนี้มีการเปลี่ยนแปลงลำดับหรือไม่
+                const originalIndex = reorderInfo?.originalOrder?.indexOf(r.id);
+                const newIndex = reorderInfo?.newOrder?.indexOf(r.id);
+                const isChanged = originalIndex !== undefined && newIndex !== undefined && originalIndex !== newIndex;
+                const isChangedItem = reorderInfo?.changedItem === r.id;
+
+                return (
+                  <TableRow 
+                    key={r.id}
+                    className={cn(
+                      isChangedItem && "bg-yellow-50 border-l-4 border-yellow-400",
+                      isChanged && !isChangedItem && "bg-blue-50"
+                    )}
+                  >
+                    <TableCell className="font-mono text-xs md:text-sm">
+                      <div className="flex items-center space-x-2">
+                        <span>{index + 1}</span>
+                        {isChanged && (
+                          <Badge variant="outline" className="text-xs bg-blue-100 text-blue-700 border-blue-200">
+                            เปลี่ยน
+                          </Badge>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap">{r.unit}</TableCell>
+                    <TableCell className="whitespace-nowrap text-muted-foreground">
+                      {getCategory(r)}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground align-top !whitespace-normal break-words">
+                      {topicByTab(r, tab)}
+                    </TableCell>
+                    <TableCell className="font-medium">{r.score ?? "-"}</TableCell>
+                    <TableCell>
+                      <GradeBadge grade={r.grade} />
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {isChangedItem ? (
+                        <div className="space-y-1">
+                          <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-300">
+                            รายการหลักที่ถูกย้าย
+                          </Badge>
+                          {reorderInfo?.reasonById?.[r.id] && (
+                            <div className="text-xs text-muted-foreground">
+                              เหตุผล: {reorderInfo.reasonById[r.id]}
+                            </div>
+                          )}
+                        </div>
+                      ) : isChanged ? (
+                        <Badge variant="outline" className="bg-blue-100 text-blue-700 border-blue-200">
+                          ลำดับเปลี่ยนแปลง
+                        </Badge>
+                      ) : (
+                        <span className="text-muted-foreground">ไม่เปลี่ยนแปลง</span>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                );
+              })
+            )}
+          </TableBody>
+        </Table>
+      </div>
     </div>
   );
 }
