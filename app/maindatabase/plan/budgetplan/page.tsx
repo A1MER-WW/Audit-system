@@ -21,7 +21,6 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Dropzone, DropzoneContent, DropzoneEmptyState } from "@/components/ui/shadcn-io/dropzone";
-import { useSearchParams } from "next/navigation";
 
 // Types for budget data
 type BudgetData = {
@@ -148,10 +147,6 @@ const generateBudgetData = (): BudgetData => {
 };
 
 export default function BudgetPlanDetail() {
-  const searchParams = useSearchParams();
-  const planName = searchParams.get('name') || '';
-  const planId = searchParams.get('id') || '';
-  
   const [budgetData, setBudgetData] = useState<BudgetData>(generateBudgetData());
   const [editingCell, setEditingCell] = useState<string | null>(null);
   const [editValue, setEditValue] = useState<string>('');
@@ -320,11 +315,11 @@ export default function BudgetPlanDetail() {
         </div>
       </div>
 
-      <div className="flex-1 p-6 space-y-6">
+      <div className=" space-y-6">
         {/* แสดงแต่ละไตรมาสเป็นตารางแยกกัน */}
         {quarters.map(quarter => (
           <Card key={quarter}>
-            <div className="p-4 border-b bg-gradient-to-r from-blue-50 to-indigo-50">
+            <div className="p border-b bg-gradient-to-r from-blue-50 to-indigo-50">
               <h3 className="text-lg font-semibold text-gray-800 text-center flex items-center justify-center gap-2">
                 <Badge variant="outline" className="bg-blue-100 text-blue-800">
                   Q{quarter.slice(-1)}
@@ -336,7 +331,7 @@ export default function BudgetPlanDetail() {
               <Table>
                 <TableHeader>
                   <TableRow className="bg-gray-50">
-                    <TableHead className="text-left font-medium text-gray-700">
+                    <TableHead className="text-center font-medium text-gray-700">
                       ประเภทค่าใช้จ่าย
                     </TableHead>
                     {months[quarter as keyof typeof months].map(month => (
@@ -352,7 +347,7 @@ export default function BudgetPlanDetail() {
                 <TableBody>
                   {budgetCategories.map(category => (
                     <TableRow key={`${quarter}-${category}`}>
-                      <TableCell className="font-medium">
+                      <TableCell className="font-medium text-center">
                         {category}
                       </TableCell>
                       
@@ -424,7 +419,7 @@ export default function BudgetPlanDetail() {
                   
                   {/* Quarter total row */}
                   <TableRow className="bg-gray-50 font-bold border-t-2">
-                    <TableCell className="font-bold text-gray-800">
+                    <TableCell className="font-bold text-center text-gray-800">
                       รวม
                     </TableCell>
                     {months[quarter as keyof typeof months].map(month => (

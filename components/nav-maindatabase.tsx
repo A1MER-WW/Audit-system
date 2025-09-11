@@ -85,7 +85,7 @@ export function NavMainDatabase({
                   <SidebarMenuButton>
                     <Folder className="text-muted-foreground" />
                     <Link href="/maindatabase/plan">
-                      <span>แผนการใช้จ่ายงบประมาณที่ได้รับจัดสรร</span>
+                      <span>แผนการใช้จ่ายงบประมาณที่ได้รับจัดสรร (หัวหน้ากลุ่มตรวจสอบภายใน)</span>
                     </Link>
                   </SidebarMenuButton>
                 </Collapsible>

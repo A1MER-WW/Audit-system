@@ -5,11 +5,16 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { FileText, TrendingUp } from 'lucide-react';
+import { FileText } from 'lucide-react';
 
 export default function CommentPage() {
   const [selectedYear, setSelectedYear] = React.useState<string>("2568");
+  const [checkedItems, setCheckedItems] = React.useState<Record<number, boolean>>({});
+  const [showCheckboxes, setShowCheckboxes] = React.useState<boolean>(false);
+  const [showConfirmDialog, setShowConfirmDialog] = React.useState<boolean>(false);
 
   // Chart data based on the image
   const chartData = [
@@ -41,6 +46,43 @@ export default function CommentPage() {
     { id: 15, agency: "กสน.", topic: "งาน โครงการ และงบประมาณที่ได้รับจากเงินกำไรสะสมพลังงาน งบประมาณแผ่นดิน", score: "3/45", note: "" },
     { id: 16, agency: "กสน.", topic: "งาน โครงการ และงบประมาณการพัฒนากิจการพลังงาน", score: "3/45", note: "" }
   ];
+
+  // Handle checkbox changes
+  const handleCheckboxChange = (id: number, checked: boolean) => {
+    setCheckedItems(prev => ({
+      ...prev,
+      [id]: checked
+    }));
+  };
+
+  // Handle confirm button click
+  const handleConfirmClick = () => {
+    setShowCheckboxes(true);
+  };
+
+  // Handle final confirmation
+  const handleFinalConfirm = () => {
+    setShowConfirmDialog(true);
+  };
+
+  // Check if user has made any selections
+  const hasSelections = Object.keys(checkedItems).length > 0;
+
+  // Get statistics
+  const getStatistics = () => {
+    const agreeCount = Object.values(checkedItems).filter(value => value === true).length;
+    const disagreeCount = Object.values(checkedItems).filter(value => value === false).length;
+    const totalSelections = agreeCount + disagreeCount;
+    
+    return {
+      agreeCount,
+      disagreeCount,
+      totalSelections,
+      totalItems: tableData2568.length
+    };
+  };
+
+  const stats = getStatistics();
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-2 sm:p-4 pt-0">
@@ -208,8 +250,11 @@ export default function CommentPage() {
               </p>
             </div>
             
-            <Button className="bg-[#3E52B9] hover:bg-[#2A3A8F] text-white flex items-center gap-2">
-              แสดงรายงานทั้งหมด
+            <Button 
+              className="bg-[#3E52B9] hover:bg-[#2A3A8F] text-white flex items-center gap-2"
+              onClick={handleConfirmClick}
+            >
+              ยืนยันความคิดเห็น
             </Button>
           </div>
         </CardHeader>
@@ -250,6 +295,18 @@ export default function CommentPage() {
             <h3 className="text-lg font-semibold text-gray-900">ปีงบประมาณ 2568</h3>
           </div>
           
+          {/* Show confirm button when user has made selections */}
+          {showCheckboxes && hasSelections && (
+            <div className="mb-4 flex justify-end">
+              <Button 
+                onClick={handleFinalConfirm}
+                className="bg-[#3E52B9] hover:bg-[#2A3A8F] text-white"
+              >
+                ยืนยันการเลือก
+              </Button>
+            </div>
+          )}
+          
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
@@ -257,6 +314,12 @@ export default function CommentPage() {
                   <TableHead className="text-xs sm:text-sm">ลำดับ</TableHead>
                   <TableHead className="text-xs sm:text-sm min-w-[100px]">หน่วยงาน/กิจกรรม/โครงการ</TableHead>
                   <TableHead className="text-xs sm:text-sm min-w-[300px]">หัวข้อความเห็นข้อสังเกต</TableHead>
+                  {showCheckboxes && (
+                    <>
+                      <TableHead className="text-xs sm:text-sm text-center">เห็นด้วย</TableHead>
+                      <TableHead className="text-xs sm:text-sm text-center">ไม่เห็นด้วย</TableHead>
+                    </>
+                  )}
                   <TableHead className="text-xs sm:text-sm text-center">คะแนน</TableHead>
                   <TableHead className="text-xs sm:text-sm min-w-[200px]">หมายเหตุ</TableHead>
                 </TableRow>
@@ -267,6 +330,24 @@ export default function CommentPage() {
                     <TableCell className="text-xs sm:text-sm">{item.id}</TableCell>
                     <TableCell className="text-xs sm:text-sm font-medium">{item.agency}</TableCell>
                     <TableCell className="text-xs sm:text-sm">{item.topic}</TableCell>
+                    {showCheckboxes && (
+                      <>
+                        <TableCell className="text-xs sm:text-sm text-center">
+                          <Checkbox
+                            checked={checkedItems[item.id] === true}
+                            onCheckedChange={(checked) => handleCheckboxChange(item.id, checked as boolean)}
+                            className="mx-auto"
+                          />
+                        </TableCell>
+                        <TableCell className="text-xs sm:text-sm text-center">
+                          <Checkbox
+                            checked={checkedItems[item.id] === false}
+                            onCheckedChange={(checked) => handleCheckboxChange(item.id, !(checked as boolean))}
+                            className="mx-auto"
+                          />
+                        </TableCell>
+                      </>
+                    )}
                     <TableCell className="text-xs sm:text-sm text-center">
                       {item.score && (
                         <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">
@@ -282,6 +363,56 @@ export default function CommentPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Confirmation Dialog */}
+      <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-semibold">
+              ยืนยันความคิดเห็น
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="py-4">
+            <p className="text-sm text-gray-600 mb-4">
+              ยืนยันความคิดเห็นกับข้อของงานตรวจสอบ
+            </p>
+            
+            <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+              <p className="text-sm">
+                <strong>ข้อของงานตรวจสอบทั้งหมด (Audit Universe) ปีงบประมาณ 2568</strong>
+              </p>
+              <p className="text-sm">ได้ความเห็นรวมทั้งหมด {stats.totalSelections} ข้อของงานตรวจสอบ</p>
+              <p className="text-sm">เห็นด้วย {stats.agreeCount} ข้อของงานตรวจสอบ</p>
+              <p className="text-sm">ไม่เห็นด้วย {stats.disagreeCount} ข้อของงานตรวจสอบ</p>
+            </div>
+            
+            <p className="text-sm text-gray-600 mt-4">
+              คุณต้องการยืนยันความเห็นนี้หรือไม่
+            </p>
+          </div>
+
+          <DialogFooter className="flex gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => setShowConfirmDialog(false)}
+              className="flex-1"
+            >
+              ยกเลิก
+            </Button>
+            <Button 
+              onClick={() => {
+                setShowConfirmDialog(false);
+                // Handle confirmation logic here
+                console.log('ยืนยันความคิดเห็น:', checkedItems);
+              }}
+              className="bg-[#3E52B9] hover:bg-[#2A3A8F] text-white flex-1"
+            >
+              ยืนยัน
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

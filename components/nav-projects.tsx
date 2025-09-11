@@ -18,7 +18,6 @@ import {
   SidebarGroup,
   SidebarGroupLabel,
   SidebarMenu,
-  SidebarMenuAction,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarMenuSub,
@@ -78,20 +77,38 @@ export function NavProjects({
 
                   <SidebarMenuSub>
                     <Link href="/planaudit">
-                      <span className="text-sm">ทบทวนหัวข้อของงานตรวจสอบทั้งหมด (Audit Universe)</span>
+                      <span className="text-sm">ทบทวนหัวข้อของงานตรวจสอบทั้งหมด (Audit Universe) (ผู้ตรวจสอบ)</span>
                     </Link>
                   </SidebarMenuSub>
-
-
                   <SidebarMenuSub>
-                    <a href="">
-                      <span className="text-sm">สรุปความเห็นหัวข้อของงานตรวจสอบทั้งหมด</span>
-                    </a>
+                    <Link href="/planaudit/thetopics-manager">
+                      <span className="text-sm">ทบทวนหัวข้อของงานตรวจสอบทั้งหมด (Audit Universe) (หัวหน้ากลุ่มตรวจสอบภายใน)</span>
+                    </Link>
+                  </SidebarMenuSub>
+                  <SidebarMenuSub>
+                    <Link href="/planaudit/theaudittopics">
+                      <span className="text-sm">จัดการหัวข้อของงานตรวจสอบ (ผู้ตรวจสอบ)</span>
+                    </Link>
+                  </SidebarMenuSub>
+                  <SidebarMenuSub>
+                    <Link href="/summary">
+                      <span className="text-sm">สรุปความเห็นหัวข้อของงานตรวจสอบทั้งหมด (ผู้ตรวจสอบภายใน)</span>
+                    </Link>
+                  </SidebarMenuSub>
+                  <SidebarMenuSub>
+                    <Link href="/summary-manager">
+                      <span className="text-sm">สรุปความเห็นหัวข้อของงานตรวจสอบทั้งหมด (หัวหน้าหน่วยตรวจสอบ)</span>
+                    </Link>
                   </SidebarMenuSub>
 
                   <SidebarMenuSub>
                     <Link href="/comment">
-                      <span className="text-sm">แสดงความคิดเห็นหัวข้อของงานตรวจสอบ</span>
+                      <span className="text-sm">แสดงความคิดเห็นหัวข้อของงานตรวจสอบ (หน่วยงานในสังกัด)</span>
+                    </Link>
+                  </SidebarMenuSub>
+                  <SidebarMenuSub>
+                    <Link href="/planaudit/alltopics">
+                      <span className="text-sm">จัดการหัวข้องานตรวจสอบทั้งหมด (ผู้ตรวจสอบ)</span>
                     </Link>
                   </SidebarMenuSub>
 
