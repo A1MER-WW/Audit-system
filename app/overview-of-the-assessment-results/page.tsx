@@ -5,10 +5,10 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, ChevronRight } from "lucide-react";
-import DashboardSection from "@/components/features/chief-Inspector/risk-assessment/risk-assessment-dashboard-section";
+import DashboardSection from "@/components/features/inspector/risk-assessment/risk-assessment-dashboard-section";
 import SummaryToolbar from "@/components/summary-toolbar";
-import RiskAssessmentResultsSectionPage from "@/components/features/chief-Inspector/risk-assessment/risk-assessment-results-section";
-import { ActiveFilters } from "@/components/features/chief-Inspector/risk-assessment/active-filters";
+import RiskAssessmentResultsSectionPage from "@/components/features/inspector/risk-assessment/risk-assessment-results-section";
+import { ActiveFilters } from "@/components/features/inspector/risk-assessment/active-filters";
 
 export type FilterType = {
   grade?: "E" | "H" | "M" | "L" | "N";
@@ -37,6 +37,7 @@ export default function RiskAssessmentPage() {
   const [outerTab, setOuterTab] = useState<
     "summary" | "reorder" | "unitRanking"
   >("summary");
+  const [sortBy, setSortBy] = useState<"index" | "score">("score");
   const [scoreSortDir, setScoreSortDir] = useState<"desc" | "asc">("desc");
   const [filter, setFilter] = useState<FilterType>({});
 
@@ -153,7 +154,9 @@ export default function RiskAssessmentPage() {
       <SummaryToolbar
         value={outerTab}
         onChange={setOuterTab}
+        sortBy={sortBy}
         sortDir={scoreSortDir}
+        onSortByChange={setSortBy}
         onSortDirChange={(dir) => setScoreSortDir(dir)}
         hideSortOnReorder={true}
       />
@@ -163,7 +166,9 @@ export default function RiskAssessmentPage() {
         outerTab={outerTab}
         onOuterTabChange={setOuterTab}
         filter={filter}
+        sortBy={sortBy}
         sortDir={scoreSortDir}
+        onSortByChange={setSortBy}
         onSortDirChange={setScoreSortDir}
         onDataChange={setTableData}
       />

@@ -339,7 +339,9 @@ type ResultsProps = {
     grade?: "E" | "H" | "M" | "L" | "N";
     category?: string;
   };
+  sortBy?: "index" | "score";
   sortDir?: "desc" | "asc";
+  onSortByChange?: (by: "index" | "score") => void;
   onSortDirChange?: (dir: "desc" | "asc") => void;
   onDataChange?: (data: {
     donut?: any[];
@@ -368,7 +370,9 @@ export default function RiskAssessmentResultsSectionPage({
   outerTab: outerTabProp,
   onOuterTabChange,
   filter,
+  sortBy = "score",
   sortDir = "desc",
+  onSortByChange,
   onSortDirChange,
   onDataChange,
 }: ResultsProps) {
@@ -581,18 +585,29 @@ export default function RiskAssessmentResultsSectionPage({
     console.log("📋 Table Data (filteredParents):", {
       count: parents.length,
       parents: parents.map(r => ({ id: r.id, index: r.index, grade: r.grade, score: r.score })),
+      sortBy: sortBy,
       sortDir: sortDir
     });
     
-    // เรียงตาม sortDir
-    if (sortDir === "desc") {
-      // มาก ไป น้อย (คะแนนสูงสุดไปต่ำสุด)
-      return parents.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+    // เรียงตาม sortBy และ sortDir
+    if (sortBy === "index") {
+      // เรียงตามลำดับ index
+      return parents.sort((a, b) => {
+        const aIndex = parseFloat(a.index) || 0;
+        const bIndex = parseFloat(b.index) || 0;
+        return sortDir === "desc" ? bIndex - aIndex : aIndex - bIndex;
+      });
     } else {
-      // น้อย ไป มาก (คะแนนต่ำสุดไปสูงสุด)
-      return parents.sort((a, b) => (a.score ?? 0) - (b.score ?? 0));
+      // เรียงตามคะแนน (score)
+      if (sortDir === "desc") {
+        // มาก ไป น้อย (คะแนนสูงสุดไปต่ำสุด)
+        return parents.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+      } else {
+        // น้อย ไป มาก (คะแนนต่ำสุดไปสูงสุด)
+        return parents.sort((a, b) => (a.score ?? 0) - (b.score ?? 0));
+      }
     }
-  }, [evaluatedRows, sortDir]);
+  }, [evaluatedRows, sortBy, sortDir]);
 
   // pagination
   const shouldPaginate = filteredParents.length > PAGE_SIZE;
@@ -972,7 +987,7 @@ function ReorderSection(props: {
               </TableHead>
               <TableHead className="w-[120px]">คะแนนประเมิน</TableHead>
               <TableHead className="w-[120px]">เกรด</TableHead>
-              <TableHead className="w-[250px]">เหตุผลการเปลี่ยนแปลง</TableHead>
+              <TableHead className="w-[250px]">เหตุผล</TableHead>
             </TableRow>
           </TableHeader>
 
@@ -1086,7 +1101,7 @@ function ReorderSection(props: {
                         </Badge>
                       ) : (
                         <span className="text-muted-foreground">
-                          ไม่เปลี่ยนแปลง
+                          -
                         </span>
                       )}
                     </TableCell>

@@ -16,18 +16,22 @@ export type OuterTab = "summary" | "reorder" | "unitRanking";
 type Props = {
   value: OuterTab;
   onChange: (v: OuterTab) => void;
+  sortBy?: "index" | "score";
   sortLabel?: string;
   sortDir: "desc" | "asc"; // มากไปน้อย = desc, น้อยไปมาก = asc
+  onSortByChange?: (by: "index" | "score") => void;
   onSortDirChange: (d: "desc" | "asc") => void;
   className?: string;
-  hideSortOnReorder?: boolean; // ซ่อนตัวเลือกเรียงคะแนนเมื่ออยู่ในแท็บ reorder
+  hideSortOnReorder?: boolean; // ซ่อนตัวเลือกเรียงเมื่ออยู่ในแท็บ reorder
 };
 
 export default function SummaryToolbar({
   value,
   onChange,
-  sortLabel = "เรียงตามคะแนนประเมิน",
+  sortBy = "score",
+  sortLabel,
   sortDir,
+  onSortByChange,
   onSortDirChange,
   hideSortOnReorder = false,
 }: Props) {
@@ -64,7 +68,7 @@ export default function SummaryToolbar({
           </TabsList>
         </Tabs>
 
-        {/* ตัวเลือกเรียงคะแนน - ซ่อนเมื่ออยู่ในแท็บ reorder */}
+        {/* ตัวเลือกการเรียง - ซ่อนเมื่ออยู่ในแท็บ reorder */}
         {!(hideSortOnReorder && value === "reorder") && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -72,21 +76,46 @@ export default function SummaryToolbar({
                 variant="outline"
                 className="h-9 rounded-xl gap-2 px-3 text-sm"
               >
-                <span className="text-muted-foreground">{sortLabel}</span>
+                <span className="text-muted-foreground">
+                  {sortBy === "index" ? "เรียงตามลำดับ" : (sortLabel || "เรียงตามคะแนน")}
+                </span>
                 <span className="font-medium">
-                  {sortDir === "desc" ? "มาก ไป น้อย" : "น้อย ไป มาก"}
+                  {sortBy === "index" 
+                    ? (sortDir === "desc" ? "มาก ไป น้อย" : "น้อย ไป มาก")
+                    : (sortDir === "desc" ? "สูง ไป ต่ำ" : "ต่ำ ไป สูง")
+                  }
                 </span>
                 <ChevronDown className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-44">
+            <DropdownMenuContent align="end" className="w-52">
+              {/* ตัวเลือกประเภทการเรียง */}
+              <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
+                ประเภทการเรียง
+              </div>
+              <DropdownMenuItem onClick={() => onSortByChange?.("index")}>
+                {sortBy === "index" && <Check className="mr-2 h-4 w-4" />}
+                เรียงตามลำดับ
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onSortByChange?.("score")}>
+                {sortBy === "score" && <Check className="mr-2 h-4 w-4" />}
+                เรียงตามคะแนน
+              </DropdownMenuItem>
+              
+              {/* Separator */}
+              <div className="h-px bg-border my-1" />
+              
+              {/* ตัวเลือกทิศทางการเรียง */}
+              <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
+                ทิศทางการเรียง
+              </div>
               <DropdownMenuItem onClick={() => onSortDirChange("desc")}>
                 {sortDir === "desc" && <Check className="mr-2 h-4 w-4" />}
-                มาก ไป น้อย
+                {sortBy === "index" ? "มาก ไป น้อย" : "สูง ไป ต่ำ"}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => onSortDirChange("asc")}>
                 {sortDir === "asc" && <Check className="mr-2 h-4 w-4" />}
-                น้อย ไป มาก
+                {sortBy === "index" ? "น้อย ไป มาก" : "ต่ำ ไป สูง"}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
