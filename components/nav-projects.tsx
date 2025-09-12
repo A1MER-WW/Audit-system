@@ -100,7 +100,7 @@ export function NavProjects({
 
 
                   <SidebarMenuSub>
-                    <a href="/riskassessments">
+                    <a href="/risk-assessments">
                       <span className="text-sm">กำหนดปัจจัยเสี่ยงและเกณฑ์การพิจารณาความเสี่ยง</span>
                     </a>
                   </SidebarMenuSub>

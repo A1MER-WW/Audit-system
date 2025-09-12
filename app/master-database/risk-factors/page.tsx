@@ -4,8 +4,8 @@ import Link from "next/link";
 import { Plus, Pencil, Trash2, ChevronLeft } from "lucide-react";
 
 import type { RiskFactorRow } from "@/types/risk-factor";
-import RiskFactorCreateModal from "@/components/riskfactorcreatemodel";
-import RiskFactorEditModal from "@/components/riskfactoreditmodel";
+import RiskFactorCreateModal from "@/components/riskfactorcreatemodal";
+import RiskFactorEditModal from "@/components/riskfactoreditmodal";
 import { nowThaiBuddhist } from "@/lib/datetime";
 
 const initialRows: RiskFactorRow[] = [

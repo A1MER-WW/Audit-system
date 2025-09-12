@@ -18,7 +18,6 @@ import {
   Settings2,
   SquareTerminal,
   UserPen,
-  Database,
 } from "lucide-react"
 
 import { NavProjects } from "@/components/nav-projects"
@@ -35,8 +34,8 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar"
 import Link from "next/link"
+import { NavMainDatabase } from "./nav-maindatabase"
 
-// This is sample data.
 const data = {
   user: {
     name: "shadcn",
@@ -234,7 +233,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           </SidebarMenuButton>
 
           <SidebarMenuButton asChild>
-            <Link href="/documentmanagement">
+            <Link href="/archive">
               <FileStack />
 
               <span className="p-1 text-sm">
@@ -253,17 +252,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
             </Link>
           </SidebarMenuButton>
-          <SidebarMenuButton asChild>
-            <Link href="/master-database/risk-criteria">
-              <Database />
-
-              <span className="p-1 text-sm">
-                ฐานข้อมูลหลัก
-              </span>
-
-            </Link>
-          </SidebarMenuButton>
         </nav>
+        <Link href="/maindatabase">
+          <NavMainDatabase />
+        </Link>
         {/* <NavMain items={data.navMain} /> */}
       </SidebarContent>
       <SidebarFooter>

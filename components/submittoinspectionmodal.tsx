@@ -12,7 +12,7 @@ type Props = {
   onConfirm: () => void;
 };
 
-export default function ManageRiskAssessmentsModal({
+export default function SubmitToInspectionModal({
   open,
   value,
   onChange,
@@ -49,7 +49,7 @@ export default function ManageRiskAssessmentsModal({
       <div className="relative z-10 w-full max-w-xl rounded-2xl bg-white p-6 shadow-xl">
         <div className="flex items-start justify-between">
           <h2 id="manage-risk-title" className="text-xl font-semibold text-gray-900">
-            บันทึกปัจจัยและเกณฑ์พิจารณาความเสี่ยง
+            เสนอหัวหน้ากลุ่มตรวจสอบภายใน
           </h2>
           <button
             className="rounded-full p-1 text-gray-500 hover:bg-gray-100"
@@ -61,7 +61,7 @@ export default function ManageRiskAssessmentsModal({
         </div>
 
         <p id="manage-risk-desc" className="mt-1 text-sm text-gray-500">
-          ท่านต้องการบันทึกปัจจัยและเกณฑ์พิจารณาความเสี่ยงหรือไม่
+          ท่านต้องการส่งเสนอหัวหน้าพิจารณาความเสี่ยงหรือไม่
         </p>
 
         {/* radio group */}
@@ -96,7 +96,7 @@ export default function ManageRiskAssessmentsModal({
           </button>
 
           <Link
-            href="/risk-assessments"
+            href="/chief-internal-auditor"
             className="rounded-xl bg-indigo-600 px-6 py-2 text-white hover:bg-indigo-700"
             onClick={onConfirm}
           >

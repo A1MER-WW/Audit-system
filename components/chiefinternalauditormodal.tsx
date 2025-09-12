@@ -12,23 +12,23 @@ type Props = {
   onConfirm: () => void;
 };
 
-export default function ManageRiskAssessmentsModal({
+export default function SubmitToInspectionModal({
   open,
   value,
   onChange,
   onClose,
   onConfirm,
 }: Props) {
+  const [comment, setComment] = React.useState("");
+
+  // เปิดใหม่ให้เคลียร์ช่องความเห็น
+  useEffect(() => {
+    if (open) setComment("");
+  }, [open]);
+
   if (!open) return null;
 
-  // ปิดด้วยปุ่ม Esc
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  const disabled = !value; // ต้องเลือกสถานะก่อนค่อยกด "ยืนยัน"
 
   return (
     <div
@@ -47,9 +47,10 @@ export default function ManageRiskAssessmentsModal({
 
       {/* modal */}
       <div className="relative z-10 w-full max-w-xl rounded-2xl bg-white p-6 shadow-xl">
+        {/* header */}
         <div className="flex items-start justify-between">
           <h2 id="manage-risk-title" className="text-xl font-semibold text-gray-900">
-            บันทึกปัจจัยและเกณฑ์พิจารณาความเสี่ยง
+            พิจารณาหัวข้อของงานตรวจสอบ
           </h2>
           <button
             className="rounded-full p-1 text-gray-500 hover:bg-gray-100"
@@ -61,29 +62,49 @@ export default function ManageRiskAssessmentsModal({
         </div>
 
         <p id="manage-risk-desc" className="mt-1 text-sm text-gray-500">
-          ท่านต้องการบันทึกปัจจัยและเกณฑ์พิจารณาความเสี่ยงหรือไม่
+          กรุณาเลือกสถานะการพิจารณา
         </p>
 
         {/* radio group */}
-        <div className="mt-5 space-y-3" role="radiogroup" aria-label="คัดลอกข้อมูลปีที่แล้วหรือไม่">
-          <label className="flex items-center gap-3 text-gray-800">
+        <div className="mt-5 space-y-3" role="radiogroup" aria-label="สถานะการพิจารณา">
+          <label htmlFor="approve" className="flex items-center gap-3 text-gray-800">
             <input
+              id="approve"
+              name="approval"
               type="radio"
               className="h-5 w-5 accent-indigo-600"
               checked={value === "want"}
               onChange={() => onChange("want")}
             />
-            ต้องการ
+            อนุมัติ
           </label>
-          <label className="flex items-center gap-3 text-gray-800">
+
+          <label htmlFor="reject" className="flex items-center gap-3 text-gray-800">
             <input
+              id="reject"
+              name="approval"
               type="radio"
               className="h-5 w-5 accent-indigo-600"
               checked={value === "not_want"}
               onChange={() => onChange("not_want")}
             />
-            ไม่ต้องการ
+            ไม่อนุมัติ
           </label>
+        </div>
+
+        {/* comment */}
+        <div className="mt-5 space-y-2">
+          <label htmlFor="comment" className="text-sm text-slate-600">
+            ความเห็นหรือข้อสั่งการ (ถ้ามี)
+          </label>
+          <textarea
+            id="comment"
+            rows={6}
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            placeholder="ระบุความเห็นหรือข้อสั่งการ"
+            className="w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-800 outline-none ring-indigo-200 focus:ring"
+          />
         </div>
 
         {/* actions */}
@@ -96,9 +117,14 @@ export default function ManageRiskAssessmentsModal({
           </button>
 
           <Link
-            href="/risk-assessments"
-            className="rounded-xl bg-indigo-600 px-6 py-2 text-white hover:bg-indigo-700"
+            href="/chief-internal-auditor"
             onClick={onConfirm}
+            aria-disabled={disabled}
+            className={`rounded-xl px-6 py-2 text-white ${
+              disabled
+                ? "bg-indigo-600/60 pointer-events-none opacity-60"
+                : "bg-indigo-600 hover:bg-indigo-700"
+            }`}
           >
             ยืนยัน
           </Link>
