@@ -137,15 +137,17 @@ function StatusBadge({ value }: { value: string }) {
 }
 
 function GradeBadge({ grade }: { grade: Row["grade"] }) {
-  if (!grade || grade === "-" || grade === "N")
+  if (!grade || grade === "-")
     return <span className="text-muted-foreground">-</span>;
   const map = {
-    E: { txt: "Excellent", cls: "bg-purple-100 text-purple-700 border-purple-200" },
-    H: { txt: "High", cls: "bg-red-100 text-red-700 border-red-200" },
-    M: { txt: "Medium", cls: "bg-amber-100 text-amber-700 border-amber-200" },
-    L: { txt: "Low", cls: "bg-sky-100 text-sky-700 border-sky-200" },
+    E: { txt: "มากที่สุด", cls: "bg-purple-100 text-purple-700 border-purple-200" },
+    H: { txt: "มาก", cls: "bg-red-100 text-red-700 border-red-200" },
+    M: { txt: "ปานกลาง", cls: "bg-amber-100 text-amber-700 border-amber-200" },
+    L: { txt: "น้อย", cls: "bg-sky-100 text-sky-700 border-sky-200" },
+    N: { txt: "น้อยที่สุด", cls: "bg-gray-100 text-gray-700 border-gray-200" },
   } as const;
   const it = map[grade as keyof typeof map];
+  if (!it) return <span className="text-muted-foreground">-</span>;
   return (
     <Badge variant="outline" className={cn("rounded-full px-2", it.cls)}>
       {it.txt}
@@ -511,7 +513,7 @@ export default function RiskAssessmentResultsPage({
 }: ResultsProps) {
   // callback: ปุ่ม “เสนอหัวหน้าหน่วยตรวจสอบ”
   function onClickSubmit() {
-    // เปิด submit dialog ไม่ว่าจะเป็นแท็บไหน
+    // เปิด RiskSubmitConfirmDialog popup
     setOpenSubmitDialog(true);
   }
 
@@ -951,13 +953,11 @@ export default function RiskAssessmentResultsPage({
             <>
               {/* ปุ่มเปิด Dialog */}
               <Button
-                asChild
                 size="sm"
                 className="rounded-md bg-indigo-600 hover:bg-indigo-700 text-white"
+                onClick={onClickSubmit}
               >
-                <Link href={`/overview-of-the-assessment-results`}>
-                  เสนอหัวหน้าหน่วยตรวจสอบ
-                </Link>
+                เสนอหัวหน้าหน่วยตรวจสอบ
               </Button>
 
               {/* Dialog */}

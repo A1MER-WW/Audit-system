@@ -64,19 +64,6 @@ export default function ChangeOrderReasonDialog({
           className
         )}
       >
-        {/* ปุ่ม X มุมขวาบน แบบกลม */}
-        <button
-          aria-label="close"
-          onClick={() => onOpenChange(false)}
-          className={cn(
-            "absolute right-3 top-3 inline-flex items-center justify-center",
-            "h-9 w-9 rounded-full transition-colors",
-            "hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
-          )}
-        >
-          <X className="h-5 w-5 text-gray-500" />
-        </button>
-
         <div className="p-6 sm:p-8">
           <DialogHeader className="space-y-1">
             <DialogTitle className="text-xl sm:text-2xl font-semibold text-gray-900">

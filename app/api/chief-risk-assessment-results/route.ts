@@ -101,11 +101,9 @@ export async function POST(request: NextRequest) {
       const dataMap = new Map(body.data.map((item: any) => [item.id, item]));
       orderedData = body.newOrder.map((id: string) => dataMap.get(id)).filter(Boolean);
       
-      // อัปเดต index ให้สอดคล้องกับลำดับใหม่
-      orderedData = orderedData.map((item: any, index: number) => ({
-        ...item,
-        index: (index + 1).toString()
-      }));
+      // เก็บ index เดิมไว้ เพื่อไม่ให้เกิดปัญหาในการ match ข้อมูล
+      // orderedData จะถูกจัดลำดับตาม newOrder แล้ว
+      // ไม่ต้องอัปเดต index เพราะจะทำให้เกิดปัญหาในการ match กับข้อมูลเดิม
       
       console.log("✅ Data reordered successfully:", {
         originalCount: body.data.length,

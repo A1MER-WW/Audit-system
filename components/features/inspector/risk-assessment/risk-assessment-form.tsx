@@ -507,6 +507,88 @@ export default function RiskAssessmentFormPage({ id }: { id: string }) {
   const MAX_PER_ITEM = MAX_CHANCE * MAX_IMPACT; // ปกติ 25
   const visibleBaseMax = visibleItemCount * MAX_PER_ITEM;
 
+  /** บันทึกข้อมูลอัตโนมัติ (ไม่มี toast แจ้งเตือน) */
+  async function saveQuietly() {
+    if (!form) return false;
+    
+    // ตรวจสอบว่ามีการประเมินอะไรไปแล้วหรือไม่
+    const hasAnyValues = form.groups.some(g => 
+      g.items.some(it => (it.values?.chance ?? 0) > 0 || (it.values?.impact ?? 0) > 0)
+    );
+    
+    if (!hasAnyValues) return true; // ไม่มีข้อมูลให้บันทึก ถือว่าสำเร็จ
+    
+    try {
+      const next: AssessmentForm = structuredClone(form);
+
+      const relevantItems = next.groups.flatMap((g) =>
+        g.items.filter((it) => {
+          const cats = it.categories ?? [];
+          if (!cats.length) return true;
+          if (!currentCategory) return true;
+          return cats.includes(currentCategory);
+        })
+      );
+
+      const relevantScore = relevantItems.reduce(
+        (sum, it) => sum + (it.values.score || 0),
+        0
+      );
+      const visibleCount = relevantItems.length;
+      const maxPossibleScore = MAX_CHANCE * MAX_IMPACT * visibleCount;
+
+      next.totalScore = relevantScore;
+      next.resultScore = relevantScore;
+      next.composite = maxPossibleScore
+        ? Math.round((relevantScore / maxPossibleScore) * 100)
+        : 0;
+
+      const allFilled =
+        visibleCount > 0 &&
+        relevantItems.every(
+          (it) => (it.values?.chance ?? 0) > 0 && (it.values?.impact ?? 0) > 0
+        );
+
+      next.status = allFilled ? "ประเมินแล้ว" : "กำลังประเมิน";
+      next.grade = toGrade(next.composite);
+
+      const r = await fetch(`/api/risk-assessment/${id}/form`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(next),
+      });
+      
+      if (!r.ok) {
+        console.warn("Auto-save failed:", await r.text());
+        return false;
+      }
+      
+      const j = await r.json();
+      await mutate(j, { revalidate: false }); // ไม่ revalidate เพื่อไม่ให้ช้า
+      
+      // บันทึกสถานะลง localStorage
+      try {
+        localStorage.setItem(`assessment_status_${id}`, next.status);
+        localStorage.setItem(`assessment_data_${id}`, JSON.stringify({
+          status: next.status,
+          totalScore: next.totalScore,
+          composite: next.composite,
+          grade: next.grade,
+          lastUpdated: new Date().toISOString()
+        }));
+        console.log(`💾 Auto-saved assessment data: ${id} -> ${next.status} (${next.composite}%)`);
+      } catch (error) {
+        console.warn("Cannot save to localStorage:", error);
+      }
+      
+      return true;
+    } catch (error) {
+      console.warn("Auto-save error:", error);
+      return false;
+    }
+  }
+
+  /** บันทึกพร้อม toast แจ้งเตือน */
   async function save() {
     if (!form) return;
     setSaving(true);
@@ -589,6 +671,23 @@ export default function RiskAssessmentFormPage({ id }: { id: string }) {
       );
     } finally {
       setSaving(false);
+    }
+  }
+
+  /** นำทางพร้อมบันทึกอัตโนมัติ */
+  async function handleNavigateWithSave(path: string) {
+    console.log("🚀 Navigating with auto-save to:", path);
+    
+    // บันทึกอัตโนมัติก่อนนำทาง
+    const saveSuccess = await saveQuietly();
+    
+    if (saveSuccess) {
+      console.log("✅ Auto-save completed, navigating...");
+      router.push(path);
+    } else {
+      // ถ้าบันทึกไม่สำเร็จ แต่ยังคงนำทางไปได้ (เพื่อไม่ให้ผู้ใช้ติดค้าง)
+      console.warn("⚠️ Auto-save failed, but still navigating...");
+      router.push(path);
     }
   }
 
@@ -765,7 +864,7 @@ export default function RiskAssessmentFormPage({ id }: { id: string }) {
           size="icon"
           className="rounded-full"
           aria-label="ย้อนกลับ"
-          onClick={() => router.push("/risk-assessment")}
+          onClick={() => handleNavigateWithSave("/risk-assessment")}
         >
           <ArrowLeft className="h-5 w-5" />
         </Button>
@@ -826,7 +925,7 @@ export default function RiskAssessmentFormPage({ id }: { id: string }) {
           className="relative h-12 w-full rounded-xl"
           disabled={!prevId}
           onClick={() =>
-            prevId && router.push(`/risk-assessment-form/${prevId}`)
+            prevId && handleNavigateWithSave(`/risk-assessment-form/${prevId}`)
           }
         >
           <ChevronRight className="absolute left-4 h-5 w-5 rotate-180" />
@@ -838,7 +937,7 @@ export default function RiskAssessmentFormPage({ id }: { id: string }) {
           className="relative h-12 w-full rounded-xl"
           disabled={!nextId}
           onClick={() =>
-            nextId && router.push(`/risk-assessment-form/${nextId}`)
+            nextId && handleNavigateWithSave(`/risk-assessment-form/${nextId}`)
           }
         >
           <span className="mx-auto">หัวข้อถัดไป</span>

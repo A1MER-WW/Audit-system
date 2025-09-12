@@ -96,7 +96,7 @@ type Row = {
   unit: string; // parent: label รวม, child: ชื่อหน่วยงานจริง
   topic: string;
   score: number; // parent: sum, child: คะแนนของหน่วยงาน
-  grade: "H" | "M" | "L" | "-";
+  grade: "H" | "M" | "L" | "E" | "N" | "-";
   status: string; // สถานะสรุป (parent) / สถานะรายบรรทัด (child)
   hasDoc: boolean; // parent=false, child=true
   categoryName: string;
@@ -114,11 +114,15 @@ function GradeBadge({ grade }: { grade: string }) {
   if (!grade || grade === "-")
     return <span className="text-muted-foreground">-</span>;
   const intent =
-    grade === "H"
+    grade === "E"
+      ? "bg-purple-100 text-purple-700 border-purple-200"
+      : grade === "H"
       ? "bg-red-100 text-red-700 border-red-200"
       : grade === "M"
       ? "bg-amber-100 text-amber-700 border-amber-200"
-      : "bg-sky-100 text-sky-700 border-sky-200";
+      : grade === "L"
+      ? "bg-sky-100 text-sky-700 border-sky-200"
+      : "bg-gray-100 text-gray-700 border-gray-200"; // N หรืออื่นๆ
   return (
     <Badge variant="outline" className={cn("rounded-full px-2", intent)}>
       {grade}
@@ -143,7 +147,17 @@ function StatusBadge({ value }: { value: string }) {
 }
 
 const gradeFromScore = (s?: number) =>
-  !s || s <= 0 ? "N" : s >= 80 ? "E" : s >= 60 ? "H" : s >= 40 ? "M" : s >= 20 ? "L" : "N";
+  !s || s <= 0
+    ? "-"
+    : s >= 80
+    ? "E"
+    : s >= 60
+    ? "H"
+    : s >= 40
+    ? "M"
+    : s >= 20
+    ? "L"
+    : "N";
 
 function categoriesForTab(tab: TabKey): string[] | null {
   switch (tab) {
@@ -191,37 +205,46 @@ function normalizeStatus(raw?: string, hasDoc?: boolean, score?: number) {
   return raw || STATUS_LABELS.NOT_STARTED;
 }
 
-/** ฟังก์ชันช่วยดึงสถานะการประเมินจาก localStorage หรือ API */
-function getAssessmentStatus(compoundId: string, fallbackScore: number): string {
-  if (typeof window === "undefined") {
-    // Server-side: ใช้คะแนนเป็นเกณฑ์
-    return fallbackScore > 0 ? "ประเมินแล้ว" : "ยังไม่ได้ประเมิน";
+/** ฟังก์ชันช่วยดึงสถานะการประเมินจากข้อมูลที่บันทึกไว้ */
+function getAssessmentStatus(
+  compoundId: string,
+  fallbackScore: number
+): string {
+  // ใช้ข้อมูลจาก API เป็นหลัก ถ้าไม่มีคะแนนหรือเป็น 0 = ยังไม่ได้ประเมิน
+  if (!fallbackScore || fallbackScore <= 0) {
+    console.log(`💡 No score from API for ${compoundId}: ยังไม่ได้ประเมิน`);
+    return "ยังไม่ได้ประเมิน";
   }
 
   try {
-    // ลองดูข้อมูลแบบละเอียดจาก localStorage ก่อน
-    const storedData = localStorage.getItem(`assessment_data_${compoundId}`);
-    if (storedData) {
-      const data = JSON.parse(storedData);
-      if (data.status && ["กำลังประเมิน", "ประเมินแล้ว", "ยังไม่ได้ประเมิน"].includes(data.status)) {
-        console.log(`📋 Retrieved status from localStorage: ${compoundId} -> ${data.status}`);
-        return data.status;
-      }
+    // ตรวจสอบสถานะจาก localStorage (สำหรับกรณีที่กำลังประเมินครึ่งทาง)
+    const savedStatus = localStorage.getItem(`assessment_status_${compoundId}`);
+    if (savedStatus && savedStatus === "กำลังประเมิน") {
+      console.log(`📋 In progress from localStorage: ${compoundId} -> ${savedStatus}`);
+      return savedStatus;
     }
 
-    // ถ้าไม่มีข้อมูลละเอียด ลองดูเฉพาะสถานะ
-    const storedStatus = localStorage.getItem(`assessment_status_${compoundId}`);
-    if (storedStatus && ["กำลังประเมิน", "ประเมินแล้ว", "ยังไม่ได้ประเมิน"].includes(storedStatus)) {
-      console.log(`📋 Retrieved status from localStorage: ${compoundId} -> ${storedStatus}`);
-      return storedStatus;
+    // ตรวจสอบข้อมูลการประเมินจาก localStorage
+    const savedData = localStorage.getItem(`assessment_data_${compoundId}`);
+    if (savedData) {
+      try {
+        const assessmentData = JSON.parse(savedData);
+        if (assessmentData.status === "กำลังประเมิน") {
+          console.log(`📊 In progress from assessment data: ${compoundId} -> ${assessmentData.status}`);
+          return assessmentData.status;
+        }
+      } catch (parseError) {
+        console.warn("Failed to parse assessment data from localStorage:", parseError);
+      }
     }
   } catch (error) {
     console.warn("Cannot access localStorage:", error);
   }
 
-  // Fallback: ใช้คะแนนเป็นเกณฑ์
-  console.log(`📋 Using fallback status for ${compoundId}: score=${fallbackScore}`);
-  return fallbackScore > 0 ? "ประเมินแล้ว" : "ยังไม่ได้ประเมิน";
+  // หากมีคะแนนจาก API แล้ว = ประเมินเสร็จแล้ว
+  const status = "ประเมินแล้ว";
+  console.log(`✅ Has score from API for ${compoundId}: ${status} (score: ${fallbackScore})`);
+  return status;
 }
 
 /** สร้าง Group (พาเรนต์ + ลูก) จากข้อมูล API ที่ได้มา */
@@ -257,13 +280,13 @@ function buildGroups(
         // ... (โค้ดสร้าง children / parent เหมือนเดิม)
         const children: Row[] = t.DepartmentAssessmentScore.map((ds) => {
           const childScore = ds.department.composite_score ?? 0;
-          
-          // ✅ ตรวจสอบสถานะจากการประเมินจริง - ใช้การเรียก API เพื่อดูสถานะล่าสุด
+
+          // สร้าง compound ID สำหรับแต่ละหน่วยงาน
           const compoundId = `a${a.id}-c${re.id}-t${t.id}-d${ds.department.id}`;
-          
-          // ใช้ฟังก์ชันช่วยเพื่อดึงสถานะจาก form API
+
+          // ใช้ฟังก์ชันช่วยเพื่อดึงสถานะจากคะแนน
           const departmentStatus = getAssessmentStatus(compoundId, childScore);
-          
+
           return {
             id: compoundId,
             index: "",
@@ -297,13 +320,24 @@ function buildGroups(
         const totalScore = children.reduce((s, c) => s + (c.score || 0), 0);
         const statuses = children.map((c) => c.status);
         const allDone = statuses.every((s) => s === "ประเมินแล้ว");
-        const someDone = statuses.some((s) => s === "ประเมินแล้ว");
-        const someNot = statuses.some((s) => s === "ยังไม่ได้ประเมิน");
+        const someInProgress = statuses.some((s) => s === "กำลังประเมิน");
+        const someNotStarted = statuses.some((s) => s === "ยังไม่ได้ประเมิน");
 
         let parentStatus: string;
-        if (allDone) parentStatus = "ประเมินแล้ว";
-        else if (someDone && someNot) parentStatus = "กำลังประเมิน";
-        else parentStatus = "ยังไม่ได้ประเมิน";
+        if (allDone) {
+          parentStatus = "ประเมินแล้ว";
+        } else if (someInProgress || (statuses.some((s) => s === "ประเมินแล้ว") && someNotStarted)) {
+          parentStatus = "กำลังประเมิน";
+        } else {
+          parentStatus = "ยังไม่ได้ประเมิน";
+        }
+
+        console.log(`🔍 Parent status calculation for ${t.auditTopic}:`);
+        console.log(`  📊 Children statuses: ${statuses.join(", ")}`);
+        console.log(`  ✅ All done: ${allDone}`);
+        console.log(`  🔄 Some in progress: ${someInProgress}`);
+        console.log(`  ❌ Some not started: ${someNotStarted}`);
+        console.log(`  📋 Final parent status: ${parentStatus}`);
         // 2) ใน buildGroups (เฉพาะส่วนคำนวณ itType/score/grade ของ parent)
         const itTypeFromTopic = /\(IT\)/i.test(t.auditTopic)
           ? "IT"
@@ -499,6 +533,116 @@ export default function RiskAssessmentPlanningPage({
       | undefined) ?? undefined;
 
   const currentAnnualStatus = normalizeAnnualHeaderStatus(rawAnnualStatus);
+  // ตรวจสอบว่าประเมินครบทุกรายการแล้วหรือไม่
+  const allAssessmentCompleted = useMemo(() => {
+    return allGroups.every((group) =>
+      group.children.every((child) => child.score > 0)
+    );
+  }, [allGroups]);
+
+  // ฟังก์ชันเคลียร์ localStorage
+  const handleClearLocalStorage = () => {
+    const confirmed = confirm(
+      "🗑️ เคลียร์ข้อมูลการประเมิน\n\n" +
+      "จะลบข้อมูลการประเมินที่บันทึกไว้ใน Browser ทั้งหมด\n" +
+      "ข้อมูลจะกลับไปเป็นสถานะเริ่มต้น\n\n" +
+      "ต้องการดำเนินการต่อหรือไม่?"
+    );
+
+    if (!confirmed) return;
+
+    try {
+      // ลบข้อมูลการประเมินทั้งหมดจาก localStorage
+      const keys = Object.keys(localStorage);
+      keys.forEach(key => {
+        if (key.startsWith('assessment_status_') || key.startsWith('assessment_data_')) {
+          localStorage.removeItem(key);
+        }
+      });
+
+      alert("✅ เคลียร์ข้อมูลเสร็จสิ้น กำลังรีเฟรชหน้า...");
+      window.location.reload();
+    } catch (error) {
+      console.error("Error clearing localStorage:", error);
+      alert("เกิดข้อผิดพลาดในการเคลียร์ข้อมูล");
+    }
+  };
+
+  // ฟังก์ชัน Auto ประเมิน
+  const handleAutoAssess = async () => {
+    try {
+      const updates: Array<{
+        id: string;
+        score: number;
+        grade: string;
+      }> = [];
+
+      // สร้างคะแนนสุ่มสำหรับรายการที่ยังไม่ได้ประเมิน
+      allGroups.forEach((group) => {
+        group.children.forEach((child) => {
+          if (child.score <= 0) {
+            // สุ่มคะแนนระหว่าง 20-85
+            const randomScore = Math.floor(Math.random() * (85 - 20 + 1)) + 20;
+            updates.push({
+              id: child.id,
+              score: randomScore,
+              grade: gradeFromScore(randomScore),
+            });
+          }
+        });
+      });
+
+      if (updates.length === 0) {
+        alert("✅ ข้อมูลได้รับการประเมินครบถ้วนแล้ว");
+        return;
+      }
+
+      // ยืนยันก่อนดำเนินการ
+      const confirmed = confirm(
+        `🤖 Auto ประเมิน\n\n` +
+          `จะทำการประเมินรายการที่ยังไม่ได้ประเมิน ${updates.length} รายการ\n` +
+          `ด้วยคะแนนสุ่มระหว่าง 20-85 คะแนน\n\n` +
+          `ต้องการดำเนินการต่อหรือไม่?`
+      );
+
+      if (!confirmed) return;
+
+      // เรียก API สำหรับอัพเดตคะแนน
+      const response = await fetch("/api/auto-assess", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ updates }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update assessments");
+      }
+
+      const result = await response.json();
+      console.log("🤖 Auto assessment result:", result);
+
+      // แสดงผลลัพธ์
+      alert(
+        `🤖 Auto ประเมินเสร็จสิ้น!\n\n` +
+          `ประเมินเพิ่ม ${updates.length} รายการ\n` +
+          `คะแนนเฉลี่ย: ${Math.round(
+            updates.reduce((sum, u) => sum + u.score, 0) / updates.length
+          )} คะแนน\n\n` +
+          `ข้อมูลได้รับการอัพเดตแล้ว`
+      );
+
+      // รีเฟรชข้อมูล SWR
+      window.location.reload();
+    } catch (error) {
+      console.error("Error in auto assessment:", error);
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
+      alert("เกิดข้อผิดพลาดในการ Auto ประเมิน: " + errorMessage);
+    }
+  };
+
   // reset page เมื่อเปลี่ยน filter หลัก
   useEffect(() => setPage(1), [tab, year, query, status]);
 
@@ -551,30 +695,80 @@ export default function RiskAssessmentPlanningPage({
             <CardTitle className="text-base md:text-lg font-medium">
               {assessmentName}
             </CardTitle>
-            <Button
-              asChild
-              size="sm"
-              className="rounded-md bg-indigo-600 hover:bg-indigo-700 text-white"
-            >
-              <Link href={"/risk-assessment-results"}>ผลการประเมิน</Link>
-            </Button>
-          </div>
-          <div className="flex items-center gap-2 text-sm mt-1">
-            <Info className="h-4 w-4 text-muted-foreground" />
-            <span className="font-medium text-foreground">สถานะ:</span>
-            {currentAnnualStatus ? (
-              <Badge
+            <div className="flex gap-2">
+              <Button
+                size="sm"
                 variant="outline"
-                className={cn(
-                  "rounded-full px-3",
-                  AnnualStatusBadgeClass[currentAnnualStatus]
-                )}
+                className="rounded-md"
+                onClick={handleAutoAssess}
+                disabled={loading}
               >
-                {AnnualStatusLabel[currentAnnualStatus]}
-              </Badge>
-            ) : (
-              <span className="text-muted-foreground">-</span>
-            )}
+                🤖 Auto ประเมิน
+              </Button>
+              
+              <Button
+                size="sm"
+                variant="outline"
+                className="rounded-md text-red-600 border-red-300 hover:bg-red-50"
+                onClick={handleClearLocalStorage}
+                disabled={loading}
+              >
+                🗑️ เคลียร์ข้อมูล
+              </Button>
+
+              {/* ปุ่มเก่า - คอมเมนต์ไว้
+              <Button
+                asChild
+                size="sm"
+                className="rounded-md bg-indigo-600 hover:bg-indigo-700 text-white"
+              >
+                <Link href={"/risk-assessment-results"}>ผลการประเมิน</Link>
+              </Button>
+              */}
+
+              {allAssessmentCompleted ? (
+                <Button
+                  asChild
+                  size="sm"
+                  className="rounded-md bg-indigo-600 hover:bg-indigo-700 text-white"
+                >
+                  <Link href="/risk-assessment-results">ผลการประเมิน</Link>
+                </Button>
+              ) : (
+                <Button
+                  size="sm"
+                  className="rounded-md bg-gray-300 text-gray-500 cursor-not-allowed"
+                  disabled
+                  title={`กรุณาประเมินให้ครบทุกรายการก่อน (เหลือ ${
+                    allGroups.flatMap((g) => g.children).length -
+                    allGroups
+                      .flatMap((g) => g.children)
+                      .filter((c) => c.score > 0).length
+                  } รายการ)`}
+                >
+                  ผลการประเมิน
+                </Button>
+              )}
+            </div>
+          </div>
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-sm">
+              <Info className="h-4 w-4 text-muted-foreground" />
+              <span className="font-medium text-foreground">สถานะ:</span>
+              {currentAnnualStatus ? (
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    "rounded-full px-3",
+                    AnnualStatusBadgeClass[currentAnnualStatus]
+                  )}
+                >
+                  {AnnualStatusLabel[currentAnnualStatus]}
+                </Badge>
+              ) : (
+                <span className="text-muted-foreground">-</span>
+              )}
+            </div>
           </div>
         </CardHeader>
 

@@ -51,7 +51,7 @@ export default function RiskSubmitConfirmDialog({
         <div className="p-5 sm:p-6">
           <DialogHeader className="mb-3">
             <DialogTitle className="text-[20px] font-bold leading-7">
-              ยืนยันข้อมูลเสนอหัวหน้าหน่วยตรวจสอบ
+              ยืนยันข้อมูลเสนอหัวหน้ากลุ่มตรวจสอบภายใน
             </DialogTitle>
           </DialogHeader>
 
@@ -66,7 +66,7 @@ export default function RiskSubmitConfirmDialog({
           />
 
           <p className="mt-5 text-[15px] text-foreground">
-            คุณต้องการเสนอหัวหน้าหน่วยตรวจสอบใช่หรือไม่
+            คุณต้องการเสนอหัวหน้ากลุ่มตรวจสอบภายในใช่หรือไม่
           </p>
 
           {/* ปุ่มล่าง: สองปุ่มกว้างเท่ากัน ช่องไฟ/สไตล์ตามภาพ */}

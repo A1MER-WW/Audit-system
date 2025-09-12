@@ -1,7 +1,7 @@
 // app/(your-segment)/risk-assessment/results/page.tsx
 "use client";
 
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useMemo, useState, useEffect } from "react";
 import useSWR from "swr";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -105,7 +105,12 @@ const TAB_LABELS: Record<TabKey, string> = {
 };
 
 // กติกาให้เกรด (ตามตารางใหม่)
-const SCORE_RULES = { excellentMin: 80, highMin: 60, mediumMin: 40, lowMin: 20 };
+const SCORE_RULES = {
+  excellentMin: 80,
+  highMin: 60,
+  mediumMin: 40,
+  lowMin: 20,
+};
 
 // แปลงคะแนน -> เกรด
 function computeGrade(score: number): Row["grade"] {
@@ -145,11 +150,26 @@ function GradeBadge({ grade }: { grade: Row["grade"] }) {
   if (!grade || grade === "-")
     return <span className="text-muted-foreground">-</span>;
   const map = {
-    E: { txt: "Excellent", cls: "bg-emerald-100 text-emerald-700 border-emerald-200" },
-    H: { txt: "High", cls: "bg-red-100 text-red-700 border-red-200" },
-    M: { txt: "Medium", cls: "bg-amber-100 text-amber-700 border-amber-200" },
-    L: { txt: "Low", cls: "bg-sky-100 text-sky-700 border-sky-200" },
-    N: { txt: "Needs Improvement", cls: "bg-slate-100 text-slate-700 border-slate-200" },
+    E: {
+      txt: "มากที่สุด",
+      cls: "bg-purple-100 text-purple-700 border-purple-200",
+    },
+    H: {
+      txt: "มาก",
+      cls: "bg-red-100 text-red-700 border-red-200",
+    },
+    M: {
+      txt: "ปานกลาง",
+      cls: "bg-orange-100 text-orange-700 border-orange-200",
+    },
+    L: {
+      txt: "น้อย",
+      cls: "bg-emerald-100 text-emerald-700 border-emerald-200",
+    },
+    N: {
+      txt: "น้อยที่สุด",
+      cls: "bg-gray-100 text-gray-700 border-gray-200",
+    },
   } as const;
   const it = map[grade];
   return (
@@ -319,18 +339,27 @@ type ResultsProps = {
     grade?: "E" | "H" | "M" | "L" | "N";
     category?: string;
   };
+  sortDir?: "desc" | "asc";
+  onSortDirChange?: (dir: "desc" | "asc") => void;
+  onDataChange?: (data: {
+    donut?: any[];
+    stacked?: any[];
+    matrix?: any[];
+  }) => void;
 };
 
 function getCategory(r: Row): string {
   if (r.work && r.work !== "-") return "งาน";
   if (r.project && r.project !== "-") return "โครงการ";
-  if (r.carry && r.carry !== "-") return "กันเงินเหลื่อมปี";
+  if (r.carry && r.carry !== "-") return "โครงการกันเงินเหลื่อมปี";
   if (r.activity && r.activity !== "-") return "กิจกรรม";
   if (r.process && r.process !== "-") return "กระบวนงาน";
-  if (r.system && r.system !== "-") return "IT / Non-IT";
+  if (r.system && r.system !== "-") return "IT/Non-IT";
   if (r.mission && r.mission !== "-") return "หน่วยงาน";
   return "-";
 }
+
+
 
 /* ======================== Page Component ======================== */
 export default function RiskAssessmentResultsSectionPage({
@@ -339,6 +368,9 @@ export default function RiskAssessmentResultsSectionPage({
   outerTab: outerTabProp,
   onOuterTabChange,
   filter,
+  sortDir = "desc",
+  onSortDirChange,
+  onDataChange,
 }: ResultsProps) {
   // โหมดชั้นนอก (ไม่มี UI เปลี่ยน แต่ยังรองรับผ่าน props)
   const [outerTabUncontrolled, setOuterTabUncontrolled] =
@@ -363,22 +395,41 @@ export default function RiskAssessmentResultsSectionPage({
   const rowsByTab = useMemo(() => {
     console.log("🔄 Chief Inspector - Processing data:", {
       hasData: !!data,
+      isLoading,
+      error: !!error,
       hasRowsByTab: !!data?.rowsByTab,
       hasReorderInfo: !!data?.reorderInfo,
-      action: data?.submissionInfo?.action
+      action: data?.submissionInfo?.action,
     });
 
-    if (Object.values(data?.rowsByTab ?? {}).some((v) => (v?.length ?? 0) > 0)) {
+    // ถ้ายังโหลดอยู่ให้ return empty object เพื่อไม่แสดงข้อมูล mock
+    if (isLoading) {
+      console.log("⏳ Still loading, returning empty data");
+      return {};
+    }
+
+    // ถ้ามี error ให้ใช้ mock data
+    if (error) {
+      console.log("❌ Error loading data, using mock rows");
+      return buildMockRows();
+    }
+
+    // ตรวจสอบว่ามีข้อมูลจริงจาก API หรือไม่
+    const hasValidData =
+      data &&
+      Object.values(data.rowsByTab ?? {}).some((v) => (v?.length ?? 0) > 0);
+
+    if (hasValidData) {
       console.log("✅ Using submitted data from Inspector");
       if (data?.reorderInfo?.hasChanges) {
         console.log("🔄 Data includes reorder changes");
       }
       return data!.rowsByTab as ApiResponse["rowsByTab"];
     } else {
-      console.log("⚠️ No submitted data, using mock rows");
-      return buildMockRows();
+      console.log("⚠️ No submitted data available, returning empty data");
+      return {};
     }
-  }, [data]);
+  }, [data, isLoading, error]);
 
   const getTabRows = (k: Exclude<TabKey, "all">): Row[] => rowsByTab[k] ?? [];
 
@@ -423,13 +474,125 @@ export default function RiskAssessmentResultsSectionPage({
     [rawRows]
   );
 
+  // ✅ คำนวณข้อมูลสำหรับ Dashboard จากตารางจริง
+  const dashboardData = useMemo(() => {
+    // ใช้เฉพาะ parent rows (เหมือนกับที่แสดงในตาราง)
+    const parentRows = evaluatedRows.filter((r) => !r.index.includes("."));
+    
+    console.log("🔍 Dashboard Data Calculation:", {
+      evaluatedRowsCount: evaluatedRows.length,
+      parentRowsCount: parentRows.length,
+      parentRows: parentRows.map(r => ({ id: r.id, index: r.index, grade: r.grade, score: r.score })),
+      filter: filter
+    });
+    
+    // นับจำนวนตามเกรด (ใช้เฉพาะ parent rows)
+    const gradeCounts = parentRows.reduce((acc, row) => {
+      // แปลง grade จาก API ให้เป็นระบบเดียวกัน
+      const normalizedGrade = row.grade === "-" ? "N" : row.grade;
+      
+      if (normalizedGrade === "E") acc.excellent++;
+      else if (normalizedGrade === "H") acc.high++;
+      else if (normalizedGrade === "M") acc.medium++;
+      else if (normalizedGrade === "L") acc.low++;
+      else if (normalizedGrade === "N" || normalizedGrade === "-") acc.none++;
+      return acc;
+    }, { excellent: 0, high: 0, medium: 0, low: 0, none: 0 });
+
+    console.log("📊 Grade Counts:", gradeCounts);
+
+    // สร้างข้อมูลโดนัท
+    const donut: any[] = [];
+    if (gradeCounts.excellent > 0) {
+      donut.push({ key: "excellent", name: "มากที่สุด", value: gradeCounts.excellent, color: "#9333EA", grade: "E" });
+    }
+    if (gradeCounts.high > 0) {
+      donut.push({ key: "high", name: "มาก", value: gradeCounts.high, color: "#EF4444", grade: "H" });
+    }
+    if (gradeCounts.medium > 0) {
+      donut.push({ key: "medium", name: "ปานกลาง", value: gradeCounts.medium, color: "#F97316", grade: "M" });
+    }
+    if (gradeCounts.low > 0) {
+      donut.push({ key: "low", name: "น้อย", value: gradeCounts.low, color: "#10B981", grade: "L" });
+    }
+    if (gradeCounts.none > 0) {
+      donut.push({ key: "none", name: "ไม่ประเมิน", value: gradeCounts.none, color: "#6B7280", grade: "N" });
+    }
+    
+    console.log("🍩 Donut Data:", donut);
+
+    // จัดกลุ่มตามประเภท (ใช้เฉพาะ parent rows)
+    const categoryMap = new Map<string, { E: number; H: number; M: number; L: number; N: number }>();
+    
+    parentRows.forEach(row => {
+      const category = getCategory(row);
+      if (category === "-") return; // ข้ามรายการที่ไม่มีหมวดหมู่
+
+      if (!categoryMap.has(category)) {
+        categoryMap.set(category, { E: 0, H: 0, M: 0, L: 0, N: 0 });
+      }
+      
+      const counts = categoryMap.get(category)!;
+      const normalizedGrade = row.grade === "-" ? "N" : row.grade;
+      
+      if (normalizedGrade === "E") counts.E++;
+      else if (normalizedGrade === "H") counts.H++;
+      else if (normalizedGrade === "M") counts.M++;
+      else if (normalizedGrade === "L") counts.L++;
+      else if (normalizedGrade === "N" || normalizedGrade === "-") counts.N++;
+    });
+
+    // สร้างข้อมูลแท่งซ้อน
+    const stacked = Array.from(categoryMap.entries()).map(([name, counts]) => ({
+      name,
+      veryHigh: counts.E, 
+      high: counts.H,     
+      medium: counts.M,   
+      low: counts.L,      
+      veryLow: counts.N   
+    }));
+
+    // สร้างข้อมูลเมทริกซ์
+    const matrix = Array.from(categoryMap.entries()).map(([category, counts]) => ({
+      category,
+      veryLow: counts.N,   
+      low: counts.L,       
+      medium: counts.M,    
+      high: counts.H,      
+      veryHigh: counts.E   
+    }));
+
+    return { donut, stacked, matrix };
+  }, [evaluatedRows]); // ยังคงใช้ evaluatedRows เป็น dependency เพราะ parentRows มาจากมัน
+
+  // ส่งข้อมูลไปยัง parent component
+  useEffect(() => {
+    if (onDataChange && evaluatedRows.length > 0) {
+      onDataChange(dashboardData);
+    }
+  }, [dashboardData, onDataChange, evaluatedRows.length]);
+
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   // เฉพาะ parent (index ไม่มี “.”) + คงลำดับเดิม
-  const filteredParents = useMemo(
-    () => evaluatedRows.filter((r) => !r.index.includes(".")),
-    [evaluatedRows]
-  );
+  const filteredParents = useMemo(() => {
+    const parents = evaluatedRows.filter((r) => !r.index.includes("."));
+    
+    console.log("📋 Table Data (filteredParents):", {
+      count: parents.length,
+      parents: parents.map(r => ({ id: r.id, index: r.index, grade: r.grade, score: r.score })),
+      sortDir: sortDir
+    });
+    
+    // เรียงตาม sortDir
+    if (sortDir === "desc") {
+      // มาก ไป น้อย (คะแนนสูงสุดไปต่ำสุด)
+      return parents.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+    } else {
+      // น้อย ไป มาก (คะแนนต่ำสุดไปสูงสุด)
+      return parents.sort((a, b) => (a.score ?? 0) - (b.score ?? 0));
+    }
+  }, [evaluatedRows, sortDir]);
 
   // pagination
   const shouldPaginate = filteredParents.length > PAGE_SIZE;
@@ -443,10 +606,48 @@ export default function RiskAssessmentResultsSectionPage({
   /* ---------- Reorder state & actions ---------- */
   const [orderIds, setOrderIds] = useState<string[] | null>(null);
   const orderedParents = useMemo(() => {
+    // ถ้ามีข้อมูลจาก Inspector (reorderInfo) ให้ใช้ลำดับนั้นก่อน
+    if (
+      data?.reorderInfo?.newOrder &&
+      data.reorderInfo.hasChanges &&
+      data.reorderInfo.newOrder.length > 0
+    ) {
+      console.log("🔄 Using reorder data from Inspector:", {
+        originalOrder: data.reorderInfo.originalOrder,
+        newOrder: data.reorderInfo.newOrder,
+        changedItem: data.reorderInfo.changedItem,
+        reason: data.reorderInfo.reason,
+        reasonById: data.reorderInfo.reasonById,
+        paginatedParentsIds: paginatedParents.map((p) => p.id),
+      });
+
+      // ใช้ paginatedParents แทน filteredParents เพื่อให้ตรงกับที่แสดงผล
+      const allParents = paginatedParents;
+      const map = new Map(allParents.map((r) => [r.id, r]));
+
+      // จัดลำดับตาม newOrder ที่ส่งมาจาก Inspector
+      const reorderedRows = data.reorderInfo.newOrder
+        .map((id: string) => map.get(id))
+        .filter((row): row is Row => row !== undefined);
+
+      console.log("✅ Reordered rows:", {
+        newOrderCount: data.reorderInfo.newOrder.length,
+        reorderedCount: reorderedRows.length,
+        reorderedIds: reorderedRows.map((r) => r.id),
+      });
+
+      // ถ้าจัดลำดับไม่ครบ ให้เติมที่เหลือ
+      const newOrderSet = new Set(data.reorderInfo.newOrder);
+      const remainingRows = allParents.filter((r) => !newOrderSet.has(r.id));
+
+      return [...reorderedRows, ...remainingRows];
+    }
+
+    // ถ้าไม่มีข้อมูลจาก Inspector ให้ใช้ orderIds ภายในหน้า
     if (!orderIds) return paginatedParents;
     const map = new Map(paginatedParents.map((r) => [r.id, r]));
     return orderIds.map((id) => map.get(id)!).filter(Boolean);
-  }, [orderIds, paginatedParents]);
+  }, [orderIds, paginatedParents, data?.reorderInfo]);
 
   const ensureOrderInit = () => {
     if (!orderIds) setOrderIds(paginatedParents.map((r) => r.id));
@@ -514,6 +715,7 @@ export default function RiskAssessmentResultsSectionPage({
               setExpanded={setExpanded}
               isLoading={isLoading}
               error={!!error}
+              hasData={Object.keys(rowsByTab).length > 0}
             />
           )}
 
@@ -534,6 +736,7 @@ export default function RiskAssessmentResultsSectionPage({
               allRows={rawRows}
               isLoading={isLoading}
               error={!!error}
+              sortDir={sortDir}
             />
           )}
 
@@ -601,8 +804,9 @@ function SummarySection(props: {
   setExpanded: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
   isLoading: boolean;
   error: boolean;
+  hasData: boolean;
 }) {
-  const { tab, parents, isLoading, error } = props;
+  const { tab, parents, isLoading, error, hasData } = props;
 
   return (
     <div className="rounded-xl border overflow-hidden">
@@ -623,10 +827,19 @@ function SummarySection(props: {
         </TableHeader>
 
         <TableBody>
-          {isLoading ? (
+          {isLoading && !hasData ? (
             <RowLoading colSpan={6} />
           ) : error ? (
             <RowError colSpan={6} />
+          ) : !hasData ? (
+            <TableRow>
+              <TableCell
+                colSpan={6}
+                className="h-24 text-center text-muted-foreground"
+              >
+                รอการส่งข้อมูลจากหน่วยตรวจสอบภายใน
+              </TableCell>
+            </TableRow>
           ) : parents.length === 0 ? (
             <RowEmpty colSpan={6} />
           ) : (
@@ -690,6 +903,20 @@ function ReorderSection(props: {
 }) {
   const { tab, parents, isLoading, error, reorderInfo } = props;
 
+  // Debug log
+  console.log("🔍 ReorderSection received:", {
+    parentsCount: parents.length,
+    parentsIds: parents.map((p) => ({ id: p.id, index: p.index })),
+    reorderInfo: {
+      hasChanges: reorderInfo?.hasChanges,
+      originalOrder: reorderInfo?.originalOrder,
+      newOrder: reorderInfo?.newOrder,
+      changedItem: reorderInfo?.changedItem,
+      reason: reorderInfo?.reason,
+      reasonById: reorderInfo?.reasonById,
+    },
+  });
+
   return (
     <div className="space-y-4">
       {/* แสดงข้อมูลการจัดลำดับใหม่ */}
@@ -698,11 +925,33 @@ function ReorderSection(props: {
           <div className="flex items-start space-x-2">
             <div className="w-3 h-3 bg-blue-500 rounded-full mt-1 flex-shrink-0"></div>
             <div className="flex-1">
-              <h4 className="font-medium text-blue-900 mb-2">การจัดลำดับความเสี่ยงใหม่</h4>
+              <h4 className="font-medium text-blue-900 mb-2">
+                การจัดลำดับความเสี่ยงใหม่
+              </h4>
               <div className="text-sm text-blue-800 space-y-1">
-                <p><span className="font-medium">รายการที่มีการเปลี่ยนแปลง:</span> {reorderInfo.changedItem || "ไม่ระบุ"}</p>
-                <p><span className="font-medium">เหตุผลการจัดลำดับใหม่:</span> {reorderInfo.reason || "ไม่ระบุเหตุผล"}</p>
-                <p><span className="font-medium">จำนวนรายการทั้งหมด:</span> {parents.length} รายการ</p>
+                <p>
+                  <span className="font-medium">
+                    รายการที่มีการเปลี่ยนแปลง:
+                  </span>{" "}
+                  {reorderInfo.changedItem || "ไม่ระบุ"}
+                </p>
+                <p>
+                  <span className="font-medium">เหตุผลการจัดลำดับใหม่:</span>{" "}
+                  {reorderInfo.reason || "ไม่ระบุเหตุผล"}
+                </p>
+                <p>
+                  <span className="font-medium">จำนวนรายการทั้งหมด:</span>{" "}
+                  {parents.length} รายการ
+                </p>
+                {reorderInfo.reasonById &&
+                  Object.keys(reorderInfo.reasonById).length > 0 && (
+                    <p>
+                      <span className="font-medium">
+                        รายการที่มีเหตุผลเฉพาะ:
+                      </span>{" "}
+                      {Object.keys(reorderInfo.reasonById).length} รายการ
+                    </p>
+                  )}
               </div>
             </div>
           </div>
@@ -723,7 +972,7 @@ function ReorderSection(props: {
               </TableHead>
               <TableHead className="w-[120px]">คะแนนประเมิน</TableHead>
               <TableHead className="w-[120px]">เกรด</TableHead>
-              <TableHead className="w-[200px]">สถานะการเปลี่ยนแปลง</TableHead>
+              <TableHead className="w-[250px]">เหตุผลการเปลี่ยนแปลง</TableHead>
             </TableRow>
           </TableHeader>
 
@@ -739,56 +988,106 @@ function ReorderSection(props: {
                 // ตรวจสอบว่ารายการนี้มีการเปลี่ยนแปลงลำดับหรือไม่
                 const originalIndex = reorderInfo?.originalOrder?.indexOf(r.id);
                 const newIndex = reorderInfo?.newOrder?.indexOf(r.id);
-                const isChanged = originalIndex !== undefined && newIndex !== undefined && originalIndex !== newIndex;
+                const isChanged =
+                  originalIndex !== undefined &&
+                  newIndex !== undefined &&
+                  originalIndex !== newIndex;
                 const isChangedItem = reorderInfo?.changedItem === r.id;
 
                 return (
-                  <TableRow 
+                  <TableRow
                     key={r.id}
                     className={cn(
-                      isChangedItem && "bg-yellow-50 border-l-4 border-yellow-400",
+                      isChangedItem &&
+                        "bg-yellow-50 border-l-4 border-yellow-400",
                       isChanged && !isChangedItem && "bg-blue-50"
                     )}
                   >
                     <TableCell className="font-mono text-xs md:text-sm">
                       <div className="flex items-center space-x-2">
                         <span>{index + 1}</span>
+                        {originalIndex !== undefined &&
+                          newIndex !== undefined && (
+                            <div className="text-xs text-muted-foreground">
+                              {originalIndex !== newIndex && (
+                                <span>
+                                  ({originalIndex + 1} → {newIndex + 1})
+                                </span>
+                              )}
+                            </div>
+                          )}
                         {isChanged && (
-                          <Badge variant="outline" className="text-xs bg-blue-100 text-blue-700 border-blue-200">
+                          <Badge
+                            variant="outline"
+                            className="text-xs bg-blue-100 text-blue-700 border-blue-200"
+                          >
                             เปลี่ยน
                           </Badge>
                         )}
                       </div>
                     </TableCell>
-                    <TableCell className="whitespace-nowrap">{r.unit}</TableCell>
+                    <TableCell className="whitespace-nowrap">
+                      {r.unit}
+                    </TableCell>
                     <TableCell className="whitespace-nowrap text-muted-foreground">
                       {getCategory(r)}
                     </TableCell>
                     <TableCell className="text-muted-foreground align-top !whitespace-normal break-words">
                       {topicByTab(r, tab)}
                     </TableCell>
-                    <TableCell className="font-medium">{r.score ?? "-"}</TableCell>
+                    <TableCell className="font-medium">
+                      {r.score ?? "-"}
+                    </TableCell>
                     <TableCell>
                       <GradeBadge grade={r.grade} />
                     </TableCell>
                     <TableCell className="text-muted-foreground">
-                      {isChangedItem ? (
+                      {/* แสดงเหตุผลสำหรับรายการที่มีเหตุผล */}
+                      {reorderInfo?.reasonById?.[r.id] ? (
                         <div className="space-y-1">
-                          <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-300">
+                          {isChangedItem && (
+                            <Badge
+                              variant="outline"
+                              className="bg-yellow-100 text-yellow-800 border-yellow-300"
+                            >
+                              รายการหลักที่ถูกย้าย
+                            </Badge>
+                          )}
+                          {isChanged && !isChangedItem && (
+                            <Badge
+                              variant="outline"
+                              className="bg-blue-100 text-blue-700 border-blue-200"
+                            >
+                              ลำดับเปลี่ยนแปลง
+                            </Badge>
+                          )}
+                          <div className="text-sm text-foreground">
+                            {reorderInfo.reasonById[r.id]}
+                          </div>
+                        </div>
+                      ) : isChangedItem ? (
+                        <div className="space-y-1">
+                          <Badge
+                            variant="outline"
+                            className="bg-yellow-100 text-yellow-800 border-yellow-300"
+                          >
                             รายการหลักที่ถูกย้าย
                           </Badge>
-                          {reorderInfo?.reasonById?.[r.id] && (
-                            <div className="text-xs text-muted-foreground">
-                              เหตุผล: {reorderInfo.reasonById[r.id]}
-                            </div>
-                          )}
+                          <div className="text-sm text-muted-foreground">
+                            {reorderInfo?.reason || "ไม่ระบุเหตุผล"}
+                          </div>
                         </div>
                       ) : isChanged ? (
-                        <Badge variant="outline" className="bg-blue-100 text-blue-700 border-blue-200">
+                        <Badge
+                          variant="outline"
+                          className="bg-blue-100 text-blue-700 border-blue-200"
+                        >
                           ลำดับเปลี่ยนแปลง
                         </Badge>
                       ) : (
-                        <span className="text-muted-foreground">ไม่เปลี่ยนแปลง</span>
+                        <span className="text-muted-foreground">
+                          ไม่เปลี่ยนแปลง
+                        </span>
                       )}
                     </TableCell>
                   </TableRow>
@@ -808,8 +1107,9 @@ function UnitRankingSection(props: {
   allRows: Row[];
   isLoading: boolean;
   error: boolean;
+  sortDir: "desc" | "asc";
 }) {
-  const { tab, allRows, isLoading, error } = props;
+  const { tab, allRows, isLoading, error, sortDir } = props;
   const topicOf = (r: Row) => topicByTab(r, tab) || "-";
   const isTopicRow = (r: Row) => topicOf(r) !== "-" && topicOf(r).trim() !== "";
 
@@ -822,7 +1122,15 @@ function UnitRankingSection(props: {
       m.set(r.unit, arr);
     }
     const result = Array.from(m.entries()).map(([unit, rows]) => {
-      rows.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+      // เรียงข้อมูลภายในแต่ละหน่วยงานตาม sortDir
+      if (sortDir === "desc") {
+        // มาก ไป น้อย (คะแนนสูงสุดไปต่ำสุด)
+        rows.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+      } else {
+        // น้อย ไป มาก (คะแนนต่ำสุดไปสูงสุด)
+        rows.sort((a, b) => (a.score ?? 0) - (b.score ?? 0));
+      }
+      
       const catSet = new Set(rows.map(getCategory));
       const sumMax = rows.reduce(
         (acc, r) =>
@@ -837,9 +1145,17 @@ function UnitRankingSection(props: {
       );
       return { unit, rows, categories: catSet, sumMax, sumScore };
     });
-    result.sort((a, b) => b.sumScore - a.sumScore);
+    
+    // เรียงหน่วยงานตาม sortDir
+    if (sortDir === "desc") {
+      // มาก ไป น้อย (คะแนนรวมสูงสุดไปต่ำสุด)
+      result.sort((a, b) => b.sumScore - a.sumScore);
+    } else {
+      // น้อย ไป มาก (คะแนนรวมต่ำสุดไปสูงสุด)
+      result.sort((a, b) => a.sumScore - b.sumScore);
+    }
     return result;
-  }, [allRows, tab]);
+  }, [allRows, tab, sortDir]);
 
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
@@ -969,6 +1285,8 @@ function UnitRankingSection(props: {
     </div>
   );
 }
+
+
 
 /* ======================== tiny components ======================== */
 function RowLoading({ colSpan }: { colSpan: number }) {

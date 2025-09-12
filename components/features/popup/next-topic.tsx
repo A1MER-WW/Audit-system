@@ -40,7 +40,7 @@ export default function ScreeningChoiceDialog({
               ประเมินหัวข้อถัดไป
             </DialogTitle>
             <DialogDescription className="text-[15px] text-muted-foreground">
-              ท่านต้องการคัดออกจากการประเมินเพื่อใช้กับหน่วยงานถัดไปหรือไม่
+              ท่านต้องการคัดลอกจากการประเมินเพื่อใช้กับหน่วยงานถัดไปหรือไม่
             </DialogDescription>
           </DialogHeader>
         </div>
@@ -57,7 +57,7 @@ export default function ScreeningChoiceDialog({
               className="h-5 w-5 data-[state=checked]:bg-primary"
               style={{ ["--primary" as any]: PRIMARY }}
             />
-            <span className="text-sm">ต้องการคัดออก</span>
+            <span className="text-sm">ต้องการคัดลอก</span>
           </label>
 
           <label
@@ -70,7 +70,7 @@ export default function ScreeningChoiceDialog({
               className="h-5 w-5 data-[state=checked]:bg-primary"
               style={{ ["--primary" as any]: PRIMARY }}
             />
-            <span className="text-sm">ไม่ต้องการคัดออก</span>
+            <span className="text-sm">ไม่ต้องการคัดลอก</span>
           </label>
         </div>
 

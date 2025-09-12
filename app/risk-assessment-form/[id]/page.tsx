@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, use } from "react";
 import RiskAssessmentFormPage from "@/components/features/inspector/risk-assessment/risk-assessment-form";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -94,11 +94,13 @@ function FormPageSkeleton() {
   );
 }
 
-export default function Page({ params }: { params: { id: string } }) {
+export default function Page({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
+  
   return (
     <div className="min-h-svh">
       <Suspense fallback={<FormPageSkeleton />}>
-        <RiskAssessmentFormPage id={params.id} />
+        <RiskAssessmentFormPage id={id} />
       </Suspense>
     </div>
   );

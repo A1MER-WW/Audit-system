@@ -11,19 +11,24 @@ type Props = {
 export function ActiveFilters({ grade, category, onClear }: Props) {
   if (!grade && !category) return null;
 
-  const gradeLabel = grade === "H" ? "High Risk" : grade === "M" ? "Medium Risk" : grade === "L" ? "Low Risk" : "";
+  const gradeLabel = 
+    grade === "E" ? "มากที่สุด" : 
+    grade === "H" ? "มาก" : 
+    grade === "M" ? "ปานกลาง" : 
+    grade === "L" ? "น้อย" : 
+    grade === "N" ? "ไม่ประเมิน" : "";
   
   return (
     <div className="p-4 border rounded-lg bg-white space-y-2">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-medium">Active Filters:</h3>
+        <h3 className="text-sm font-medium">ตัวกรองที่เลือก:</h3>
         <Button 
           variant="ghost" 
           size="sm" 
           onClick={onClear}
           className="h-8 text-muted-foreground hover:text-foreground"
         >
-          Clear all filters
+          ล้างตัวกรองทั้งหมด
         </Button>
       </div>
       <div className="flex flex-wrap gap-2">
