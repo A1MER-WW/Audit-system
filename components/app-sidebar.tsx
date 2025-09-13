@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/sidebar"
 import Link from "next/link"
 import { NavMainDatabase } from "./nav-maindatabase"
+import { NavConsults } from "./nav-consult"
 
 const data = {
   user: {
@@ -210,17 +211,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
             </Link>
           </SidebarMenuButton>
-
-          <SidebarMenuButton asChild>
-            <Link href="/support">
-              <MessageCircleQuestionMark />
-
-              <span className="p-1 text-sm">
-                ให้คำปรึกษา
-              </span>
-            </Link>
-          </SidebarMenuButton>
-
+        </nav>
+        <NavConsults />
+        <nav className="p-2 space-y-4">
           <SidebarMenuButton asChild>
             <Link href="/">
               <BellDot />
