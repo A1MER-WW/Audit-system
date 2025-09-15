@@ -43,62 +43,10 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { useDocuments, type Document as DocumentType } from "@/hooks/useDocuments"
+import { useConsultDocuments, type consultDocumentType as consultDocumentsType } from "@/hooks/useConsultDocuments"
 
-// TempData
-const TempData1 = [
-    {
-        id: 1,
-        department:"หน่วยงาน",
-        title:"เกร็ดความรู้ การเบิกค่าใช้จ่ายในการเดินทางไปยังต่างประเทศ",
-        detial: "ตามพระราชกฤษฎีกาค่าใชัจ่ายเดินทางไปราชการ พ.ศ.2526 และที่แก้ไขเพิ่มเติม า่ห้เกดา่หกา่ดา่ห้กดรหก้า่ดหากด้รหีกดาหก้ดรนหีกด้าห่กด้าห่กด้ากห่้ดาหก่้ด",
-        status: "ยังไม่ได้ดำเนินการ",
-        display:"Inactive",
-    },
-   {
-        id: 2,
-        department:"หน่วยงาน",
-        title:"โครงสร้างแผนงานตามยุทธศาสตร์",
-        detial: "ตามพระราชกฤษฎีกาค่าใชัจ่ายเดินทางไปราชการ พ.ศ.2526 และที่แก้ไขเพิ่มเติม า่ห้เกดา่หกา่ดา่ห้กดรหก้า่ดหากด้รหีกดาหก้ดรนหีกด้าห่กด้าห่กด้ากห่้ดาหก่้ด",
-        status: "รออนุมัติ",
-        display:"Inactive",
-    },
-    {
-        id: 3,
-        department:"หน่วยงาน",
-        title:"ข้อกำหนดค่าใช้จ่ายสำหรับเดินทาง",
-        detial: "ตามพระราชกฤษฎีกาค่าใชัจ่ายเดินทางไปราชการ พ.ศ.2526 และที่แก้ไขเพิ่มเติม า่ห้เกดา่หกา่ดา่ห้กดรหก้า่ดหากด้รหีกดาหก้ดรนหีกด้าห่กด้าห่กด้ากห่้ดาหก่้ด",
-        status: "ดำเนินการแล้ว",
-        display:"Active",
-    },
-    {
-        id: 4,
-        department:"หน่วยงาน",
-        title:"แนวทางการขออนุมัติให้ข้าราชการเดินทางไปจ่างประเทศชั่วคราว",
-        detial: "ตามพระราชกฤษฎีกาค่าใชัจ่ายเดินทางไปราชการ พ.ศ.2526 และที่แก้ไขเพิ่มเติม า่ห้เกดา่หกา่ดา่ห้กดรหก้า่ดหากด้รหีกดาหก้ดรนหีกด้าห่กด้าห่กด้ากห่้ดาหก่้ด",
-        status: "ดำเนินการแล้ว",
-        display:"Active",
-    },
-    {
-        id: 5,
-        department:"หน่วยงาน",
-        title:"4หลักการ จัดซื้อจัดจ้างให้ถูกตามเกรฑ์ที่กำหนด",
-        detial: "ตามพระราชกฤษฎีกาค่าใชัจ่ายเดินทางไปราชการ พ.ศ.2526 และที่แก้ไขเพิ่มเติม า่ห้เกดา่หกา่ดา่ห้กดรหก้า่ดหากด้รหีกดาหก้ดรนหีกด้าห่กด้าห่กด้ากห่้ดาหก่้ด",
-        status: "ดำเนินการแล้ว",
-        display:"Active",
-    }
-]
 
-type consultDocumentType = {
-  id: number,
-  department: string,
-  title: string,
-  detial: string,
-  status: string,
-  display:string,
-}
-
-const columnsConsult: ColumnDef<consultDocumentType>[] = [
+const columns: ColumnDef<consultDocumentsType>[] = [
   {
     id: "select",
     header: ({ table }) => (
@@ -223,8 +171,6 @@ const columnsConsult: ColumnDef<consultDocumentType>[] = [
 
 export default function ConsultPage() {
 
-  const [ consultTable, SetConsultTable] = React.useState(() => [...TempData1])
-  // const router = useRouter()
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     []
@@ -233,15 +179,13 @@ export default function ConsultPage() {
     React.useState<VisibilityState>({})
   const [rowSelection, setRowSelection] = React.useState({})
   const [searchValue, setSearchValue] = React.useState("")
-  const [columns] = React.useState<typeof columnsConsult>(() => [
-    ...columnsConsult,
-  ])
+
 
 //  const loading = false
 //  const error = ""
 
 // ใช้ useDocuments hook เพื่อดึงข้อมูลจาก API
-  const { documents, loading, error, refetch } = useDocuments({
+  const { documents, loading, error, refetch } = useConsultDocuments({
     search: searchValue
   })
 
@@ -261,7 +205,7 @@ export default function ConsultPage() {
   const { goBack } = useNavigationHistory();
 
   const tableView = useReactTable({
-    data: consultTable,
+    data: documents,
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
@@ -401,7 +345,7 @@ export default function ConsultPage() {
               {loading ? (
                 // แสดง loading state
                 <TableRow>
-                  <TableCell colSpan={columnsConsult.length} className="h-24 text-center">
+                  <TableCell colSpan={columns.length} className="h-24 text-center">
                     <div className="flex items-center justify-center">
                       <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-900"></div>
                       <span className="ml-2">กำลังโหลดข้อมูล...</span>
@@ -427,7 +371,7 @@ export default function ConsultPage() {
               ) : (
                 <TableRow>
                   <TableCell
-                    colSpan={columnsConsult.length}
+                    colSpan={columns.length}
                     className="h-24 text-center"
                   >
                     ไม่พบข้อมูล
