@@ -65,7 +65,9 @@ export function NavConsults({
                             <CollapsibleTrigger asChild>
                                 <SidebarMenuButton>
                                 <FileSearch2 className="text-muted-foreground" />
+                                <Link href="/consult" key="consult">
                                 <span>ทะเบียนคุมเกร็ดความรู้</span>
+                                </Link>
                                 </SidebarMenuButton>
                             </CollapsibleTrigger>
                             </Collapsible>
