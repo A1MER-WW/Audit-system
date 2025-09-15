@@ -90,6 +90,7 @@ const fetcher = (url: string) => fetch(url).then((r) => r.json() as Promise<ApiR
 /** ---------- Main Section ---------- */
 type DashboardProps = {
   year: number;
+  compareYear?: number; // ปีที่จะเปรียบเทียบ
   statusText?: string;
   donut?: RiskSlice[];
   stacked?: StackedRow[];
@@ -100,10 +101,12 @@ type DashboardProps = {
     grade?: "E" | "H" | "M" | "L" | "N";
     category?: string;
   };
+  showCompare?: boolean; // แสดงโหมดเปรียบเทียบ
 };
 
 export default function DashboardSection({
   year,
+  compareYear,
   statusText,
   donut: donutProp,
   stacked: stackedProp,
@@ -111,12 +114,19 @@ export default function DashboardSection({
   onGradeClick,
   onCategoryClick,
   activeFilter,
+  showCompare = false,
 }: DashboardProps) {
   const [showMatrixReport, setShowMatrixReport] = useState(false);
 
   // ดึงข้อมูลจาก API
   const { data, error, isLoading } = useSWR<ApiResponse>(
     `/api/chief-risk-assessment-results?year=${year}`,
+    fetcher
+  );
+
+  // ดึงข้อมูลปีเปรียบเทียบถ้ามีการเปรียบเทียบ
+  const { data: compareData, error: compareError, isLoading: compareLoading } = useSWR<ApiResponse>(
+    showCompare && compareYear ? `/api/chief-risk-assessment-results?year=${compareYear}` : null,
     fetcher
   );
 
@@ -325,13 +335,17 @@ export default function DashboardSection({
             </div>
           </div>
 
-          {/* 2 คอลัมน์: โดนัท / แท่งซ้อน */}
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            {/* === โดนัทรวมทั้งองค์กร === */}
-            <Card>
+          {/* 2 คอลัมน์: โดนัท / แท่งซ้อน - หรือ 4 คอลัมน์ถ้าเปรียบเทียบ */}
+          <div className={cn(
+            "grid gap-4",
+            showCompare ? "grid-cols-1 lg:grid-cols-2 xl:grid-cols-4" : "grid-cols-1 md:grid-cols-2"
+          )}>
+            {/* === โดนัทรวมทั้งองค์กร ปีปัจจุบัน === */}
+            <Card className={showCompare ? "lg:col-span-1" : ""}>
               <CardContent className="p-4 md:p-6">
                 <div className="text-sm font-medium mb-3">
                   ผลการประเมินจัดลำดับด้านความเสี่ยงแผนงานภาพรวม
+                  {showCompare && <span className="text-blue-600 ml-2">(ปี {year})</span>}
                 </div>
 
                 <div className="relative h-[260px] md:h-[300px]">
@@ -421,11 +435,155 @@ export default function DashboardSection({
               </CardContent>
             </Card>
 
+            {/* === โดนัทปีเปรียบเทียบ (เฉพาะเมื่อ showCompare) === */}
+            {showCompare && compareYear && (
+              <Card className="lg:col-span-1">
+                <CardContent className="p-4 md:p-6">
+                  <div className="text-sm font-medium mb-3">
+                    ผลการประเมินจัดลำดับด้านความเสี่ยงแผนงานภาพรวม
+                    <span className="text-orange-600 ml-2">(ปี {compareYear})</span>
+                  </div>
+
+                  <div className="relative h-[260px] md:h-[300px]">
+                    {compareLoading ? (
+                      <div className="flex items-center justify-center h-full text-muted-foreground">
+                        <div className="text-center">
+                          <div className="text-lg mb-2">กำลังโหลด...</div>
+                          <div className="text-sm">ข้อมูลปี {compareYear}</div>
+                        </div>
+                      </div>
+                    ) : !compareData ? (
+                      <div className="flex items-center justify-center h-full text-muted-foreground">
+                        <div className="text-center">
+                          <div className="text-lg mb-2">ไม่มีข้อมูล</div>
+                          <div className="text-sm">ปี {compareYear}</div>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        {/* คำนวณข้อมูล donut สำหรับปีเปรียบเทียบ */}
+                        {(() => {
+                          const compareRows: Row[] = Object.values(compareData.rowsByTab).flat().filter((row): row is Row => row !== undefined && row !== null);
+                          const compareGradeCounts = compareRows.reduce((acc, row) => {
+                            const normalizedGrade = row.grade === "-" ? "N" : row.grade;
+                            if (normalizedGrade === "E") acc.excellent++;
+                            else if (normalizedGrade === "H") acc.high++;
+                            else if (normalizedGrade === "M") acc.medium++;
+                            else if (normalizedGrade === "L") acc.low++;
+                            else if (normalizedGrade === "N" || normalizedGrade === "-") acc.none++;
+                            return acc;
+                          }, { excellent: 0, high: 0, medium: 0, low: 0, none: 0 });
+
+                          const compareDonut: RiskSlice[] = [];
+                          if (compareGradeCounts.excellent > 0) {
+                            compareDonut.push({ key: "excellent", name: "มากที่สุด", value: compareGradeCounts.excellent, color: gradeColors.E, grade: "E" });
+                          }
+                          if (compareGradeCounts.high > 0) {
+                            compareDonut.push({ key: "high", name: "มาก", value: compareGradeCounts.high, color: gradeColors.H, grade: "H" });
+                          }
+                          if (compareGradeCounts.medium > 0) {
+                            compareDonut.push({ key: "medium", name: "ปานกลาง", value: compareGradeCounts.medium, color: gradeColors.M, grade: "M" });
+                          }
+                          if (compareGradeCounts.low > 0) {
+                            compareDonut.push({ key: "low", name: "น้อย", value: compareGradeCounts.low, color: gradeColors.L, grade: "L" });
+                          }
+                          if (compareGradeCounts.none > 0) {
+                            compareDonut.push({ key: "none", name: "ไม่ประเมิน", value: compareGradeCounts.none, color: gradeColors.N, grade: "N" });
+                          }
+
+                          const compareTotal = compareDonut.reduce((s, d) => s + d.value, 0);
+
+                          return (
+                            <>
+                              <ResponsiveContainer>
+                                <PieChart>
+                                  <Pie
+                                    data={compareDonut}
+                                    dataKey="value"
+                                    nameKey="name"
+                                    innerRadius={70}
+                                    outerRadius={110}
+                                    stroke="#fff"
+                                    strokeWidth={2}
+                                    label={(entry: any) => {
+                                      const value = entry.value || 0;
+                                      const percentage = compareTotal > 0 ? ((value / compareTotal) * 100).toFixed(1) : "0.0";
+                                      return `${percentage}%`;
+                                    }}
+                                    labelLine={true}
+                                  >
+                                    {compareDonut.map((d) => (
+                                      <Cell 
+                                        key={d.key} 
+                                        fill={d.color}
+                                        stroke="#fff"
+                                        strokeWidth={2}
+                                        style={{ cursor: onGradeClick ? 'pointer' : 'default' }}
+                                        onClick={() => {
+                                          if (!onGradeClick) return;
+                                          onGradeClick(d.grade);
+                                        }}
+                                      />
+                                    ))}
+                                  </Pie>
+                                </PieChart>
+                              </ResponsiveContainer>
+
+                              {/* ตัวเลขรวมกลางวง */}
+                              <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                                <div className="text-center">
+                                  <div className="text-4xl md:text-5xl font-semibold leading-none">
+                                    {compareTotal}
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* legend แบบ 2 คอลัมน์ */}
+                              <div className="absolute bottom-0 left-0 right-0">
+                                <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
+                                  {compareDonut.map((d) => {
+                                    const isActive = d.grade === activeFilter?.grade;
+                                    const percentage = compareTotal > 0 ? ((d.value / compareTotal) * 100).toFixed(1) : "0.0";
+                                    
+                                    return (
+                                      <div 
+                                        key={d.key} 
+                                        className={cn(
+                                          "flex items-center gap-2",
+                                          onGradeClick && "cursor-pointer hover:bg-gray-50 p-1 rounded",
+                                          isActive && "bg-gray-100"
+                                        )}
+                                        onClick={() => onGradeClick?.(d.grade)}
+                                      >
+                                        <span
+                                          className="inline-block h-3 w-3 rounded-sm"
+                                          style={{ backgroundColor: d.color }}
+                                          aria-hidden
+                                        />
+                                        <span className="text-muted-foreground">{d.name}</span>
+                                        <span className="ml-auto font-medium">{d.value}</span>
+                                        <span className="text-sm text-muted-foreground">({percentage}%)</span>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            </>
+                          );
+                        })()}
+                      </>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* === แท่งซ้อนตามหมวด === */}
-            <Card>
+            <Card className={showCompare ? "lg:col-span-1" : ""}>
               <CardContent className="p-4 md:p-6">
                 <div className="text-sm font-medium mb-3">
                   สรุปจำนวนผลการประเมินและจัดลำดับความเสี่ยงแยกตามหมวด
+                  {showCompare && <span className="text-blue-600 ml-2">(ปี {year})</span>}
                 </div>
 
                 <div className="h-[260px] md:h-[300px]">
@@ -515,6 +673,157 @@ export default function DashboardSection({
                 </div>
               </CardContent>
             </Card>
+
+            {/* === แท่งซ้อนปีเปรียบเทียบ (เฉพาะเมื่อ showCompare) === */}
+            {showCompare && compareYear && (
+              <Card className="lg:col-span-1">
+                <CardContent className="p-4 md:p-6">
+                  <div className="text-sm font-medium mb-3">
+                    สรุปจำนวนผลการประเมินและจัดลำดับความเสี่ยงแยกตามหมวด
+                    <span className="text-orange-600 ml-2">(ปี {compareYear})</span>
+                  </div>
+
+                  <div className="h-[260px] md:h-[300px]">
+                    {compareLoading ? (
+                      <div className="flex items-center justify-center h-full text-muted-foreground">
+                        <div className="text-center">
+                          <div className="text-lg mb-2">กำลังโหลด...</div>
+                          <div className="text-sm">ข้อมูลปี {compareYear}</div>
+                        </div>
+                      </div>
+                    ) : !compareData ? (
+                      <div className="flex items-center justify-center h-full text-muted-foreground">
+                        <div className="text-center">
+                          <div className="text-lg mb-2">ไม่มีข้อมูล</div>
+                          <div className="text-sm">ปี {compareYear}</div>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        {/* คำนวณข้อมูล stacked สำหรับปีเปรียบเทียบ */}
+                        {(() => {
+                          const compareRows: Row[] = Object.values(compareData.rowsByTab).flat().filter((row): row is Row => row !== undefined && row !== null);
+                          
+                          // จัดกลุ่มตามประเภท
+                          const compareCategoryMap = new Map<string, { E: number; H: number; M: number; L: number; N: number }>();
+                          
+                          compareRows.forEach(row => {
+                            let category = "อื่นๆ";
+                            if (row.work && row.work !== "-") category = "งาน";
+                            else if (row.project && row.project !== "-") category = "โครงการ";
+                            else if (row.carry && row.carry !== "-") category = "โครงการกันเงินเหลื่อมปี";
+                            else if (row.activity && row.activity !== "-") category = "กิจกรรม";
+                            else if (row.process && row.process !== "-") category = "กระบวนงาน";
+                            else if (row.system && row.system !== "-") category = "IT/Non-IT";
+                            else if (row.mission && row.mission !== "-") category = "หน่วยงาน";
+
+                            if (!compareCategoryMap.has(category)) {
+                              compareCategoryMap.set(category, { E: 0, H: 0, M: 0, L: 0, N: 0 });
+                            }
+                            
+                            const counts = compareCategoryMap.get(category)!;
+                            const normalizedGrade = row.grade === "-" ? "N" : row.grade;
+                            
+                            if (normalizedGrade === "E") counts.E++;
+                            else if (normalizedGrade === "H") counts.H++;
+                            else if (normalizedGrade === "M") counts.M++;
+                            else if (normalizedGrade === "L") counts.L++;
+                            else if (normalizedGrade === "N" || normalizedGrade === "-") counts.N++;
+                          });
+
+                          // สร้างข้อมูลแท่งซ้อน
+                          const compareStacked: StackedRow[] = Array.from(compareCategoryMap.entries()).map(([name, counts]) => ({
+                            name,
+                            veryHigh: counts.E,
+                            high: counts.H,
+                            medium: counts.M,
+                            low: counts.L,
+                            veryLow: counts.N
+                          }));
+
+                          return (
+                            <ResponsiveContainer>
+                              <BarChart data={compareStacked}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                <XAxis dataKey="name" tickMargin={8} />
+                                <YAxis allowDecimals={false} />
+                                <Tooltip />
+                                <Legend />
+                                <Bar 
+                                  dataKey="veryHigh" 
+                                  stackId="a" 
+                                  name="มากที่สุด (E)" 
+                                  fill={gradeColors.E}
+                                  fillOpacity={activeFilter?.grade === "E" || !activeFilter?.grade ? 1 : 0.3}
+                                  onClick={(data) => {
+                                    if (!onGradeClick || !onCategoryClick || !data?.name) return;
+                                    onGradeClick("E");
+                                    onCategoryClick(data.name);
+                                  }}
+                                  style={{ cursor: (onGradeClick && onCategoryClick) ? 'pointer' : 'default' }}
+                                />
+                                <Bar 
+                                  dataKey="high" 
+                                  stackId="a" 
+                                  name="มาก (H)" 
+                                  fill={gradeColors.H}
+                                  fillOpacity={activeFilter?.grade === "H" || !activeFilter?.grade ? 1 : 0.3}
+                                  onClick={(data) => {
+                                    if (!onGradeClick || !onCategoryClick || !data?.name) return;
+                                    onGradeClick("H");
+                                    onCategoryClick(data.name);
+                                  }}
+                                  style={{ cursor: (onGradeClick && onCategoryClick) ? 'pointer' : 'default' }}
+                                />
+                                <Bar 
+                                  dataKey="medium" 
+                                  stackId="a" 
+                                  name="ปานกลาง (M)" 
+                                  fill={gradeColors.M}
+                                  fillOpacity={activeFilter?.grade === "M" || !activeFilter?.grade ? 1 : 0.3}
+                                  onClick={(data) => {
+                                    if (!onGradeClick || !onCategoryClick || !data?.name) return;
+                                    onGradeClick("M");
+                                    onCategoryClick(data.name);
+                                  }}
+                                  style={{ cursor: (onGradeClick && onCategoryClick) ? 'pointer' : 'default' }}
+                                />
+                                <Bar 
+                                  dataKey="low" 
+                                  stackId="a" 
+                                  name="น้อย (L)" 
+                                  fill={gradeColors.L}
+                                  fillOpacity={activeFilter?.grade === "L" || !activeFilter?.grade ? 1 : 0.3}
+                                  onClick={(data) => {
+                                    if (!onGradeClick || !onCategoryClick || !data?.name) return;
+                                    onGradeClick("L");
+                                    onCategoryClick(data.name);
+                                  }}
+                                  style={{ cursor: (onGradeClick && onCategoryClick) ? 'pointer' : 'default' }}
+                                />
+                                <Bar 
+                                  dataKey="veryLow" 
+                                  stackId="a" 
+                                  name="ไม่ประเมิน (N)" 
+                                  fill={gradeColors.N}
+                                  fillOpacity={activeFilter?.grade === "N" || !activeFilter?.grade ? 1 : 0.3}
+                                  onClick={(data) => {
+                                    if (!onGradeClick || !onCategoryClick || !data?.name) return;
+                                    onGradeClick("N");
+                                    onCategoryClick(data.name);
+                                  }}
+                                  style={{ cursor: (onGradeClick && onCategoryClick) ? 'pointer' : 'default' }}
+                                />
+                              </BarChart>
+                            </ResponsiveContainer>
+                          );
+                        })()}
+                      </>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
         </CardContent>
       </Card>

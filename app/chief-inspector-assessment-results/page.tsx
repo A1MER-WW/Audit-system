@@ -1,4 +1,4 @@
-// app/(your-segment)/risk-assessment/results/page.tsx
+// app/chief-inspector-assessment-results/page.tsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -15,7 +15,7 @@ export type FilterType = {
   category?: string;
 };
 
-type InspectorDataType = {
+type ChiefInspectorDataType = {
   timestamp: string;
   source: string;
   action?: string;
@@ -32,7 +32,7 @@ type InspectorDataType = {
   error?: string;
 };
 
-export default function RiskAssessmentPage() {
+export default function ChiefInspectorAssessmentResultsPage() {
   const router = useRouter();
   const [outerTab, setOuterTab] = useState<
     "summary" | "reorder" | "unitRanking"
@@ -40,6 +40,11 @@ export default function RiskAssessmentPage() {
   const [sortBy, setSortBy] = useState<"index" | "score">("index");
   const [scoreSortDir, setScoreSortDir] = useState<"desc" | "asc">("asc");
   const [filter, setFilter] = useState<FilterType>({});
+  
+  // State สำหรับการเปรียบเทียบปี
+  const [selectedYear, setSelectedYear] = useState<number>(2568);
+  const [compareYear, setCompareYear] = useState<number>(2567);
+  const [showCompareView, setShowCompareView] = useState<boolean>(false);
 
   // State สำหรับเก็บข้อมูลจากตารางเพื่อส่งไปยัง Dashboard
   const [tableData, setTableData] = useState<{
@@ -60,6 +65,11 @@ export default function RiskAssessmentPage() {
     }
   };
 
+  // ฟังก์ชันสำหรับ toggle การเปรียบเทียบ
+  const handleCompareToggle = (enabled: boolean) => {
+    setShowCompareView(enabled);
+  };
+
   // Auto-adjust sorting when outerTab changes
   useEffect(() => {
     if (outerTab === "summary") {
@@ -73,7 +83,7 @@ export default function RiskAssessmentPage() {
 
   // ตรวจสอบว่ามีข้อมูลส่งมาจาก Inspector หรือไม่
   const [dataFromInspector, setDataFromInspector] =
-    useState<InspectorDataType | null>(null);
+    useState<ChiefInspectorDataType | null>(null);
 
   useEffect(() => {
     // ถ้ามี URL parameter หรือ localStorage ที่บ่งบอกว่ามีข้อมูลใหม่ส่งมา
@@ -132,27 +142,36 @@ export default function RiskAssessmentPage() {
             if (typeof window !== "undefined" && window.history.length > 1) {
               window.history.back();
             } else {
-              router.push("/risk-assessment");
+              router.push("/dashboard");
             }
           }}
         >
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <span className="text-sm text-foreground font-medium">
-          การประเมินความเสี่ยงและการจัดลำดับความเสี่ยง
+          ภาพรวมผลการประเมินความเสี่ยงและจัดลำดับความเสี่ยงสำหรับหัวหน้าผู้ตรวจสอบ
         </span>
       </div>
 
-      {/* บล็อกกราฟ/สรุปด้านบน */}
+      {/* หัวข้อหลัก */}
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">
+          ผลการประเมินความเสี่ยงและจัดลำดับความเสี่ยง ปีงบประมาณ {selectedYear}
+        </h1>
+      </div>
+
+      {/* บล็อกกราฟ/สรุปด้านบน - แสดงเสมอ แต่ในโหมดเปรียบเทียบแสดงแค่ปีปัจจุบัน */}
       <div className="space-y-4">
         <DashboardSection
-          year={2568}
+          year={selectedYear}
           statusText={
             dataFromInspector
               ? dataFromInspector.action === "submit_reorder"
                 ? "ได้รับการจัดลำดับความเสี่ยงใหม่แล้ว - รอพิจารณา"
                 : "ได้รับผลการประเมินแล้ว - รอพิจารณา"
-              : "รอหัวหน้าหน่วยตรวจสอบพิจารณา"
+              : showCompareView 
+                ? `ข้อมูลผลการประเมินความเสี่ยงปี ${selectedYear} (เปรียบเทียบกับปี ${compareYear})`
+                : "ข้อมูลผลการประเมินความเสี่ยงปัจจุบัน"
           }
           donut={tableData.donut}
           stacked={tableData.stacked}
@@ -162,6 +181,7 @@ export default function RiskAssessmentPage() {
             setFilter((prev) => ({ ...prev, category }))
           }
           activeFilter={filter}
+          showCompare={false}
         />
 
         <ActiveFilters
@@ -181,6 +201,12 @@ export default function RiskAssessmentPage() {
         onSortDirChange={(dir) => setScoreSortDir(dir)}
         onClearSort={clearSort}
         hideSortOnReorder={true}
+        showCompareToggle={true} // แสดง switch เปรียบเทียบสำหรับ Chief Inspector
+        showCompareView={showCompareView}
+        onCompareToggle={handleCompareToggle}
+        compareYear={compareYear}
+        onCompareYearChange={setCompareYear}
+        availableYears={[2567, 2566, 2565]}
       />
 
       {/* ตาราง/แท็บด้านล่าง คุมด้วย state เดียวกัน */}
@@ -193,6 +219,9 @@ export default function RiskAssessmentPage() {
         onSortByChange={setSortBy}
         onSortDirChange={setScoreSortDir}
         onDataChange={setTableData}
+        showCompare={showCompareView}
+        compareYear={showCompareView ? compareYear : undefined}
+        currentYear={selectedYear}
       />
     </div>
   );

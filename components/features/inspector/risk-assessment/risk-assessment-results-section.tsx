@@ -348,6 +348,9 @@ type ResultsProps = {
     stacked?: any[];
     matrix?: any[];
   }) => void;
+  showCompare?: boolean; // แสดงโหมดเปรียบเทียบ
+  compareYear?: number; // ปีที่จะเปรียบเทียบ
+  currentYear?: number; // ปีปัจจุบัน
 };
 
 function getCategory(r: Row): string {
@@ -361,8 +364,6 @@ function getCategory(r: Row): string {
   return "-";
 }
 
-
-
 /* ======================== Page Component ======================== */
 export default function RiskAssessmentResultsSectionPage({
   fullWidth = true,
@@ -375,6 +376,9 @@ export default function RiskAssessmentResultsSectionPage({
   onSortByChange,
   onSortDirChange,
   onDataChange,
+  showCompare = false,
+  compareYear,
+  currentYear = 2568,
 }: ResultsProps) {
   // โหมดชั้นนอก (ไม่มี UI เปลี่ยน แต่ยังรองรับผ่าน props)
   const [outerTabUncontrolled, setOuterTabUncontrolled] =
@@ -482,63 +486,104 @@ export default function RiskAssessmentResultsSectionPage({
   const dashboardData = useMemo(() => {
     // ใช้เฉพาะ parent rows (เหมือนกับที่แสดงในตาราง)
     const parentRows = evaluatedRows.filter((r) => !r.index.includes("."));
-    
+
     console.log("🔍 Dashboard Data Calculation:", {
       evaluatedRowsCount: evaluatedRows.length,
       parentRowsCount: parentRows.length,
-      parentRows: parentRows.map(r => ({ id: r.id, index: r.index, grade: r.grade, score: r.score })),
-      filter: filter
+      parentRows: parentRows.map((r) => ({
+        id: r.id,
+        index: r.index,
+        grade: r.grade,
+        score: r.score,
+      })),
+      filter: filter,
     });
-    
+
     // นับจำนวนตามเกรด (ใช้เฉพาะ parent rows)
-    const gradeCounts = parentRows.reduce((acc, row) => {
-      // แปลง grade จาก API ให้เป็นระบบเดียวกัน
-      const normalizedGrade = row.grade === "-" ? "N" : row.grade;
-      
-      if (normalizedGrade === "E") acc.excellent++;
-      else if (normalizedGrade === "H") acc.high++;
-      else if (normalizedGrade === "M") acc.medium++;
-      else if (normalizedGrade === "L") acc.low++;
-      else if (normalizedGrade === "N" || normalizedGrade === "-") acc.none++;
-      return acc;
-    }, { excellent: 0, high: 0, medium: 0, low: 0, none: 0 });
+    const gradeCounts = parentRows.reduce(
+      (acc, row) => {
+        // แปลง grade จาก API ให้เป็นระบบเดียวกัน
+        const normalizedGrade = row.grade === "-" ? "N" : row.grade;
+
+        if (normalizedGrade === "E") acc.excellent++;
+        else if (normalizedGrade === "H") acc.high++;
+        else if (normalizedGrade === "M") acc.medium++;
+        else if (normalizedGrade === "L") acc.low++;
+        else if (normalizedGrade === "N" || normalizedGrade === "-") acc.none++;
+        return acc;
+      },
+      { excellent: 0, high: 0, medium: 0, low: 0, none: 0 }
+    );
 
     console.log("📊 Grade Counts:", gradeCounts);
 
     // สร้างข้อมูลโดนัท
     const donut: any[] = [];
     if (gradeCounts.excellent > 0) {
-      donut.push({ key: "excellent", name: "มากที่สุด", value: gradeCounts.excellent, color: "#9333EA", grade: "E" });
+      donut.push({
+        key: "excellent",
+        name: "มากที่สุด",
+        value: gradeCounts.excellent,
+        color: "#9333EA",
+        grade: "E",
+      });
     }
     if (gradeCounts.high > 0) {
-      donut.push({ key: "high", name: "มาก", value: gradeCounts.high, color: "#EF4444", grade: "H" });
+      donut.push({
+        key: "high",
+        name: "มาก",
+        value: gradeCounts.high,
+        color: "#EF4444",
+        grade: "H",
+      });
     }
     if (gradeCounts.medium > 0) {
-      donut.push({ key: "medium", name: "ปานกลาง", value: gradeCounts.medium, color: "#F97316", grade: "M" });
+      donut.push({
+        key: "medium",
+        name: "ปานกลาง",
+        value: gradeCounts.medium,
+        color: "#F97316",
+        grade: "M",
+      });
     }
     if (gradeCounts.low > 0) {
-      donut.push({ key: "low", name: "น้อย", value: gradeCounts.low, color: "#10B981", grade: "L" });
+      donut.push({
+        key: "low",
+        name: "น้อย",
+        value: gradeCounts.low,
+        color: "#10B981",
+        grade: "L",
+      });
     }
     if (gradeCounts.none > 0) {
-      donut.push({ key: "none", name: "ไม่ประเมิน", value: gradeCounts.none, color: "#6B7280", grade: "N" });
+      donut.push({
+        key: "none",
+        name: "ไม่ประเมิน",
+        value: gradeCounts.none,
+        color: "#6B7280",
+        grade: "N",
+      });
     }
-    
+
     console.log("🍩 Donut Data:", donut);
 
     // จัดกลุ่มตามประเภท (ใช้เฉพาะ parent rows)
-    const categoryMap = new Map<string, { E: number; H: number; M: number; L: number; N: number }>();
-    
-    parentRows.forEach(row => {
+    const categoryMap = new Map<
+      string,
+      { E: number; H: number; M: number; L: number; N: number }
+    >();
+
+    parentRows.forEach((row) => {
       const category = getCategory(row);
       if (category === "-") return; // ข้ามรายการที่ไม่มีหมวดหมู่
 
       if (!categoryMap.has(category)) {
         categoryMap.set(category, { E: 0, H: 0, M: 0, L: 0, N: 0 });
       }
-      
+
       const counts = categoryMap.get(category)!;
       const normalizedGrade = row.grade === "-" ? "N" : row.grade;
-      
+
       if (normalizedGrade === "E") counts.E++;
       else if (normalizedGrade === "H") counts.H++;
       else if (normalizedGrade === "M") counts.M++;
@@ -549,22 +594,24 @@ export default function RiskAssessmentResultsSectionPage({
     // สร้างข้อมูลแท่งซ้อน
     const stacked = Array.from(categoryMap.entries()).map(([name, counts]) => ({
       name,
-      veryHigh: counts.E, 
-      high: counts.H,     
-      medium: counts.M,   
-      low: counts.L,      
-      veryLow: counts.N   
+      veryHigh: counts.E,
+      high: counts.H,
+      medium: counts.M,
+      low: counts.L,
+      veryLow: counts.N,
     }));
 
     // สร้างข้อมูลเมทริกซ์
-    const matrix = Array.from(categoryMap.entries()).map(([category, counts]) => ({
-      category,
-      veryLow: counts.N,   
-      low: counts.L,       
-      medium: counts.M,    
-      high: counts.H,      
-      veryHigh: counts.E   
-    }));
+    const matrix = Array.from(categoryMap.entries()).map(
+      ([category, counts]) => ({
+        category,
+        veryLow: counts.N,
+        low: counts.L,
+        medium: counts.M,
+        high: counts.H,
+        veryHigh: counts.E,
+      })
+    );
 
     return { donut, stacked, matrix };
   }, [evaluatedRows]); // ยังคงใช้ evaluatedRows เป็น dependency เพราะ parentRows มาจากมัน
@@ -581,14 +628,19 @@ export default function RiskAssessmentResultsSectionPage({
   // เฉพาะ parent (index ไม่มี “.”) + คงลำดับเดิม
   const filteredParents = useMemo(() => {
     const parents = evaluatedRows.filter((r) => !r.index.includes("."));
-    
+
     console.log("📋 Table Data (filteredParents):", {
       count: parents.length,
-      parents: parents.map(r => ({ id: r.id, index: r.index, grade: r.grade, score: r.score })),
+      parents: parents.map((r) => ({
+        id: r.id,
+        index: r.index,
+        grade: r.grade,
+        score: r.score,
+      })),
       sortBy: sortBy,
-      sortDir: sortDir
+      sortDir: sortDir,
     });
-    
+
     // เรียงตาม sortBy และ sortDir
     if (sortBy === "index") {
       // เรียงตามลำดับ index
@@ -721,7 +773,7 @@ export default function RiskAssessmentResultsSectionPage({
             </Tabs>
           </div>
 
-          {outerTab === "summary" && (
+          {!showCompare && outerTab === "summary" && (
             <SummarySection
               tab={tab}
               parents={paginatedParents} // <- ได้จาก filteredParents ซึ่งมาจาก evaluatedRows
@@ -734,7 +786,7 @@ export default function RiskAssessmentResultsSectionPage({
             />
           )}
 
-          {outerTab === "reorder" && (
+          {!showCompare && outerTab === "reorder" && (
             <ReorderSection
               tab={tab}
               parents={orderedParents}
@@ -744,7 +796,7 @@ export default function RiskAssessmentResultsSectionPage({
             />
           )}
 
-          {outerTab === "unitRanking" && (
+          {!showCompare && outerTab === "unitRanking" && (
             <UnitRankingSection
               tab={tab}
               parents={paginatedParents}
@@ -755,7 +807,22 @@ export default function RiskAssessmentResultsSectionPage({
             />
           )}
 
-          {(outerTab === "summary" || outerTab === "reorder") &&
+          {showCompare && (
+            <CompareSection
+              tab={tab}
+              currentYear={currentYear}
+              compareYear={compareYear}
+              currentData={paginatedParents}
+              allCurrentRows={evaluatedRows}
+              isLoading={isLoading}
+              error={!!error}
+            />
+          )}
+
+          {(outerTab === "summary" ||
+            outerTab === "reorder" ||
+            outerTab === "unitRanking") &&
+            !showCompare &&
             shouldPaginate && (
               <div className="flex flex-col md:flex-row items-center justify-between gap-3 pt-2">
                 <div className="text-sm text-muted-foreground">
@@ -1100,9 +1167,7 @@ function ReorderSection(props: {
                           ลำดับเปลี่ยนแปลง
                         </Badge>
                       ) : (
-                        <span className="text-muted-foreground">
-                          -
-                        </span>
+                        <span className="text-muted-foreground">-</span>
                       )}
                     </TableCell>
                   </TableRow>
@@ -1145,7 +1210,7 @@ function UnitRankingSection(props: {
         // น้อย ไป มาก (คะแนนต่ำสุดไปสูงสุด)
         rows.sort((a, b) => (a.score ?? 0) - (b.score ?? 0));
       }
-      
+
       const catSet = new Set(rows.map(getCategory));
       const sumMax = rows.reduce(
         (acc, r) =>
@@ -1160,7 +1225,7 @@ function UnitRankingSection(props: {
       );
       return { unit, rows, categories: catSet, sumMax, sumScore };
     });
-    
+
     // เรียงหน่วยงานตาม sortDir
     if (sortDir === "desc") {
       // มาก ไป น้อย (คะแนนรวมสูงสุดไปต่ำสุด)
@@ -1301,8 +1366,6 @@ function UnitRankingSection(props: {
   );
 }
 
-
-
 /* ======================== tiny components ======================== */
 function RowLoading({ colSpan }: { colSpan: number }) {
   return (
@@ -1361,5 +1424,204 @@ function ExpandBtn({
         <ChevronDown className="h-4 w-4" />
       )}
     </Button>
+  );
+}
+
+/* ======================== Compare Section ======================== */
+function CompareSection(props: {
+  tab: TabKey;
+  currentYear: number;
+  compareYear?: number;
+  currentData: any[];
+  allCurrentRows: Row[];
+  isLoading: boolean;
+  error: boolean;
+}) {
+  const {
+    currentYear,
+    compareYear,
+    currentData,
+    allCurrentRows,
+    isLoading,
+    error,
+  } = props;
+
+  // ดึงข้อมูลปีเปรียบเทียบ
+  const {
+    data: compareData,
+    error: compareError,
+    isLoading: compareLoading,
+  } = useSWR<ApiResponse>(
+    compareYear
+      ? `/api/chief-risk-assessment-results?year=${compareYear}`
+      : null,
+    fetcher
+  );
+
+  // ประมวลผลข้อมูลปีเปรียบเทียบ
+  const compareRows = useMemo(() => {
+    if (!compareData?.rowsByTab) return [];
+
+    // ตรวจสอบว่ามี "all" tab หรือไม่โดยใช้ any type casting
+    const rowsByTabAny = compareData.rowsByTab as any;
+    if (rowsByTabAny.all && Array.isArray(rowsByTabAny.all)) {
+      return rowsByTabAny.all.filter(
+        (row: any): row is Row => row !== undefined && row !== null
+      );
+    }
+
+    // ถ้าไม่มี "all" tab ให้รวมทุก tab แล้ว deduplicate by ID
+    const allRows = Object.values(compareData.rowsByTab)
+      .flat()
+      .filter((row): row is Row => row !== undefined && row !== null);
+    const uniqueRows = new Map<string, Row>();
+    allRows.forEach((row) => {
+      if (!uniqueRows.has(row.id)) {
+        uniqueRows.set(row.id, row);
+      }
+    });
+    return Array.from(uniqueRows.values());
+  }, [compareData]);
+
+  if (isLoading || compareLoading) {
+    return (
+      <div className="text-center py-8">
+        <div className="text-lg font-medium mb-2">
+          กำลังโหลดข้อมูลเปรียบเทียบ...
+        </div>
+        <div className="text-sm text-muted-foreground">
+          กำลังดึงข้อมูลปี {currentYear} และ {compareYear}
+        </div>
+      </div>
+    );
+  }
+
+  if (error || compareError) {
+    return (
+      <div className="text-center py-8 text-red-600">
+        <div className="text-lg font-medium mb-2">เกิดข้อผิดพลาด</div>
+        <div className="text-sm">ไม่สามารถโหลดข้อมูลเปรียบเทียบได้</div>
+      </div>
+    );
+  }
+
+  if (!compareYear || compareRows.length === 0) {
+    return (
+      <div className="text-center py-8 text-muted-foreground">
+        <div className="text-lg font-medium mb-2">ไม่มีข้อมูลเปรียบเทียบ</div>
+        <div className="text-sm">ไม่พบข้อมูลสำหรับปี {compareYear}</div>
+      </div>
+    );
+  }
+
+  // สร้างตารางเปรียบเทียบแบบเคียงข้างกัน
+  return (
+    <div className="space-y-6">
+      {/* หัวข้อการเปรียบเทียบ */}
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-semibold">
+          การเปรียบเทียบข้อมูลประเมินความเสี่ยง
+        </h3>
+        <div className="flex items-center gap-4 text-sm">
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 bg-blue-500 rounded"></div>
+            <span>
+              ปี {currentYear} ({allCurrentRows.length} รายการ)
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 bg-orange-500 rounded"></div>
+            <span>
+              ปี {compareYear} ({compareRows.length} รายการ)
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* ตารางเปรียบเทียบแบบเคียงข้างกัน - ปีก่อนทางซ้าย, ปีปัจจุบันทางขวา */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* ตารางปีเปรียบเทียบ (ปีก่อน) - ทางซ้าย */}
+        <Card>
+          <div className="bg-orange-50 px-4 py-3 border-b">
+            <h4 className="font-medium text-orange-900">
+              ปีงบประมาณ {compareYear}
+            </h4>
+          </div>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-12">ลำดับ</TableHead>
+                    <TableHead className="min-w-[80px]">หน่วยงาน</TableHead>
+                    <TableHead className="min-w-[120px]">ภารกิจ</TableHead>
+                    <TableHead className="min-w-[100px]">งาน</TableHead>
+                    <TableHead className="w-16">คะแนน</TableHead>
+                    <TableHead className="w-16">เกรด</TableHead>
+                    <TableHead className="w-20">สถานะ</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {compareRows.map((row: Row, index: number) => (
+                    <TableRow key={`compare-${row.id}`}>
+                      <TableCell>{index + 1}</TableCell>
+                      <TableCell>{row.unit}</TableCell>
+                      <TableCell>{row.mission}</TableCell>
+                      <TableCell>{row.work}</TableCell>
+                      <TableCell>{row.score}</TableCell>
+                      <TableCell>
+                        <GradeBadge grade={row.grade} />
+                      </TableCell>
+                      <TableCell>{row.status}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* ตารางปีปัจจุบัน - ทางขวา */}
+        <Card>
+          <div className="bg-blue-50 px-4 py-3 border-b">
+            <h4 className="font-medium text-blue-900">
+              ปีงบประมาณ {currentYear}
+            </h4>
+          </div>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-12">ลำดับ</TableHead>
+                    <TableHead className="min-w-[80px]">หน่วยงาน</TableHead>
+                    <TableHead className="min-w-[120px]">ภารกิจ</TableHead>
+                    <TableHead className="min-w-[100px]">งาน</TableHead>
+                    <TableHead className="w-16">คะแนน</TableHead>
+                    <TableHead className="w-16">เกรด</TableHead>
+                    <TableHead className="w-20">สถานะ</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {allCurrentRows.map((row, index) => (
+                    <TableRow key={`current-${row.id}`}>
+                      <TableCell>{index + 1}</TableCell>
+                      <TableCell>{row.unit}</TableCell>
+                      <TableCell>{row.mission}</TableCell>
+                      <TableCell>{row.work}</TableCell>
+                      <TableCell>{row.score}</TableCell>
+                      <TableCell>
+                        <GradeBadge grade={row.grade} />
+                      </TableCell>
+                      <TableCell>{row.status}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
   );
 }
