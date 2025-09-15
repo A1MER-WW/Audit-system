@@ -210,7 +210,7 @@ export function NavProjects({
                   </SidebarMenuSub>
 
                   <SidebarMenuSub>
-                    <a href="">
+                    <a href="/audit-program-risk-evaluation">
                       <span className="text-sm">
                         ประเมินความเสี่ยงและการจัดลำดับความเสี่ยง
                       </span>
