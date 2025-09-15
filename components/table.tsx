@@ -361,10 +361,9 @@ export function DataTableDemo() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-        <DropdownMenu>
-           
+
+        <DropdownMenu> 
           <DropdownMenuTrigger asChild>
-            
             <Button variant="outline" className="ml-auto">
               คอลัมน์ <ChevronDown />
             </Button>
