@@ -26,40 +26,40 @@ export default function AudittopicsPage() {
   const [signatureData, setSignatureData] = React.useState<{name: string; signature: string | null}>({name: "", signature: null});
   const [isOtpValid, setIsOtpValid] = React.useState<boolean>(false);
   const [signatureChoice, setSignatureChoice] = React.useState<'new' | 'saved' | null>(null);
-  const [files, setFiles] = React.useState<File[] | undefined>();
+  const [files, ] = React.useState<File[] | undefined>();
   const [auditData2567, setAuditData2567] = React.useState<AuditData[]>([]);
   const [auditData2568, setAuditData2568] = React.useState<AuditData[]>([]);
   const [hasData, setHasData] = React.useState(false);
-  const [editingItem, setEditingItem] = React.useState<AuditData | null>(null);
-  const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
+  // const [editingItem, setEditingItem] = React.useState<AuditData | null>(null);
+  // const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
   
  
-    const chartData = [
-    { name: 'หน่วยงาน', ปีงบประมาณ2567: 4, ปีงบประมาณ2568: 4 },
-    { name: 'งาน', ปีงบประมาณ2567: 8, ปีงบประมาณ2568: 10 },
-    { name: 'โครงการ', ปีงบประมาณ2567: 6, ปีงบประมาณ2568: 8 },
-    { name: 'โครงการลงทุนสาธารณูปโภค', ปีงบประมาณ2567: 10, ปีงบประมาณ2568: 8 },
-    { name: 'กิจกรรม', ปีงบประมาณ2567: 14, ปีงบประมาณ2568: 16 },
-    { name: 'การบริหาร', ปีงบประมาณ2567: 16, ปีงบประมาณ2568: 18 },
-    { name: 'IT และ Non-IT', ปีงบประมาณ2567: 18, ปีงบประมาณ2568: 20 }
-  ];
+    // const chartData = [
+    //   { name: 'หน่วยงาน', ปีงบประมาณ2567: 4, ปีงบประมาณ2568: 4 },
+    //   { name: 'งาน', ปีงบประมาณ2567: 8, ปีงบประมาณ2568: 10 },
+    //   { name: 'โครงการ', ปีงบประมาณ2567: 6, ปีงบประมาณ2568: 8 },
+    //   { name: 'โครงการลงทุนสาธารณูปโภค', ปีงบประมาณ2567: 10, ปีงบประมาณ2568: 8 },
+    //   { name: 'กิจกรรม', ปีงบประมาณ2567: 14, ปีงบประมาณ2568: 16 },
+    //   { name: 'การบริหาร', ปีงบประมาณ2567: 16, ปีงบประมาณ2568: 18 },
+    //   { name: 'IT และ Non-IT', ปีงบประมาณ2567: 18, ปีงบประมาณ2568: 20 }
+    // ];
 
   // Sample data for demonstration (will be populated from Excel file)
-  const sampleData2567 = [
+  const sampleData2567 = React.useMemo(() => [
     { id: 1, department: "สกท.", topic: "งานหรการคณะกรรมการการคำนวณคะแนนราง งเบี้ยยังชีพผู้สูงอายุ", link: "รายการข้อมูลงานจากแอปพลิเคชันการประเมินและติดตาม" },
     { id: 2, department: "สกท.", topic: "ปฏิบัติงานตรวจสอบสำนักงาน", link: "" },
     { id: 3, department: "สกท.", topic: "ปฏิบัติงานตรวจสอบสำนักงาน", link: "" },
     { id: 4, department: "สกท.", topic: "ปฏิบัติงานตรวจสอบสำนักงาน", link: "" },
     { id: 5, department: "สกท.", topic: "ด้านริหารการเก็บรักษาเงินกำไรสะสมการพัฒนากิจการพลังงานนอกจากไฟฟ้า", link: "" },
-  ];
+  ], []);
 
-  const sampleData2568 = [
+  const sampleData2568 = React.useMemo(() => [
     { id: 1, department: "สกท.", topic: "งานหรการคณะกรรมการการคำนวณคะแนนราง งเบี้ยยังชีพผู้สูงอายุ", score: "3/45", note: "ทำเสียบการหวยจับฉลากรางฮคุ้ม" },
     { id: 2, department: "สกท.", topic: "บการทำให้เป็นจนการตรวจรับเคลื่อนลำเคร วาารประกอบ ", score: "3/45", note: "ทำเสียบการหวยจับฉลากรางฮคุ้ม" },
     { id: 3, department: "สกท.", topic: "ปฏิบัติงานตรวจสอบสำนักงาน", score: "3/45", note: "" },
     { id: 4, department: "สกท.", topic: "ปฏิบัติงานตรวจสอบสำนักงาน", score: "", note: "" },
     { id: 5, department: "สกท.", topic: "ด้านริหารการเก็บรักษาเงินกำไรสะสมการพัฒนากิจการพลังงานนอกจากไฟฟ้า", score: "3/45", note: "" },
-  ];
+  ], []);
 
   // Simulate loading data from Excel file when files are uploaded
   React.useEffect(() => {
@@ -68,7 +68,7 @@ export default function AudittopicsPage() {
       setAuditData2568(sampleData2568);
       setHasData(true);
     }
-  }, [files]);
+  }, [files, sampleData2567, sampleData2568]);
 
   const handleFileUpload = (acceptedFiles: File[]) => {
     if (acceptedFiles.length > 0) {
@@ -108,26 +108,26 @@ export default function AudittopicsPage() {
     setIsOtpValid(value === "123456" || value.length === 6);
   };
 
-   const handleEditItem = (item: AuditData) => {
-    setEditingItem(item);
-    setIsEditDialogOpen(true);
-  };
-  const handleSaveEdit = () => {
-    if (editingItem) {
-      console.log('Saving edited item:', editingItem);
-      // Here you would typically update the data in your backend
+   // const handleEditItem = (item: AuditData) => {
+   //   setEditingItem(item);
+   //   setIsEditDialogOpen(true);
+   // };
+  // const handleSaveEdit = () => {
+  //   if (editingItem) {
+  //     console.log('Saving edited item:', editingItem);
+  //     // Here you would typically update the data in your backend
       
-      // Update the local state
-      setAuditData2568(prev => 
-        prev.map(item => 
-          item.id === editingItem.id ? editingItem : item
-        )
-      );
+  //     // Update the local state
+  //     setAuditData2568(prev => 
+  //       prev.map(item => 
+  //         item.id === editingItem.id ? editingItem : item
+  //       )
+  //     );
       
-      setIsEditDialogOpen(false);
-      setEditingItem(null);
-    }
-  };
+  //     setIsEditDialogOpen(false);
+  //     setEditingItem(null);
+  //   }
+  // };
 
   const renderApprovalStep = () => {
     switch (approvalStep) {
@@ -587,7 +587,7 @@ export default function AudittopicsPage() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => handleEditItem(item)}
+                            onClick={() => console.log('Edit item:', item)}
                             className="h-8 w-8 p-0 hover:bg-blue-50"
                           >
                             <Edit className="h-4 w-4 text-blue-600" />

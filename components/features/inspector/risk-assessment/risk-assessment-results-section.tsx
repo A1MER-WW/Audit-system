@@ -1,8 +1,8 @@
 // app/(your-segment)/risk-assessment/results/page.tsx
 "use client";
 
-import { Fragment, useMemo, useState, useEffect } from "react";
-import useSWR, { mutate } from "swr";
+import { Fragment, useMemo, useState, useEffect, useCallback } from "react";
+import useSWR from "swr";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -24,7 +24,6 @@ import { ChevronDown, ChevronUp, FileText, GripVertical } from "lucide-react";
 import Link from "next/link";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ChangeOrderReasonDialog from "../../popup/reason-for-change";
-import { useSearchParams } from "next/navigation";
 
 /* ======================== Types ======================== */
 export type TabKey =
@@ -554,9 +553,9 @@ type ResultsProps = {
   onSortByChange?: (by: "index" | "score" | "unit") => void;
   onSortDirChange?: (dir: "desc" | "asc") => void;
   onDataChange?: (data: {
-    donut?: any[];
-    stacked?: any[];
-    matrix?: any[];
+    donut?: Array<{ key: string; name: string; value: number; color: string; grade: string }>;
+    stacked?: Array<{ name: string; veryHigh: number; high: number; medium: number; low: number; veryLow: number }>;
+    matrix?: Array<{ category: string; veryLow: number; low: number; medium: number; high: number; veryHigh: number }>;
   }) => void;
   showCompare?: boolean; // แสดงโหมดเปรียบเทียบ
   compareYear?: number; // ปีที่จะเปรียบเทียบ
@@ -579,30 +578,24 @@ export default function RiskAssessmentResultsSectionPage({
   fullWidth = true,
   className = "",
   outerTab: outerTabProp,
-  onOuterTabChange,
   filter,
   sortBy = "score",
   sortDir = "desc",
-  onSortByChange,
-  onSortDirChange,
+
   onDataChange,
   showCompare = false,
   compareYear,
   currentYear = 2568,
 }: ResultsProps) {
-  const searchParams = useSearchParams();
-  const tx = searchParams.get("tx") || ""; // 👈 รับ nonce
   // โหมดชั้นนอก (ไม่มี UI เปลี่ยน แต่ยังรองรับผ่าน props)
-  const [outerTabUncontrolled, setOuterTabUncontrolled] =
+  const [outerTabUncontrolled] =
     useState<OuterTab>("summary");
   const outerTab = outerTabProp ?? outerTabUncontrolled;
-  const setOuterTab = onOuterTabChange ?? setOuterTabUncontrolled;
 
   // ชนิดข้อมูลชั้นใน (ตัด UI ออก เหลือค่าเริ่มต้น “all”)
   const [tab, setTab] = useState<TabKey>("all");
 
   const [year] = useState("2568");
-  const [refreshKey, setRefreshKey] = useState(0);
 
   const PAGE_SIZE = 200;
   const [page, setPage] = useState(1);
@@ -652,7 +645,7 @@ export default function RiskAssessmentResultsSectionPage({
     }
   }, [data, isLoading, error]);
 
-  const getTabRows = (k: Exclude<TabKey, "all">): Row[] => rowsByTab[k] ?? [];
+  const getTabRows = useCallback((k: Exclude<TabKey, "all">): Row[] => rowsByTab[k] ?? [], [rowsByTab]);
 
   const allRows: Row[] = useMemo(
     () => [
@@ -664,7 +657,7 @@ export default function RiskAssessmentResultsSectionPage({
       ...getTabRows("unit"),
       ...getTabRows("it"),
     ],
-    [rowsByTab]
+    [getTabRows]
   );
 
   // เดิม: const rawRows = useMemo(() => (tab === "all" ? allRows : getTabRows(tab)), [tab, allRows, rowsByTab]);
@@ -681,7 +674,7 @@ export default function RiskAssessmentResultsSectionPage({
     }
 
     return rows;
-  }, [tab, allRows, rowsByTab, filter]);
+  }, [tab, allRows, getTabRows, filter]);
 
   // === Group rows by duplicated topic ===
   const groupingEnabled = true;
@@ -730,7 +723,7 @@ export default function RiskAssessmentResultsSectionPage({
     });
 
     return { parentRows: parents, groupChildren: childrenMap };
-  }, [rawRows, tab]);
+  }, [rawRows, tab, groupingEnabled]);
 
   // ✅ NEW: Map คำนวณคะแนน/เกรดให้ทุกแถว
   const evaluatedRows: Row[] = useMemo(
@@ -780,7 +773,7 @@ export default function RiskAssessmentResultsSectionPage({
     console.log("📊 Grade Counts:", gradeCounts);
 
     // สร้างข้อมูลโดนัท
-    const donut: any[] = [];
+    const donut: Array<{ key: string; name: string; value: number; color: string; grade: string }> = [];
     if (gradeCounts.excellent > 0) {
       donut.push({
         key: "excellent",
@@ -876,7 +869,7 @@ export default function RiskAssessmentResultsSectionPage({
     );
 
     return { donut, stacked, matrix };
-  }, [evaluatedRows]); // ยังคงใช้ evaluatedRows เป็น dependency เพราะ parentRows มาจากมัน
+  }, [evaluatedRows, filter]); // ยังคงใช้ evaluatedRows เป็น dependency เพราะ parentRows มาจากมัน
 
   // ส่งข้อมูลไปยัง parent component
   useEffect(() => {
@@ -907,10 +900,10 @@ export default function RiskAssessmentResultsSectionPage({
     const usedSortBy = outerTab === "summary" ? "index" : sortBy || "index";
     const usedSortAsc = outerTab === "summary" ? true : sortDir === "asc";
 
-    parents.sort((a: any, b: any) => {
+    parents.sort((a: { score?: number; index?: string; unit?: string }, b: { score?: number; index?: string; unit?: string }) => {
       const dir = usedSortAsc ? 1 : -1;
 
-      if (usedSortBy === "score") return (a.score - b.score) * dir;
+      if (usedSortBy === "score") return ((a.score || 0) - (b.score || 0)) * dir;
       if (sortBy === "unit")
         return String(a.unit).localeCompare(String(b.unit)) * dir;
 
@@ -980,28 +973,8 @@ export default function RiskAssessmentResultsSectionPage({
     return orderIds.map((id) => map.get(id)!).filter(Boolean);
   }, [orderIds, paginatedParents, data?.reorderInfo]);
 
-  const ensureOrderInit = () => {
-    if (!orderIds) setOrderIds(paginatedParents.map((r) => r.id));
-  };
-  const moveUp = (id: string) => {
-    ensureOrderInit();
-    setOrderIds((prev) => {
-      const arr = [...(prev ?? paginatedParents.map((r) => r.id))];
-      const i = arr.indexOf(id);
-      if (i > 0) [arr[i - 1], arr[i]] = [arr[i], arr[i - 1]];
-      return arr;
-    });
-  };
-  const moveDown = (id: string) => {
-    ensureOrderInit();
-    setOrderIds((prev) => {
-      const arr = [...(prev ?? paginatedParents.map((r) => r.id))];
-      const i = arr.indexOf(id);
-      if (i >= 0 && i < arr.length - 1)
-        [arr[i + 1], arr[i]] = [arr[i], arr[i + 1]];
-      return arr;
-    });
-  };
+
+
 
   return (
     <div
@@ -1085,7 +1058,6 @@ export default function RiskAssessmentResultsSectionPage({
               tab={tab}
               currentYear={currentYear}
               compareYear={compareYear}
-              currentData={paginatedParents}
               allCurrentRows={evaluatedRows}
               isLoading={isLoading}
               error={!!error}
@@ -1515,8 +1487,8 @@ function UnitRankingSection(props: {
   sortDir: "desc" | "asc";
 }) {
   const { tab, allRows, isLoading, error, sortDir } = props;
-  const topicOf = (r: Row) => topicByTab(r, tab) || "-";
-  const isTopicRow = (r: Row) => topicOf(r) !== "-" && topicOf(r).trim() !== "";
+  const topicOf = useCallback((r: Row) => topicByTab(r, tab) || "-", [tab]);
+  const isTopicRow = useCallback((r: Row) => topicOf(r) !== "-" && topicOf(r).trim() !== "", [topicOf]);
 
   const groupedByUnit = useMemo(() => {
     const m = new Map<string, Row[]>();
@@ -1560,7 +1532,7 @@ function UnitRankingSection(props: {
       result.sort((a, b) => a.sumScore - b.sumScore);
     }
     return result;
-  }, [allRows, tab, sortDir]);
+  }, [allRows, sortDir, isTopicRow]);
 
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
@@ -1757,7 +1729,7 @@ function CompareSection(props: {
   tab: TabKey;
   currentYear: number;
   compareYear?: number;
-  currentData: any[];
+
   allCurrentRows: Row[];
   isLoading: boolean;
   error: boolean;
@@ -1765,7 +1737,6 @@ function CompareSection(props: {
   const {
     currentYear,
     compareYear,
-    currentData,
     allCurrentRows,
     isLoading,
     error,
@@ -1788,10 +1759,10 @@ function CompareSection(props: {
     if (!compareData?.rowsByTab) return [];
 
     // ตรวจสอบว่ามี "all" tab หรือไม่โดยใช้ any type casting
-    const rowsByTabAny = compareData.rowsByTab as any;
+    const rowsByTabAny = compareData.rowsByTab as Record<string, unknown>;
     if (rowsByTabAny.all && Array.isArray(rowsByTabAny.all)) {
-      return rowsByTabAny.all.filter(
-        (row: any): row is Row => row !== undefined && row !== null
+      return (rowsByTabAny.all as unknown[]).filter(
+        (row: unknown): row is Row => row !== undefined && row !== null
       );
     }
 

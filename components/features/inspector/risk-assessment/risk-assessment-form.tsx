@@ -21,13 +21,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+
 import {
   Tooltip,
   TooltipContent,
@@ -51,8 +45,6 @@ import { toast } from "sonner";
 import {
   useAnnualEvaluations,
   ApiAnnualEvaluation,
-  RiskEvaluation,
-  AuditTopic,
 } from "@/hooks/useAnnualEvaluations";
 
 /** ---------- Types ---------- */
@@ -123,53 +115,16 @@ const fetcher = async (url: string) => {
   const r = await fetch(url);
   const j = await r.json().catch(() => ({}));
   if (!r.ok) {
-    const err: any = new Error(j?.message || "error");
+    const err = new Error(j?.message || "error") as Error & { status?: number };
     err.status = r.status;
     throw err;
   }
   return j;
 };
 
-const STATUS_LABELS = {
-  DONE: "ประเมินแล้ว",
-  IN_PROGRESS: "กำลังประเมิน",
-  NOT_STARTED: "ยังไม่ได้ประเมิน",
-} as const;
 
-const gradeFromScore = (s?: number) => {
-  if (s == null) return "-"; // ไม่มีคะแนน → แสดง "-"
-  const v = Number(s);
-  if (v >= 80) return "E";
-  if (v >= 60) return "H";
-  if (v >= 40) return "M";
-  if (v >= 20) return "L";
-  return "N";
-};
 
-function normalizeStatus(raw?: string, hasDoc?: boolean, score?: number) {
-  if (hasDoc && (score ?? 0) > 0) return STATUS_LABELS.DONE;
-  const t = String(raw || "").toUpperCase();
-  if (
-    [
-      "DONE",
-      "COMPLETED",
-      "FINISHED",
-      "APPROVED",
-      "SUBMITTED",
-      "EVALUATED",
-      "EVALUATION_COMPLETED",
-    ].includes(t)
-  )
-    return STATUS_LABELS.DONE;
-  if (["IN_PROGRESS", "DOING", "DRAFT", "STARTED", "WORKING"].includes(t))
-    return STATUS_LABELS.IN_PROGRESS;
-  if (
-    !t ||
-    ["NOT_STARTED", "PENDING", "NEW", "TO_DO", "UNASSESSED"].includes(t)
-  )
-    return STATUS_LABELS.NOT_STARTED;
-  return raw || STATUS_LABELS.NOT_STARTED;
-}
+
 
 /** ---------- สร้าง Groups และ children (ให้ตรงกับหน้าบน) ---------- */
 type LeafRow = {
@@ -223,7 +178,7 @@ export default function RiskAssessmentFormPage({ id }: { id: string }) {
     data: {
       likelihood: LikertOption[];
       impact: LikertOption[];
-      perDimension?: any[];
+      perDimension?: Record<string, unknown>[];
     };
   }>("/api/risk-scales", fetcher);
 
@@ -240,7 +195,7 @@ export default function RiskAssessmentFormPage({ id }: { id: string }) {
     dimKey: string,
     kind: "likelihood" | "impact"
   ): LikertOption[] {
-    const d = (PER_DIMENSION as any[]).find((x) => x.key === dimKey);
+    const d = (PER_DIMENSION as Array<{ key: string; likelihood?: LikertOption[]; impact?: LikertOption[]; options?: LikertOption[] }>).find((x) => x.key === dimKey);
     if (kind === "likelihood" && d?.likelihood?.length) return d.likelihood;
     if (kind === "impact" && d?.impact?.length) return d.impact;
     if (d?.options?.length) return d.options;
@@ -265,16 +220,19 @@ export default function RiskAssessmentFormPage({ id }: { id: string }) {
       : undefined;
 
   /** meta ของบรรทัดปัจจุบัน (แสดงบนหัวตาราง) */
-  const meta: RowMeta | undefined =
-    currentIdx >= 0
-      ? {
-          id,
-          index: leafRows[currentIdx].index,
-          unit: leafRows[currentIdx].unit,
-          category: leafRows[currentIdx].categoryName,
-          topic: leafRows[currentIdx].topic,
-        }
-      : undefined;
+  const meta: RowMeta | undefined = useMemo(
+    () =>
+      currentIdx >= 0
+        ? {
+            id,
+            index: leafRows[currentIdx].index,
+            unit: leafRows[currentIdx].unit,
+            category: leafRows[currentIdx].categoryName,
+            topic: leafRows[currentIdx].topic,
+          }
+        : undefined,
+    [currentIdx, id, leafRows]
+  );
 
   /** Fallback: ดึง meta จาก API เดิมถ้าไม่เจอใน annual evaluations */
   const { data: fallbackMetaRes } = useSWR<{ message: string; data: RowMeta }>(
@@ -302,7 +260,7 @@ export default function RiskAssessmentFormPage({ id }: { id: string }) {
     if (leafRows.length > 0) {
       console.log("  📝 First few leafRows:", leafRows.slice(0, 3));
     }
-  }, [id, leafRows, currentIdx, meta, currentCategory]);
+  }, [id, leafRows, currentIdx, meta, currentCategory, effectiveMeta, fallbackMetaRes?.data]);
 
   /** ฟอร์ม (อ่าน/สร้าง/บันทึก) */
   const {
@@ -319,7 +277,7 @@ export default function RiskAssessmentFormPage({ id }: { id: string }) {
 
   useEffect(() => {
     (async () => {
-      if (formErr && (formErr as any).status === 404) {
+      if (formErr && 'status' in formErr && (formErr as { status: number }).status === 404) {
         const res = await fetch(`/api/risk-assessment/${id}/form`, {
           method: "POST",
         });
@@ -332,7 +290,7 @@ export default function RiskAssessmentFormPage({ id }: { id: string }) {
   useEffect(() => {
     if (formErr) {
       console.log("❌ Form Error:", formErr);
-      if ((formErr as any).status === 404) {
+      if ('status' in formErr && (formErr as { status: number }).status === 404) {
         console.log("📝 Form not found, will try to create new one");
       }
     }
@@ -343,7 +301,7 @@ export default function RiskAssessmentFormPage({ id }: { id: string }) {
       
       // Debug visible groups calculation
       if (form.groups) {
-        form.groups.forEach((g, idx) => {
+        form.groups.forEach((g) => {
           const visibleItems = g.items.filter((it) => {
             const cats = it.categories ?? [];
             if (!cats.length) return true;
@@ -384,8 +342,7 @@ export default function RiskAssessmentFormPage({ id }: { id: string }) {
     }
   }, [form, id, mutate]);
 
-  /** คะแนน → เกรด */
-  const SCORE_RULES = { highMin: 60, mediumMin: 41 };
+
   // คะแนน composite เป็นเปอร์เซ็นต์ 0..100
   const toGrade = (s: number): "N" | "L" | "M" | "H" | "E" => {
     if (s >= 80) return "E";
@@ -395,22 +352,7 @@ export default function RiskAssessmentFormPage({ id }: { id: string }) {
     return "N"; // 0–19
   };
 
-  /** ตรวจว่ากรอกครบของมิติ/รายการที่เกี่ยวข้องกับ category นี้หรือยัง */
-  function isFormComplete() {
-    if (!form) return false;
-    const relevantItems = form.groups.flatMap((g) =>
-      g.items.filter((it) => {
-        const cats = it.categories ?? [];
-        return cats.length === 0 || cats.includes(currentCategory);
-      })
-    );
-    const allFilled =
-      relevantItems.length > 0 &&
-      relevantItems.every(
-        (it) => (it.values?.chance ?? 0) > 0 && (it.values?.impact ?? 0) > 0
-      );
-    return allFilled;
-  }
+
 
   function setItemValue(
     groupIndex: number,
@@ -838,7 +780,7 @@ export default function RiskAssessmentFormPage({ id }: { id: string }) {
     );
   }
 
-  function getGroupStatus(itemsVisible: { it: any }[]) {
+  function getGroupStatus(itemsVisible: { it: { values?: { chance?: number; impact?: number } } }[]) {
     const total = itemsVisible.length;
     const done =
       total > 0 &&
@@ -954,7 +896,7 @@ export default function RiskAssessmentFormPage({ id }: { id: string }) {
           </div>
         </div>
       )}
-      {formErr && (formErr as any).status === 404 && (
+      {formErr && 'status' in formErr && (formErr as { status: number }).status === 404 && (
         <div className="flex items-center space-x-3 p-4 bg-blue-50 rounded-lg border border-blue-200">
           <div className="animate-pulse rounded-full h-5 w-5 bg-blue-300"></div>
           <div className="text-sm text-blue-700">
@@ -1054,7 +996,7 @@ export default function RiskAssessmentFormPage({ id }: { id: string }) {
                                       setItemValue(group.gi, ii, { impact: v })
                                     }
                                     options={
-                                      levelsToOptions((it as any).levels) ??
+                                      levelsToOptions((it as { levels?: Levels }).levels) ??
                                       getOptionsFor(group.id, "impact")
                                     }
                                     context={{

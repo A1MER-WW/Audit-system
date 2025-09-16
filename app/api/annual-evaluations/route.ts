@@ -876,9 +876,9 @@ function syncWithMockDatabase(
         const allDone =
           evaluatedDepartments.length > 0 &&
           evaluatedDepartments.every((d) => d.status === "ประเมินแล้ว");
-        const someDone = evaluatedDepartments.some(
-          (d) => d.status === "ประเมินแล้ว"
-        );
+        // const someDone = evaluatedDepartments.some(
+        //   (d) => d.status === "ประเมินแล้ว"
+        // );
 
         return {
           ...t,

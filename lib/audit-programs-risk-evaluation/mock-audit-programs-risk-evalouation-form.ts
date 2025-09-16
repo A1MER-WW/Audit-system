@@ -75,6 +75,7 @@ export const PROGRAM_RISK_EVALS: Record<number, AuditProgramRiskEvaluation> = {
     id: 1,
     auditTopics: {
       id: 1,
+      category: { id: 2, name: "งาน" },
       departments: [
         { id: 1, departmentName: "สลก.", isActive: true },
         { id: 2, departmentName: "ศสท.1", isActive: true },
@@ -138,6 +139,7 @@ export const PROGRAM_RISK_EVALS: Record<number, AuditProgramRiskEvaluation> = {
     id: 2,
     auditTopics: {
       id: 2,
+      category: { id: 3, name: "โครงการ" },
       departments: [{ id: 3, departmentName: "กองทุน FTA", isActive: true }],
       auditTopic:
         "ผลการดำเนินงานของกองทุนปรับโครงสร้างการผลิตภาคเกษตรเพื่อเพิ่มขีดความสามารถการแข่งขัน",
@@ -197,6 +199,7 @@ export const PROGRAM_RISK_EVALS: Record<number, AuditProgramRiskEvaluation> = {
     id: 3,
     auditTopics: {
       id: 3,
+      category: { id: 1, name: "หน่วยงาน" },
       departments: [
         { id: 4, departmentName: "สำนักการเงินและบัญชี", isActive: true },
       ],
@@ -236,6 +239,7 @@ export const PROGRAM_RISK_EVALS: Record<number, AuditProgramRiskEvaluation> = {
     id: 4,
     auditTopics: {
       id: 4,
+      category: { id: 6, name: "กระบวนงาน" },
       departments: [
         { id: 5, departmentName: "สำนักกฎหมายและนโยบาย", isActive: true },
         { id: 6, departmentName: "ฝ่ายแผนงานและงบประมาณ", isActive: true },
@@ -266,6 +270,7 @@ export const PROGRAM_RISK_EVALS: Record<number, AuditProgramRiskEvaluation> = {
     id: 5,
     auditTopics: {
       id: 5,
+      category: { id: 5, name: "กิจกรรม" },
       departments: [{ id: 7, departmentName: "สำนักงบประมาณ", isActive: true }],
       auditTopic:
         "การตรวจสอบการปฏิบัติตามข้อเสนอแนะเพื่อป้องกันปัญหาที่เกิดซ้ำจากการปฏิบัติงาน",
@@ -294,6 +299,7 @@ export const PROGRAM_RISK_EVALS: Record<number, AuditProgramRiskEvaluation> = {
     id: 6,
     auditTopics: {
       id: 6,
+      category: { id: 7, name: "IT และ Non-IT" },
       departments: [
         { id: 8, departmentName: "หน่วยงานในสังกัด อตก.", isActive: true },
       ],
@@ -324,6 +330,7 @@ export const PROGRAM_RISK_EVALS: Record<number, AuditProgramRiskEvaluation> = {
     id: 7,
     auditTopics: {
       id: 7,
+      category: { id: 4, name: "โครงการกันเงินเหลื่อมปี" },
       departments: [
         { id: 9, departmentName: "หน่วยงานในสังกัด อตก.", isActive: true },
       ],

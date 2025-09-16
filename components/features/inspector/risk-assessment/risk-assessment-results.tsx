@@ -1,7 +1,7 @@
 // app/(your-segment)/risk-assessment/results/page.tsx
 "use client";
 
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useMemo, useState, useCallback } from "react";
 import useSWR from "swr";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
+
 import {
   Table,
   TableBody,
@@ -27,7 +27,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Checkbox } from "@/components/ui/checkbox";
+
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import {
@@ -509,7 +509,6 @@ export default function RiskAssessmentResultsPage({
   className = "",
   outerTab: outerTabProp,
   onOuterTabChange,
-  scoreSortDir,
 }: ResultsProps) {
   // callback: ปุ่ม “เสนอหัวหน้าหน่วยตรวจสอบ”
   function onClickSubmit() {
@@ -644,14 +643,13 @@ export default function RiskAssessmentResultsPage({
   // -------- Inner tabs (ประเภท) --------
   const [tab, setTab] = useState<TabKey>("all");
   const [year, setYear] = useState("2568");
-  const [query, setQuery] = useState("");
-  const [status, setStatus] = useState("all");
-  const [onlyIT, setOnlyIT] = useState(false);
-  const [sortBy, setSortBy] = useState<"index" | "score" | "unit">("score");
-  const [sortAsc, setSortAsc] = useState(false);
+  const [query] = useState("");
+  const [status] = useState("all");
+  const [onlyIT] = useState(false);
+  const [sortBy] = useState<"index" | "score" | "unit">("score");
+  const [sortAsc] = useState(false);
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 200;
-  const [open, setOpen] = useState(false);
   const [openSubmitDialog, setOpenSubmitDialog] = useState(false); // สำหรับ RiskSubmitConfirmDialog
   const [openReasonDialog, setOpenReasonDialog] = useState(false); // สำหรับ ChangeOrderReasonDialog
   const [pendingOrderIds, setPendingOrderIds] = useState<string[] | null>(null);
@@ -716,7 +714,7 @@ export default function RiskAssessmentResultsPage({
   const fiscalYears = data?.fiscalYears ?? [Number(year)];
   const statusLine = data?.statusLine ?? { label: "สถานะ:", value: "-" };
 
-  const getTabRows = (k: Exclude<TabKey, "all">): Row[] => rowsByTab[k] ?? [];
+  const getTabRows = useCallback((k: Exclude<TabKey, "all">): Row[] => rowsByTab[k] ?? [], [rowsByTab]);
   const allRows: Row[] = useMemo(
     () => [
       ...getTabRows("work"),
@@ -727,11 +725,11 @@ export default function RiskAssessmentResultsPage({
       ...getTabRows("unit"),
       ...getTabRows("it"),
     ],
-    [rowsByTab]
+    [getTabRows]
   );
   const rawRows: Row[] = useMemo(
     () => (tab === "all" ? allRows : getTabRows(tab)),
-    [tab, allRows, rowsByTab]
+    [tab, allRows, getTabRows]
   );
   // === Group rows by duplicated topic ===
   const groupingEnabled = true;
@@ -780,7 +778,7 @@ export default function RiskAssessmentResultsPage({
     });
 
     return { parentRows: parents, groupChildren: childrenMap };
-  }, [rawRows, tab]);
+  }, [rawRows, tab, groupingEnabled]);
 
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
@@ -811,10 +809,10 @@ export default function RiskAssessmentResultsPage({
     dataRows = dataRows.filter((r) => !r.index.includes("."));
     const usedSortBy = outerTab === "summary" ? "index" : sortBy;
     const usedSortAsc = outerTab === "summary" ? true : sortAsc;
-    dataRows.sort((a: any, b: any) => {
+    dataRows.sort((a: { score?: number; index?: string; unit?: string }, b: { score?: number; index?: string; unit?: string }) => {
       const dir = usedSortAsc ? 1 : -1;
 
-      if (usedSortBy === "score") return (a.score - b.score) * dir;
+      if (usedSortBy === "score") return ((a.score || 0) - (b.score || 0)) * dir;
       if (usedSortBy === "unit")
         return String(a.unit).localeCompare(String(b.unit)) * dir;
 
@@ -826,7 +824,7 @@ export default function RiskAssessmentResultsPage({
       return (a2 - b2) * dir;
     });
     return dataRows;
-  }, [rawRows, query, status, onlyIT, sortBy, sortAsc]);
+  }, [parentRows, query, status, onlyIT, sortBy, sortAsc, outerTab]);
 
   // pagination (summary + reorder ใช้เหมือนกัน)
   const shouldPaginate = filteredParents.length > PAGE_SIZE;
@@ -836,17 +834,6 @@ export default function RiskAssessmentResultsPage({
   const paginatedParents = shouldPaginate
     ? filteredParents.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
     : filteredParents;
-
-  // children rows (สำหรับแสดงใน summary expanded และ unitRanking)
-  const getChildRows = (rows: Row[], parentIndex: string) =>
-    rows
-      .filter((rr) => rr.index.startsWith(parentIndex + "."))
-      .sort((a, b) => {
-        const pa = a.index.split(".").map(Number);
-        const pb = b.index.split(".").map(Number);
-        if (pa[0] !== pb[0]) return pa[0] - pb[0];
-        return (pa[1] ?? 0) - (pb[1] ?? 0);
-      });
 
   /* ---------- Reorder state & actions ---------- */
   const [orderIds, setOrderIds] = useState<string[] | null>(null);
@@ -872,18 +859,8 @@ export default function RiskAssessmentResultsPage({
     return base;
   }, [previewOrderIds, orderIds, paginatedParents]);
 
-  const ensureOrderInit = () => {
-    if (!orderIds) setOrderIds(paginatedParents.map((r) => r.id));
-  };
-  const moveUp = (id: string) => {
-    ensureOrderInit();
-    setOrderIds((prev) => {
-      const arr = [...(prev ?? paginatedParents.map((r) => r.id))];
-      const i = arr.indexOf(id);
-      if (i > 0) [arr[i - 1], arr[i]] = [arr[i], arr[i - 1]];
-      return arr;
-    });
-  };
+
+
 
   /* ======================== Render ======================== */
   return (
@@ -1519,8 +1496,8 @@ function UnitRankingSection(props: {
     return "-";
   };
 
-  const topicOf = (r: Row) => topicByTab(r, tab) || "-";
-  const isTopicRow = (r: Row) => topicOf(r) !== "-" && topicOf(r).trim() !== "";
+  const topicOf = useCallback((r: Row) => topicByTab(r, tab) || "-", [tab]);
+  const isTopicRow = useCallback((r: Row) => topicOf(r) !== "-" && topicOf(r).trim() !== "", [topicOf]);
 
   const groupedByUnit = useMemo(() => {
     const m = new Map<string, Row[]>();
@@ -1554,7 +1531,7 @@ function UnitRankingSection(props: {
     );
 
     return result;
-  }, [allRows, tab, unitSortDir]);
+  }, [allRows, unitSortDir, isTopicRow]);
 
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   return (

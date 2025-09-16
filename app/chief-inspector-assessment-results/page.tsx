@@ -4,7 +4,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import DashboardSection from "@/components/features/inspector/risk-assessment/risk-assessment-dashboard-section";
 import SummaryToolbar from "@/components/summary-toolbar";
 import RiskAssessmentResultsSectionPage from "@/components/features/inspector/risk-assessment/risk-assessment-results-section";
@@ -28,7 +28,7 @@ type ChiefInspectorDataType = {
     reason?: string;
     hasChanges?: boolean;
   };
-  rawData?: any;
+  rawData?: unknown;
   error?: string;
 };
 
@@ -42,15 +42,41 @@ export default function ChiefInspectorAssessmentResultsPage() {
   const [filter, setFilter] = useState<FilterType>({});
   
   // State สำหรับการเปรียบเทียบปี
-  const [selectedYear, setSelectedYear] = useState<number>(2568);
+  const [selectedYear] = useState<number>(2568);
   const [compareYear, setCompareYear] = useState<number>(2567);
   const [showCompareView, setShowCompareView] = useState<boolean>(false);
 
   // State สำหรับเก็บข้อมูลจากตารางเพื่อส่งไปยัง Dashboard
+  type RiskSlice = {
+    key: "excellent" | "high" | "medium" | "low" | "none";
+    name: string;
+    value: number;
+    color: string;
+    grade: "E" | "H" | "M" | "L" | "N";
+  };
+
+  type StackedRow = {
+    name: string;
+    veryHigh: number;
+    high: number;
+    medium: number;
+    low: number;
+    veryLow: number;
+  };
+
+  type MatrixRow = {
+    category: string;
+    veryLow: number;
+    low: number;
+    medium: number;
+    high: number;
+    veryHigh: number;
+  };
+  
   const [tableData, setTableData] = useState<{
-    donut?: any[];
-    stacked?: any[];
-    matrix?: any[];
+    donut?: RiskSlice[];
+    stacked?: StackedRow[];
+    matrix?: MatrixRow[];
   }>({});
 
   const clearFilter = () => setFilter({});
@@ -197,7 +223,7 @@ export default function ChiefInspectorAssessmentResultsPage() {
         onChange={setOuterTab}
         sortBy={sortBy}
         sortDir={scoreSortDir}
-        onSortByChange={setSortBy}
+        onSortByChange={(by) => setSortBy(by)}
         onSortDirChange={(dir) => setScoreSortDir(dir)}
         onClearSort={clearSort}
         hideSortOnReorder={true}
@@ -216,9 +242,9 @@ export default function ChiefInspectorAssessmentResultsPage() {
         filter={filter}
         sortBy={sortBy}
         sortDir={scoreSortDir}
-        onSortByChange={setSortBy}
+        onSortByChange={(by) => setSortBy(by as "index" | "score")}
         onSortDirChange={setScoreSortDir}
-        onDataChange={setTableData}
+        onDataChange={(data) => setTableData(data as { donut?: RiskSlice[]; stacked?: StackedRow[]; matrix?: MatrixRow[] })}
         showCompare={showCompareView}
         compareYear={showCompareView ? compareYear : undefined}
         currentYear={selectedYear}

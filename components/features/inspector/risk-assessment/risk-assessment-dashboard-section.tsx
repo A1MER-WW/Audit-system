@@ -125,7 +125,7 @@ export default function DashboardSection({
   );
 
   // ดึงข้อมูลปีเปรียบเทียบถ้ามีการเปรียบเทียบ
-  const { data: compareData, error: compareError, isLoading: compareLoading } = useSWR<ApiResponse>(
+  const { data: compareData, isLoading: compareLoading } = useSWR<ApiResponse>(
     showCompare && compareYear ? `/api/chief-risk-assessment-results?year=${compareYear}` : null,
     fetcher
   );
@@ -368,8 +368,8 @@ export default function DashboardSection({
                             outerRadius={110}
                             stroke="#fff"
                             strokeWidth={2}
-                            label={(entry: any) => {
-                              const value = entry.value || 0;
+                            label={(entry: { value?: string | number }) => {
+                              const value = Number(entry.value) || 0;
                               const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : "0.0";
                               return `${percentage}%`;
                             }}
@@ -505,8 +505,8 @@ export default function DashboardSection({
                                     outerRadius={110}
                                     stroke="#fff"
                                     strokeWidth={2}
-                                    label={(entry: any) => {
-                                      const value = entry.value || 0;
+                                    label={(entry: { value?: string | number }) => {
+                                      const value = Number(entry.value) || 0;
                                       const percentage = compareTotal > 0 ? ((value / compareTotal) * 100).toFixed(1) : "0.0";
                                       return `${percentage}%`;
                                     }}
@@ -864,19 +864,9 @@ function MatrixReport({
     { key: "veryHigh", label: "มากที่สุด (5)",  color: colorsScale.veryHigh, grade: "E" as const },
   ] as const;
 
-  // หา max เพื่อนำไปคำนวณความเข้มสีแบบ heat
-  const maxVal = Math.max(
-    1,
-    ...data.flatMap(r => [r.veryLow, r.low, r.medium, r.high, r.veryHigh])
-  );
 
-  const getBg = (base: string, v: number) => {
-    // intensity 10–30–50–70–90 ตามสัดส่วนค่า
-    const pct = v / maxVal;
-    const step = pct >= 0.85 ? 90 : pct >= 0.65 ? 70 : pct >= 0.45 ? 50 : pct >= 0.25 ? 30 : 10;
-    // ใช้ CSS variable + opacity
-    return `${base}/${step}`;
-  };
+
+
 
   return (
     <Card>
@@ -1017,14 +1007,7 @@ const gradeColors = {
 
 
 
-// สำหรับ Donut/Bar chart (ใช้ key mapping เดิม)
-const colors = {
-  veryHigh: gradeColors.H, // High Risk (H) - แดง
-  high: gradeColors.M,     // Medium Risk (M) - ส้ม
-  medium: gradeColors.L,   // Low Risk (L) - เขียว
-  low: "#3B82F6",         // ไม่ใช้แล้ว
-  veryLow: gradeColors.N,  // Not Assessed (N) - เทา
-};
+
 
 // เฉดสีหลักสำหรับเมทริกซ์ (ตรงกับสีหลัก)
 const colorsScale = {
@@ -1035,29 +1018,8 @@ const colorsScale = {
   veryLow:  "#6B7280"  // Not Assessed (N) - เทา
 } as const;
 
-/** ---------- Mock data (แก้ตามจริงได้) ---------- */
-const defaultDonut: RiskSlice[] = [
-  { key: "high", name: "มาก", value: 37, color: gradeColors.H, grade: "H" },
-  { key: "medium", name: "ปานกลาง", value: 44, color: gradeColors.M, grade: "M" },
-  { key: "low", name: "น้อย", value: 30, color: gradeColors.L, grade: "L" },
-];
 
-const defaultStacked: StackedRow[] = [
-  { name: "หน่วยงาน",             veryHigh: 10, high: 15, medium: 8,  low: 0, veryLow: 0 },
-  { name: "งาน",                  veryHigh: 8,  high: 12, medium: 10, low: 0, veryLow: 0 },
-  { name: "โครงการ",              veryHigh: 6,  high: 8,  medium: 6,  low: 0, veryLow: 0 },
-  { name: "โครงการกันเงินเหลื่อมปี", veryHigh: 4,  high: 6,  medium: 4,  low: 0, veryLow: 0 },
-  { name: "กิจกรรม",              veryHigh: 3,  high: 5,  medium: 4,  low: 0, veryLow: 0 },
-  { name: "กระบวนงาน",            veryHigh: 4,  high: 6,  medium: 5,  low: 0, veryLow: 0 },
-  { name: "IT/Non-IT",            veryHigh: 2,  high: 4,  medium: 3,  low: 0, veryLow: 0 },
-];
 
-const defaultMatrix: MatrixRow[] = [
-  { category: "หน่วยงาน",  veryLow: 8, low: 4, medium: 10, high: 7, veryHigh: 9 },
-  { category: "งาน",       veryLow: 1, low: 10, medium: 5,  high: 2, veryHigh: 5 },
-  { category: "โครงการ",   veryLow: 0, low: 2,  medium: 4,  high: 3, veryHigh: 0 },
-  { category: "โครงการกันเงินเหลื่อมปี", veryLow: 4, low: 8, medium: 7, high: 2, veryHigh: 0 },
-  { category: "กิจกรรม",   veryLow: 4, low: 1,  medium: 7,  high: 6, veryHigh: 0 },
-  { category: "กระบวนงาน", veryLow: 1, low: 3,  medium: 9,  high: 10, veryHigh: 0 },
-  { category: "IT/Non-IT", veryLow: 7, low: 2,  medium: 2,  high: 1,  veryHigh: 0 },
-];
+
+
+

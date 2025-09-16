@@ -23,6 +23,7 @@ export default function AuditProgramRiskEvaluationPage() {
     await createAuditProgram({
       auditTopics: {
         id: Date.now() % 100000,
+        category: { id: 1, name: "หน่วยงาน" },
         departments: [
           { id: 999, departmentName: "หน่วยงานทดสอบ", isActive: true },
         ],

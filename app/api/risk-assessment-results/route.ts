@@ -5,7 +5,6 @@ import { db, formsMap } from "@/lib/mock-risk-db";
 import {
   mockAnnualEvaluations,
   type ApiAnnualEvaluation,
-  type Grade,
   type MaybeGrade,
   type EvaluationStatus,
 } from "../annual-evaluations/route";

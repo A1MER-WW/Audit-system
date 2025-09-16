@@ -7,11 +7,12 @@ import { getProgram, removeProgram, type ListResponse } from "@/lib/audit-progra
 
 const noStore = { "Cache-Control": "no-store" };
 
-type Ctx = { params: { id: string } };
+type Ctx = { params: Promise<{ id: string }> };
 
 export async function GET(_req: Request, { params }: Ctx) {
   try {
-    const id = Number(params.id);
+    const { id: idParam } = await params;
+    const id = Number(idParam);
     if (Number.isNaN(id) || id <= 0) {
       return NextResponse.json({ message: "Invalid id" }, { status: 400, headers: noStore });
     }
@@ -31,7 +32,8 @@ export async function GET(_req: Request, { params }: Ctx) {
 
 export async function DELETE(_req: Request, { params }: Ctx) {
   try {
-    const id = Number(params.id);
+    const { id: idParam } = await params;
+    const id = Number(idParam);
     if (Number.isNaN(id) || id <= 0) {
       return NextResponse.json({ message: "Invalid id" }, { status: 400, headers: noStore });
     }

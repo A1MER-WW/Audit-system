@@ -55,7 +55,7 @@ export default function ScreeningChoiceDialog({
               checked={choice === "need"}
               onCheckedChange={() => setChoice("need")}
               className="h-5 w-5 data-[state=checked]:bg-primary"
-              style={{ ["--primary" as any]: PRIMARY }}
+              style={{ "--primary": PRIMARY } as React.CSSProperties}
             />
             <span className="text-sm">ต้องการคัดลอก</span>
           </label>
@@ -68,7 +68,7 @@ export default function ScreeningChoiceDialog({
               checked={choice === "none"}
               onCheckedChange={() => setChoice("none")}
               className="h-5 w-5 data-[state=checked]:bg-primary"
-              style={{ ["--primary" as any]: PRIMARY }}
+              style={{ "--primary": PRIMARY } as React.CSSProperties}
             />
             <span className="text-sm">ไม่ต้องการคัดลอก</span>
           </label>
