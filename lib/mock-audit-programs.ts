@@ -1,7 +1,26 @@
 // lib/mock-audit-programs.ts
 
 export type Department = { id: number; departmentName: string; isActive: boolean };
-export type AuditTopics = { id: number; departments: Department[]; auditTopic: string };
+
+// เพิ่ม Category type และอัพเดต AuditTopics ให้มี category
+export type Category = {
+  id: 1 | 2 | 3 | 4 | 5 | 6 | 7;
+  name:
+    | "หน่วยงาน"
+    | "งาน"
+    | "โครงการ"
+    | "โครงการกันเงินเหลื่อมปี"
+    | "กิจกรรม"
+    | "กระบวนงาน"
+    | "IT และ Non-IT";
+};
+
+export type AuditTopics = {
+  id: number;
+  category: Category;
+  departments: Department[];
+  auditTopic: string;
+};
 
 export type AuditProgram = {
   id: number;
@@ -27,6 +46,7 @@ const initialData: AuditProgram[] = [
     id: 1,
     auditTopics: {
       id: 1,
+      category: { id: 2, name: "งาน" },
       departments: [
         { id: 1, departmentName: "สลก.", isActive: true },
         { id: 2, departmentName: "ศสท.1", isActive: true },
@@ -45,6 +65,7 @@ const initialData: AuditProgram[] = [
     id: 2,
     auditTopics: {
       id: 2,
+      category: { id: 3, name: "โครงการ" },
       departments: [{ id: 3, departmentName: "กองทุน FTA", isActive: true }],
       auditTopic:
         "ผลการดำเนินงานของกองทุนปรับโครงสร้างการผลิตภาคเกษตรเพื่อเพิ่มขีดความสามารถการแข่งขัน",
@@ -60,6 +81,7 @@ const initialData: AuditProgram[] = [
     id: 3,
     auditTopics: {
       id: 3,
+      category: { id: 1, name: "หน่วยงาน" },
       departments: [{ id: 4, departmentName: "สำนักการเงินและบัญชี", isActive: true }],
       auditTopic: "งานด้านการเงินและบัญชี",
     },
@@ -74,6 +96,7 @@ const initialData: AuditProgram[] = [
     id: 4,
     auditTopics: {
       id: 4,
+      category: { id: 6, name: "กระบวนงาน" },
       departments: [
         { id: 5, departmentName: "สำนักกฎหมายและนโยบาย", isActive: true },
         { id: 6, departmentName: "ฝ่ายแผนงานและงบประมาณ", isActive: true },
@@ -91,6 +114,7 @@ const initialData: AuditProgram[] = [
     id: 5,
     auditTopics: {
       id: 5,
+      category: { id: 5, name: "กิจกรรม" },
       departments: [{ id: 7, departmentName: "สำนักงบประมาณ", isActive: true }],
       auditTopic:
         "การตรวจสอบการปฏิบัติตามข้อเสนอแนะเพื่อป้องกันปัญหาที่เกิดซ้ำจากการปฏิบัติงาน",
@@ -106,6 +130,7 @@ const initialData: AuditProgram[] = [
     id: 6,
     auditTopics: {
       id: 6,
+      category: { id: 7, name: "IT และ Non-IT" },
       departments: [{ id: 8, departmentName: "หน่วยงานในสังกัด อตก.", isActive: true }],
       auditTopic:
         "ติดตามความก้าวหน้าในการปฏิบัติตามข้อเสนอแนะในรายงานผลการตรวจสอบ",
@@ -121,6 +146,7 @@ const initialData: AuditProgram[] = [
     id: 7,
     auditTopics: {
       id: 7,
+      category: { id: 4, name: "โครงการกันเงินเหลื่อมปี" },
       departments: [{ id: 9, departmentName: "หน่วยงานในสังกัด อตก.", isActive: true }],
       auditTopic:
         "ให้คำปรึกษาและแนะแนวทางในการปรับปรุงการดำเนินงานตามมาตรฐานวิชาการเกษตร",
