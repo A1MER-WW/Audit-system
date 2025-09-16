@@ -1810,6 +1810,7 @@ function CompareSection(props: {
   error: boolean;
 }) {
   const {
+    tab,
     currentYear,
     compareYear,
     allCurrentRows,
@@ -1923,27 +1924,39 @@ function CompareSection(props: {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-12">ลำดับ</TableHead>
-                    <TableHead className="min-w-[80px]">หน่วยงาน</TableHead>
-                    <TableHead className="min-w-[120px]">ภารกิจ</TableHead>
-                    <TableHead className="min-w-[100px]">งาน</TableHead>
-                    <TableHead className="w-16">คะแนน</TableHead>
-                    <TableHead className="w-16">เกรด</TableHead>
-                    <TableHead className="w-20">สถานะ</TableHead>
+                    <TableHead className="w-[90px]">ลำดับ</TableHead>
+                    <TableHead>หน่วยงาน</TableHead>
+                    <TableHead className="align-middle !whitespace-normal break-words leading-snug">
+                      <span className="block max-w-[18rem] md:max-w-[32rem]">
+                        {DYNAMIC_HEAD[tab]}
+                      </span>
+                    </TableHead>
+                    <TableHead className="w-[120px]">คะแนนประเมิน</TableHead>
+                    <TableHead className="w-[120px]">เกรด</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {compareRows.map((row: Row, index: number) => (
                     <TableRow key={`compare-${row.id}`}>
-                      <TableCell>{index + 1}</TableCell>
-                      <TableCell>{row.unit}</TableCell>
-                      <TableCell>{row.mission}</TableCell>
-                      <TableCell>{row.work}</TableCell>
-                      <TableCell>{row.score}</TableCell>
+                      <TableCell className="font-mono text-xs md:text-sm">{index + 1}</TableCell>
+                      <TableCell className="whitespace-nowrap">{row.unit}</TableCell>
+                      <TableCell className="text-muted-foreground align-top !whitespace-normal break-words">
+                        <span
+                          className="block line-clamp-2 md:line-clamp-3"
+                          style={{
+                            display: "-webkit-box",
+                            WebkitBoxOrient: "vertical",
+                            WebkitLineClamp: 2,
+                            overflow: "hidden",
+                          }}
+                        >
+                          {topicByTab(row, tab)}
+                        </span>
+                      </TableCell>
+                      <TableCell className="font-medium">{row.score ?? "-"}</TableCell>
                       <TableCell>
                         <GradeBadge grade={row.grade} />
                       </TableCell>
-                      <TableCell>{row.status}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -1964,27 +1977,39 @@ function CompareSection(props: {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-12">ลำดับ</TableHead>
-                    <TableHead className="min-w-[80px]">หน่วยงาน</TableHead>
-                    <TableHead className="min-w-[120px]">ภารกิจ</TableHead>
-                    <TableHead className="min-w-[100px]">งาน</TableHead>
-                    <TableHead className="w-16">คะแนน</TableHead>
-                    <TableHead className="w-16">เกรด</TableHead>
-                    <TableHead className="w-20">สถานะ</TableHead>
+                    <TableHead className="w-[90px]">ลำดับ</TableHead>
+                    <TableHead>หน่วยงาน</TableHead>
+                    <TableHead className="align-middle !whitespace-normal break-words leading-snug">
+                      <span className="block max-w-[18rem] md:max-w-[32rem]">
+                        {DYNAMIC_HEAD[tab]}
+                      </span>
+                    </TableHead>
+                    <TableHead className="w-[120px]">คะแนนประเมิน</TableHead>
+                    <TableHead className="w-[120px]">เกรด</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {allCurrentRows.map((row, index) => (
                     <TableRow key={`current-${row.id}`}>
-                      <TableCell>{index + 1}</TableCell>
-                      <TableCell>{row.unit}</TableCell>
-                      <TableCell>{row.mission}</TableCell>
-                      <TableCell>{row.work}</TableCell>
-                      <TableCell>{row.score}</TableCell>
+                      <TableCell className="font-mono text-xs md:text-sm">{index + 1}</TableCell>
+                      <TableCell className="whitespace-nowrap">{row.unit}</TableCell>
+                      <TableCell className="text-muted-foreground align-top !whitespace-normal break-words">
+                        <span
+                          className="block line-clamp-2 md:line-clamp-3"
+                          style={{
+                            display: "-webkit-box",
+                            WebkitBoxOrient: "vertical",
+                            WebkitLineClamp: 2,
+                            overflow: "hidden",
+                          }}
+                        >
+                          {topicByTab(row, tab)}
+                        </span>
+                      </TableCell>
+                      <TableCell className="font-medium">{row.score ?? "-"}</TableCell>
                       <TableCell>
                         <GradeBadge grade={row.grade} />
                       </TableCell>
-                      <TableCell>{row.status}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

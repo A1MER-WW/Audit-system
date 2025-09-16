@@ -248,6 +248,9 @@ export default function ChiefInspectorAssessmentResultsPage() {
         showCompare={showCompareView}
         compareYear={showCompareView ? compareYear : undefined}
         currentYear={selectedYear}
+        hideDocumentIcon={true}
+        hideEditButton={true}
+        hideStatusColumn={true}
       />
     </div>
   );
