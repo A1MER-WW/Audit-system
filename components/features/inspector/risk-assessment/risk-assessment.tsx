@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState, useCallback } from "react";
 import useSWR from "swr";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
+
 import {
   Table,
   TableBody,
@@ -26,12 +26,12 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Checkbox } from "@/components/ui/checkbox";
+
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { ChevronDown, ChevronUp, FileText, Info } from "lucide-react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 
 export type TabKey =
   | "all"
@@ -95,12 +95,7 @@ const TAB_LABELS: Record<TabKey, string> = {
   it: "IT และ Non-IT",
 };
 
-const STATUS_OPTIONS = [
-  { label: "ทั้งหมด", value: "all" },
-  { label: "กำลังประเมิน", value: "กำลังประเมิน" },
-  { label: "ประเมินแล้ว", value: "ประเมินแล้ว" },
-  { label: "ยังไม่ได้ประเมิน", value: "ยังไม่ได้ประเมิน" },
-];
+
 
 function StatusBadge({ value }: { value: string }) {
   const map: Record<string, string> = {
@@ -162,14 +157,13 @@ export default function RiskAssessmentPlanningPage({
   fullWidth?: boolean;
   className?: string;
 }) {
-  const router = useRouter();
   const [tab, setTab] = useState<TabKey>("all");
   const [year, setYear] = useState("2568");
-  const [query, setQuery] = useState("");
-  const [status, setStatus] = useState("all");
-  const [onlyIT, setOnlyIT] = useState(false);
-  const [sortBy, setSortBy] = useState<"index" | "score" | "unit">("index");
-  const [sortAsc, setSortAsc] = useState(true);
+  const [query] = useState("");
+  const [status] = useState("all");
+  const [onlyIT] = useState(false);
+  const [sortBy] = useState<"index" | "score" | "unit">("index");
+  const [sortAsc] = useState(true);
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 200;
 
@@ -215,8 +209,8 @@ export default function RiskAssessmentPlanningPage({
   }, [mutate]);
   // --- End revalidate triggers ---
 
-  const rowsByTab = data?.rowsByTab ?? {};
-  const getTabRows = (k: Exclude<TabKey, "all">): Row[] => rowsByTab[k] ?? [];
+  const rowsByTab = useMemo(() => data?.rowsByTab ?? {}, [data?.rowsByTab]);
+  const getTabRows = useCallback((k: Exclude<TabKey, "all">): Row[] => rowsByTab[k] ?? [], [rowsByTab]);
 
   const allRows: Row[] = useMemo(() => {
     return [
@@ -228,21 +222,21 @@ export default function RiskAssessmentPlanningPage({
       ...getTabRows("unit"),
       ...getTabRows("it"),
     ];
-  }, [rowsByTab]);
+  }, [getTabRows]);
 
   const rawRows: Row[] = useMemo(
     () => (tab === "all" ? allRows : getTabRows(tab)),
-    [tab, allRows, rowsByTab]
+    [tab, allRows, getTabRows]
   );
 
   /** แผนที่ค่าสถานะ (ไทย/อังกฤษ) ให้เหลือ 3 ค่าหลักใน UI */
-  const STATUS_LABELS = {
+  const STATUS_LABELS = useMemo(() => ({
     DONE: "ประเมินแล้ว",
     IN_PROGRESS: "กำลังประเมิน",
     NOT_STARTED: "ยังไม่ได้ประเมิน",
-  } as const;
+  } as const), []);
 
-  function normalizeStatus(raw?: string) {
+  const normalizeStatus = useCallback((raw?: string) => {
     if (!raw) return STATUS_LABELS.NOT_STARTED;
     const thai = ["ประเมินแล้ว", "กำลังประเมิน", "ยังไม่ได้ประเมิน"];
     if (thai.includes(raw)) return raw as (typeof thai)[number];
@@ -267,19 +261,19 @@ export default function RiskAssessmentPlanningPage({
 
     // fallback: ถ้าไม่รู้จัก คืนค่าเดิม (แต่ UI ยังมี fallback ชั้นถัดไป)
     return raw;
-  }
+  }, [STATUS_LABELS]);
 
-  const gradeFromScore = (s?: number) =>
-    !s || s <= 0 ? "-" : s >= 60 ? "H" : s >= 41 ? "M" : "L";
+  const gradeFromScore = useCallback((s?: number) =>
+    !s || s <= 0 ? "-" : s >= 60 ? "H" : s >= 41 ? "M" : "L", []);
 
-  function deriveStatus(r: Row) {
+  const deriveStatus = useCallback((r: Row) => {
     if (r.hasDoc && (r.score ?? 0) > 0) return STATUS_LABELS.DONE;
     return normalizeStatus(r.status);
-  }
+  }, [STATUS_LABELS, normalizeStatus]);
 
   const groupingEnabled = true;
 
-  function makeParentRow(topic: string, rows: Row[]): Row {
+  const makeParentRow = useCallback((topic: string, rows: Row[]): Row => {
     const sorted = [...rows].sort((a, b) => {
       const A = a.index.split(".").map(Number);
       const B = b.index.split(".").map(Number);
@@ -294,7 +288,7 @@ export default function RiskAssessmentPlanningPage({
         ? `${uniqUnits[0]} และอีก ${uniqUnits.length - 1} หน่วยงาน`
         : uniqUnits[0] || "-";
 
-    const maxScore = Math.max(...sorted.map((r) => r.score || 0));
+
     const totalScore = sorted.reduce((sum, r) => sum + (r.score || 0), 0);
     const childrenStatuses = sorted.map(deriveStatus);
     const allDone = childrenStatuses.every((s) => s === STATUS_LABELS.DONE);
@@ -305,9 +299,7 @@ export default function RiskAssessmentPlanningPage({
     const someDoing = childrenStatuses.some(
       (s) => s === STATUS_LABELS.IN_PROGRESS
     );
-    const anyDoing = childrenStatuses.some(
-      (s) => s !== STATUS_LABELS.NOT_STARTED && s !== STATUS_LABELS.DONE
-    );
+
 
     let status: string;
     if (allDone) {
@@ -346,7 +338,7 @@ export default function RiskAssessmentPlanningPage({
       base.work = topic;
     }
     return base;
-  }
+  }, [STATUS_LABELS, tab, deriveStatus, gradeFromScore]);
 
   const { parentRows, groupChildren } = useMemo(() => {
     if (!groupingEnabled) {
@@ -391,7 +383,7 @@ export default function RiskAssessmentPlanningPage({
     });
 
     return { parentRows: parents, groupChildren: childrenMap };
-  }, [rawRows, tab, groupingEnabled]);
+  }, [rawRows, tab, groupingEnabled, makeParentRow]);
 
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
@@ -418,9 +410,9 @@ export default function RiskAssessmentPlanningPage({
       dataRows = dataRows.filter((r) => r.status === status);
     if (onlyIT) dataRows = dataRows.filter((r) => r.itType && r.itType !== "-");
 
-    dataRows.sort((a: any, b: any) => {
+    dataRows.sort((a: { score?: number; index?: string; unit?: string }, b: { score?: number; index?: string; unit?: string }) => {
       const dir = sortAsc ? 1 : -1;
-      if (sortBy === "score") return (a.score - b.score) * dir;
+      if (sortBy === "score") return ((a.score || 0) - (b.score || 0)) * dir;
       if (sortBy === "unit")
         return String(a.unit).localeCompare(String(b.unit)) * dir;
 
@@ -451,24 +443,6 @@ export default function RiskAssessmentPlanningPage({
     ? filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
     : filtered;
 
-  const evaluableRows = useMemo(
-    () => allRows.filter((r) => r.hasDoc),
-    [allRows]
-  );
-
-  const allEvaluated = useMemo(
-    () =>
-      evaluableRows.length > 0 &&
-      evaluableRows.every((r) => deriveStatus(r) === STATUS_LABELS.DONE),
-    [evaluableRows]
-  );
-
-  const remainingCount = useMemo(
-    () =>
-      evaluableRows.filter((r) => deriveStatus(r) !== STATUS_LABELS.DONE)
-        .length,
-    [evaluableRows]
-  );
   return (
     <div
       className={cn(

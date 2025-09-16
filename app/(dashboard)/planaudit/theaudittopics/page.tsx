@@ -3,14 +3,14 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+// import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { FileText, ChevronRight, ChevronLeft } from 'lucide-react';
+import { ChevronRight, ChevronLeft } from 'lucide-react';
 
 export default function TheAuditTopicsPage() {
-  const [selectedYear, setSelectedYear] = React.useState<string>("2569");
+  // const [selectedYear, setSelectedYear] = React.useState<string>("2569");
   const [checkedItems2568, setCheckedItems2568] = React.useState<Record<number, boolean>>({});
   const [checkedItems2569, setCheckedItems2569] = React.useState<Record<number, boolean>>({});
   const [showConfirmDialog, setShowConfirmDialog] = React.useState<boolean>(false);

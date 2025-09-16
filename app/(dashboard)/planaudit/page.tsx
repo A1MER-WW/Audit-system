@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, Bar, BarChart } from 'recharts';
+import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, Bar, BarChart } from 'recharts';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -10,15 +10,15 @@ import { FileText } from 'lucide-react';
 import Link from 'next/link';
 
 // Sample data for charts - showing "no data" state
-const auditProgressData = [
-  { month: 'หน่วยงาน', year2567: 0, year2568: 0 },
-  { month: 'งาน', year2567: 0, year2568: 0 },
-  { month: 'โครงการ', year2567: 0, year2568: 0 },
-  { month: 'โครงการลงทุนการสาธารณูปโภค', year2567: 0, year2568: 0 },
-  { month: 'กิจกรรม', year2567: 0, year2568: 0 },
-  { month: 'การบริการ', year2567: 0, year2568: 0 },
-  { month: 'บริการประชาชน', year2567: 0, year2568: 0 }
-];
+// const auditProgressData = [
+//   { month: 'หน่วยงาน', year2567: 0, year2568: 0 },
+//   { month: 'งาน', year2567: 0, year2568: 0 },
+//   { month: 'โครงการ', year2567: 0, year2568: 0 },
+//   { month: 'โครงการลงทุนการสาธารณูปโภค', year2567: 0, year2568: 0 },
+//   { month: 'กิจกรรม', year2567: 0, year2568: 0 },
+//   { month: 'การบริการ', year2567: 0, year2568: 0 },
+//   { month: 'บริการประชาชน', year2567: 0, year2568: 0 }
+// ];
 
 const chartData = [
   { name: 'หน่วยงาน', ปีงบประมาณ2567: 4, ปีงบประมาณ2568: 4 },

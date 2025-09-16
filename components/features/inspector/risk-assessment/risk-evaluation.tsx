@@ -26,21 +26,11 @@ import {
 } from "@/components/ui/popover";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
-import {
-  ArrowLeft,
-  ChevronDown,
-  ChevronRight,
-  ChevronUp,
-  GripVertical,
-  Info,
-  FileText,
-} from "lucide-react";
+import { ChevronDown, ChevronUp, Info, FileText } from "lucide-react";
 import Link from "next/link";
 import {
   useAnnualEvaluations,
   ApiAnnualEvaluation,
-  RiskEvaluation,
-  AuditTopic,
 } from "@/hooks/useAnnualEvaluations";
 
 /** ---------------- UI constants ---------------- */
@@ -180,31 +170,6 @@ function categoriesForTab(tab: TabKey): string[] | null {
   }
 }
 
-function normalizeStatus(raw?: string, hasDoc?: boolean, score?: number) {
-  if (hasDoc && (score ?? 0) > 0) return STATUS_LABELS.DONE;
-  const t = String(raw || "").toUpperCase();
-  if (
-    [
-      "DONE",
-      "COMPLETED",
-      "FINISHED",
-      "APPROVED",
-      "SUBMITTED",
-      "EVALUATED",
-      "EVALUATION_COMPLETED",
-    ].includes(t)
-  )
-    return STATUS_LABELS.DONE;
-  if (["IN_PROGRESS", "DOING", "DRAFT", "STARTED", "WORKING"].includes(t))
-    return STATUS_LABELS.IN_PROGRESS;
-  if (
-    !t ||
-    ["NOT_STARTED", "PENDING", "NEW", "TO_DO", "UNASSESSED"].includes(t)
-  )
-    return STATUS_LABELS.NOT_STARTED;
-  return raw || STATUS_LABELS.NOT_STARTED;
-}
-
 /** ฟังก์ชันช่วยดึงสถานะการประเมินจากข้อมูลที่บันทึกไว้ */
 function getAssessmentStatus(
   compoundId: string,
@@ -220,7 +185,9 @@ function getAssessmentStatus(
     // ตรวจสอบสถานะจาก localStorage (สำหรับกรณีที่กำลังประเมินครึ่งทาง)
     const savedStatus = localStorage.getItem(`assessment_status_${compoundId}`);
     if (savedStatus && savedStatus === "กำลังประเมิน") {
-      console.log(`📋 In progress from localStorage: ${compoundId} -> ${savedStatus}`);
+      console.log(
+        `📋 In progress from localStorage: ${compoundId} -> ${savedStatus}`
+      );
       return savedStatus;
     }
 
@@ -230,11 +197,16 @@ function getAssessmentStatus(
       try {
         const assessmentData = JSON.parse(savedData);
         if (assessmentData.status === "กำลังประเมิน") {
-          console.log(`📊 In progress from assessment data: ${compoundId} -> ${assessmentData.status}`);
+          console.log(
+            `📊 In progress from assessment data: ${compoundId} -> ${assessmentData.status}`
+          );
           return assessmentData.status;
         }
       } catch (parseError) {
-        console.warn("Failed to parse assessment data from localStorage:", parseError);
+        console.warn(
+          "Failed to parse assessment data from localStorage:",
+          parseError
+        );
       }
     }
   } catch (error) {
@@ -243,7 +215,9 @@ function getAssessmentStatus(
 
   // หากมีคะแนนจาก API แล้ว = ประเมินเสร็จแล้ว
   const status = "ประเมินแล้ว";
-  console.log(`✅ Has score from API for ${compoundId}: ${status} (score: ${fallbackScore})`);
+  console.log(
+    `✅ Has score from API for ${compoundId}: ${status} (score: ${fallbackScore})`
+  );
   return status;
 }
 
@@ -326,7 +300,10 @@ function buildGroups(
         let parentStatus: string;
         if (allDone) {
           parentStatus = "ประเมินแล้ว";
-        } else if (someInProgress || (statuses.some((s) => s === "ประเมินแล้ว") && someNotStarted)) {
+        } else if (
+          someInProgress ||
+          (statuses.some((s) => s === "ประเมินแล้ว") && someNotStarted)
+        ) {
           parentStatus = "กำลังประเมิน";
         } else {
           parentStatus = "ยังไม่ได้ประเมิน";
@@ -338,17 +315,9 @@ function buildGroups(
         console.log(`  🔄 Some in progress: ${someInProgress}`);
         console.log(`  ❌ Some not started: ${someNotStarted}`);
         console.log(`  📋 Final parent status: ${parentStatus}`);
-        // 2) ใน buildGroups (เฉพาะส่วนคำนวณ itType/score/grade ของ parent)
-        const itTypeFromTopic = /\(IT\)/i.test(t.auditTopic)
-          ? "IT"
-          : /\(Non-?IT\)/i.test(t.auditTopic)
-          ? "Non-IT"
-          : "-";
 
-        // ✅ คะแนน parent ควรเป็นผลรวมของ children (totalScore ที่คำนวณไว้แล้ว)
-        // หรือถ้า API มีค่าจริงก็ใช้ค่านั้น แต่ fallback เป็น totalScore
         const parentScore = t.composite_score ?? t.total_score ?? totalScore;
-        const parentGrade = (t as any).grade ?? gradeFromScore(parentScore);
+        const parentGrade = ((t as { grade?: string }).grade ?? gradeFromScore(parentScore)) as "H" | "M" | "L" | "E" | "N" | "-";
 
         const parent: Row = {
           id: `group:a${a.id}-c${re.id}-t${t.id}`,
@@ -411,8 +380,8 @@ export default function RiskAssessmentPlanningPage({
 }) {
   const [tab, setTab] = useState<TabKey>("all");
   const [year, setYear] = useState<number>(2568);
-  const [query, setQuery] = useState("");
-  const [status, setStatus] = useState<
+  const [query] = useState("");
+  const [status] = useState<
     "all" | "กำลังประเมิน" | "ประเมินแล้ว" | "ยังไม่ได้ประเมิน"
   >("all");
   const [sortBy, setSortBy] = useState<"index" | "score" | "unit">("index");
@@ -544,9 +513,9 @@ export default function RiskAssessmentPlanningPage({
   const handleClearLocalStorage = () => {
     const confirmed = confirm(
       "🗑️ เคลียร์ข้อมูลการประเมิน\n\n" +
-      "จะลบข้อมูลการประเมินที่บันทึกไว้ใน Browser ทั้งหมด\n" +
-      "ข้อมูลจะกลับไปเป็นสถานะเริ่มต้น\n\n" +
-      "ต้องการดำเนินการต่อหรือไม่?"
+        "จะลบข้อมูลการประเมินที่บันทึกไว้ใน Browser ทั้งหมด\n" +
+        "ข้อมูลจะกลับไปเป็นสถานะเริ่มต้น\n\n" +
+        "ต้องการดำเนินการต่อหรือไม่?"
     );
 
     if (!confirmed) return;
@@ -554,8 +523,11 @@ export default function RiskAssessmentPlanningPage({
     try {
       // ลบข้อมูลการประเมินทั้งหมดจาก localStorage
       const keys = Object.keys(localStorage);
-      keys.forEach(key => {
-        if (key.startsWith('assessment_status_') || key.startsWith('assessment_data_')) {
+      keys.forEach((key) => {
+        if (
+          key.startsWith("assessment_status_") ||
+          key.startsWith("assessment_data_")
+        ) {
           localStorage.removeItem(key);
         }
       });
@@ -705,7 +677,7 @@ export default function RiskAssessmentPlanningPage({
               >
                 🤖 Auto ประเมิน
               </Button>
-              
+
               <Button
                 size="sm"
                 variant="outline"

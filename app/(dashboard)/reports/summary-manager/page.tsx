@@ -1,12 +1,12 @@
 "use client";
 
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
+// import { Input } from '@/components/ui/input';
 
 import { Edit } from 'lucide-react';
 
@@ -26,7 +26,7 @@ export default function SummaryManagerPage() {
     const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
     const [isConfirmDialogOpen, setIsConfirmDialogOpen] = React.useState(false);
     const [editingItem, setEditingItem] = React.useState<AuditItem | null>(null);
-    const [files, setFiles] = React.useState<File[] | undefined>();
+        // const [files, ] = React.useState<File[] | undefined>();
 
     // Sample audit data matching the image exactly
     const auditData: AuditItem[] = [
@@ -117,7 +117,7 @@ export default function SummaryManagerPage() {
             console.log('Saving edited item:', editingItem);
             setIsConfirmDialogOpen(false);
             setEditingItem(null);
-            setFiles(undefined);
+            // setFiles(undefined);
         }
     };
 
@@ -126,10 +126,10 @@ export default function SummaryManagerPage() {
         setIsEditDialogOpen(true); // Go back to edit dialog
     };
 
-    const handleDrop = (acceptedFiles: File[]) => {
-        console.log('Files uploaded:', acceptedFiles);
-        setFiles(acceptedFiles);
-    };
+    // const handleDrop = (acceptedFiles: File[]) => {
+    //     console.log('Files uploaded:', acceptedFiles);
+    //     setFiles(acceptedFiles);
+    // };
 
     return (
         <div className="flex flex-1 flex-col gap-4 p-2 sm:p-4 pt-0">
@@ -234,7 +234,7 @@ export default function SummaryManagerPage() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {auditData.map((item, index) => (
+                                {auditData.map((item) => (
                                     <TableRow key={item.id} className="hover:bg-gray-50">
                                         <TableCell className="text-xs sm:text-sm text-center">
                                             {item.displayId === 1 ? (

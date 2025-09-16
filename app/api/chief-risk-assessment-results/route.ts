@@ -4,7 +4,22 @@ import { NextRequest, NextResponse } from "next/server";
 import { GET as InspectorGET } from "../risk-assessment-results/route";
 
 // เก็บข้อมูลที่ส่งมาจาก Inspector (ในระบบจริงจะเก็บในฐานข้อมูล)
-let submittedData: any = null;
+interface SubmittedData {
+  action: string;
+  year: string;
+  tab: string;
+  data: unknown[];
+  originalOrder?: string[];
+  newOrder?: string[];
+  changedItem?: string;
+  reason?: string;
+  hasChanges?: boolean;
+  reasonById?: Record<string, string>;
+  metadata?: Record<string, unknown>;
+  rowsByTab?: Record<string, unknown[]>;
+}
+
+let submittedData: SubmittedData | null = null;
 let submissionStatus = "รอหัวหน้าหน่วยตรวจสอบพิจารณา";
 
 export async function GET(request: NextRequest) {
@@ -31,7 +46,7 @@ export async function GET(request: NextRequest) {
         hasReorder: !!submittedData.newOrder
       });
 
-      const responseData = {
+      const responseData: Record<string, unknown> = {
         ...submittedData.metadata,
         rowsByTab: submittedData.rowsByTab || {},
         statusLine: {
@@ -112,7 +127,7 @@ export async function POST(request: NextRequest) {
         reason: body.reason
       });
       
-      const dataMap = new Map(body.data.map((item: any) => [item.id, item]));
+      const dataMap = new Map(body.data.map((item: { id: string }) => [item.id, item]));
       orderedData = body.newOrder.map((id: string) => dataMap.get(id)).filter(Boolean);
       
       // เก็บ index เดิมไว้ เพื่อไม่ให้เกิดปัญหาในการ match ข้อมูล
@@ -123,7 +138,7 @@ export async function POST(request: NextRequest) {
         originalCount: body.data.length,
         reorderedCount: orderedData.length,
         newOrder: body.newOrder,
-        orderedDataIds: orderedData.map((item: any) => item.id)
+        orderedDataIds: orderedData.map((item: { id: string }) => item.id)
       });
     }
 

@@ -23,7 +23,12 @@ type Props = {
 const statusClass = (s: string) =>
   s === "AUDITOR_ASSESSING" ? "text-blue-600" : "text-gray-600";
 
-export default function DetailView({ detail, onAddFactor, onDeleteFactor, onSave }: Props) {
+export default function DetailView({
+  detail,
+  onAddFactor,
+  onDeleteFactor,
+  onSave,
+}: Props) {
   const deptText = detail.auditTopics.departments
     .map((d) => d.departmentName)
     .join(" / ");
@@ -36,60 +41,58 @@ export default function DetailView({ detail, onAddFactor, onDeleteFactor, onSave
     riskFactor: "",
   });
 
-// รายการตัวเลือก (เอาตามที่หน้าคุณใช้จริงได้เลย)
-const processOptions = [
-  // หมวดหลัก (ตามหัวข้อในภาพ)
-  {
-    label: "การติดตามและประเมินผลการดำเนินงานโครงการ",
-    value: "followup-evaluation",
-  },
+  // รายการตัวเลือก (เอาตามที่หน้าคุณใช้จริงได้เลย)
+  const processOptions = [
+    // หมวดหลัก (ตามหัวข้อในภาพ)
+    {
+      label: "การติดตามและประเมินผลการดำเนินงานโครงการ",
+      value: "followup-evaluation",
+    },
 
-  // รายการย่อยตามภาพ
-  { label: "การจัดทำข้อเสนอโครงการ", value: "project-proposal" },
-  {
-    label: "การจัดทำคำขอตั้งงบประมาณ",
-    value: "budget-appropriation-request",
-  },
-  {
-    label: "การจัดทำแผนการปฏิบัติงานและแผนการใช้จ่ายงบประมาณ",
-    value: "workplan-spending-plan",
-  },
-  {
-    label: "การจัดสรรงบประมาณ/การโอนเปลี่ยนแปลงงบประมาณ",
-    value: "budget-allocation-transfer-adjustment",
-  },
-  {
-    label: "การดำเนินการตามข้อเสนอโครงการที่ได้รับการอนุมัติ",
-    value: "execute-approved-project-proposal",
-  },
-  {
-    label: "การรายงานผลการดำเนินงานและการรายงานผลสัมฤทธิ์ของโครงการ",
-    value: "performance-and-outcome-reporting",
-  },
-];
+    // รายการย่อยตามภาพ
+    { label: "การจัดทำข้อเสนอโครงการ", value: "project-proposal" },
+    {
+      label: "การจัดทำคำขอตั้งงบประมาณ",
+      value: "budget-appropriation-request",
+    },
+    {
+      label: "การจัดทำแผนการปฏิบัติงานและแผนการใช้จ่ายงบประมาณ",
+      value: "workplan-spending-plan",
+    },
+    {
+      label: "การจัดสรรงบประมาณ/การโอนเปลี่ยนแปลงงบประมาณ",
+      value: "budget-allocation-transfer-adjustment",
+    },
+    {
+      label: "การดำเนินการตามข้อเสนอโครงการที่ได้รับการอนุมัติ",
+      value: "execute-approved-project-proposal",
+    },
+    {
+      label: "การรายงานผลการดำเนินงานและการรายงานผลสัมฤทธิ์ของโครงการ",
+      value: "performance-and-outcome-reporting",
+    },
+  ];
 
-const dimensionOptions = [
-  { label: "ด้านกลยุทธ์", value: "strategy" },
-  { label: "ด้านการเงิน", value: "finance" },
-  { label: "ด้านการดำเนินงาน", value: "operations" },
-  { label: "ด้านเทคโนโลยีสารสนเทศ", value: "informationtechnology" },
-  { label: "ด้านการปฏิบัติตามกฎระเบียบ", value: "regulatorycompliance" },
-  { label: "ด้านการเกิดทุจริต", value: "fraudrisk" },
-];
+  const dimensionOptions = [
+    { label: "ด้านกลยุทธ์", value: "strategy" },
+    { label: "ด้านการเงิน", value: "finance" },
+    { label: "ด้านการดำเนินงาน", value: "operations" },
+    { label: "ด้านเทคโนโลยีสารสนเทศ", value: "informationtechnology" },
+    { label: "ด้านการปฏิบัติตามกฎระเบียบ", value: "regulatorycompliance" },
+    { label: "ด้านการเกิดทุจริต", value: "fraudrisk" },
+  ];
 
-  // คลิก "เพิ่มปัจจัยเสี่ยง"
   const handleOpenAdd = () => {
     setValues({ process: "", dimension: "", riskFactor: "" });
     setOpenAdd(true);
   };
 
-  // คลิก "เลือกปัจจัยเสี่ยง" ใน Dialog (คุณจะเปลี่ยนเป็นตัวเลือกจริง/command dialog ก็ได้)
-  const handlePickRiskFactor = () => {
-    const preset =
-      "(1) แผนยุทธศาสตร์ ... ในระดับปฏิบัติการอย่างครอบคลุมในทุกภารกิจ\n\n" +
-      "(2) การกำหนดแผน/ประเด็น ... รวมถึงการติดตามความไม่สอดคล้อง ...";
-    setValues((v) => ({ ...v, riskFactor: preset }));
-  };
+  // const handlePickRiskFactor = () => {
+  //   const preset =
+  //     "(1) แผนยุทธศาสตร์ ... ในระดับปฏิบัติการอย่างครอบคลุมในทุกภารกิจ\n\n" +
+  //     "(2) การกำหนดแผน/ประเด็น ... รวมถึงการติดตามความไม่สอดคล้อง ...";
+  //   setValues((v) => ({ ...v, riskFactor: preset }));
+  // };
 
   // กดยืนยันใน Dialog
   const handleConfirmAdd = () => {
@@ -187,7 +190,9 @@ const dimensionOptions = [
           {detail.AuditActivityRisks.length === 0 ? (
             <div className="py-8 text-center text-gray-500">
               <p>ยังไม่มีปัจจัยเสี่ยง</p>
-              <p className="text-sm mt-1">กดปุ่ม "เพิ่มปัจจัยเสี่ยง" เพื่อเริ่มต้น</p>
+              <p className="text-sm mt-1">
+                กดปุ่ม &quot;เพิ่มปัจจัยเสี่ยง&quot; เพื่อเริ่มต้น
+              </p>
             </div>
           ) : (
             detail.AuditActivityRisks.map((a, idx) => (
@@ -204,14 +209,19 @@ const dimensionOptions = [
                       </span>
                       <div className="flex-1 space-y-2">
                         <div className="text-sm font-medium text-gray-800">
-                          {processOptions.find(p => p.value === a.processes)?.label || a.processes}
+                          {processOptions.find((p) => p.value === a.processes)
+                            ?.label || a.processes}
                         </div>
                         <div className="inline-block px-2 py-1 text-xs bg-gray-100 rounded-md text-gray-600">
-                          {dimensionOptions.find(d => d.value === a.risk_factors)?.label || a.risk_factors}
+                          {dimensionOptions.find(
+                            (d) => d.value === a.risk_factors
+                          )?.label || a.risk_factors}
                         </div>
                         {a.object && (
                           <div className="mt-3 p-3 bg-gray-50 rounded-lg">
-                            <p className="text-xs text-gray-500 mb-1">ปัจจัยเสี่ยงที่เลือก:</p>
+                            <p className="text-xs text-gray-500 mb-1">
+                              ปัจจัยเสี่ยงที่เลือก:
+                            </p>
                             <p className="whitespace-pre-wrap text-sm leading-relaxed text-gray-700">
                               {a.object}
                             </p>
@@ -267,7 +277,11 @@ const dimensionOptions = [
       <div className="mt-6 flex justify-end">
         <button
           onClick={() => {
-            onSave?.() || alert('บันทึกข้อมูลเรียบร้อยแล้ว');
+            if (onSave) {
+              onSave();
+            } else {
+              alert("บันทึกข้อมูลเรียบร้อยแล้ว");
+            }
           }}
           className="inline-flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white shadow hover:bg-green-700 active:bg-green-800"
         >

@@ -7,10 +7,11 @@ import { NextResponse } from "next/server";
 
 const noStore = { "Cache-Control": "no-store" };
 
-type Ctx = { params: { id: string } };
+type Ctx = { params: Promise<{ id: string }> };
 
 export async function GET(_req: Request, { params }: Ctx) {
-  const id = Number(params.id);
+  const { id: idParam } = await params;
+  const id = Number(idParam);
   if (!id || Number.isNaN(id)) {
     return NextResponse.json({ message: "Invalid id" }, { status: 400, headers: noStore });
   }

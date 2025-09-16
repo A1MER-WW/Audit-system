@@ -1,6 +1,10 @@
 // lib/mock-audit-programs.ts
 
-export type Department = { id: number; departmentName: string; isActive: boolean };
+export type Department = {
+  id: number;
+  departmentName: string;
+  isActive: boolean;
+};
 
 // เพิ่ม Category type และอัพเดต AuditTopics ให้มี category
 export type Category = {
@@ -82,7 +86,9 @@ const initialData: AuditProgram[] = [
     auditTopics: {
       id: 3,
       category: { id: 1, name: "หน่วยงาน" },
-      departments: [{ id: 4, departmentName: "สำนักการเงินและบัญชี", isActive: true }],
+      departments: [
+        { id: 4, departmentName: "สำนักการเงินและบัญชี", isActive: true },
+      ],
       auditTopic: "งานด้านการเงินและบัญชี",
     },
     fiscalYear: 2568,
@@ -131,7 +137,9 @@ const initialData: AuditProgram[] = [
     auditTopics: {
       id: 6,
       category: { id: 7, name: "IT และ Non-IT" },
-      departments: [{ id: 8, departmentName: "หน่วยงานในสังกัด อตก.", isActive: true }],
+      departments: [
+        { id: 8, departmentName: "หน่วยงานในสังกัด อตก.", isActive: true },
+      ],
       auditTopic:
         "ติดตามความก้าวหน้าในการปฏิบัติตามข้อเสนอแนะในรายงานผลการตรวจสอบ",
     },
@@ -147,7 +155,9 @@ const initialData: AuditProgram[] = [
     auditTopics: {
       id: 7,
       category: { id: 4, name: "โครงการกันเงินเหลื่อมปี" },
-      departments: [{ id: 9, departmentName: "หน่วยงานในสังกัด อตก.", isActive: true }],
+      departments: [
+        { id: 9, departmentName: "หน่วยงานในสังกัด อตก.", isActive: true },
+      ],
       auditTopic:
         "ให้คำปรึกษาและแนะแนวทางในการปรับปรุงการดำเนินงานตามมาตรฐานวิชาการเกษตร",
     },
@@ -161,16 +171,13 @@ const initialData: AuditProgram[] = [
 ];
 
 declare global {
-  // eslint-disable-next-line no-var
   var __AUDIT_STORE__: Store | undefined;
 }
 
-const store: Store =
-  globalThis.__AUDIT_STORE__ ??
-  {
-    data: structuredClone(initialData),
-    autoId: Math.max(...initialData.map((x) => x.id)),
-  };
+const store: Store = globalThis.__AUDIT_STORE__ ?? {
+  data: structuredClone(initialData),
+  autoId: Math.max(...initialData.map((x) => x.id)),
+};
 
 globalThis.__AUDIT_STORE__ = store;
 
@@ -197,7 +204,10 @@ export function addProgram(input: Omit<AuditProgram, "id">) {
   return clone(item);
 }
 
-export function updateProgram(id: number, patch: Partial<Omit<AuditProgram, "id">>) {
+export function updateProgram(
+  id: number,
+  patch: Partial<Omit<AuditProgram, "id">>
+) {
   const idx = store.data.findIndex((a) => a.id === id);
   if (idx === -1) return null;
   store.data[idx] = { ...store.data[idx], ...clone(patch) };

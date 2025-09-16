@@ -1,19 +1,19 @@
 import { NextResponse } from "next/server";
 import { buildRowsByTabRaw } from "@/lib/risk-dataset";
-import { Row, TabKey } from "@/types/risk";
+import { Row } from "@/types/risk";
 import { formsMap } from "@/lib/mock-risk-db";
 
 const SCORE_RULES = { highMin: 60, mediumMin: 41 };
 const toGrade = (s: number) => (s >= SCORE_RULES.highMin ? "H" : s >= SCORE_RULES.mediumMin ? "M" : "L");
 
-function resetToUnassessed(rows: Row[]): Row[] {
-  return rows.map((r) => ({
-    ...r,
-    score: 0,
-    grade: "-",
-    status: "ยังไม่ได้ประเมิน",
-  }));
-}
+// function resetToUnassessed(rows: Row[]): Row[] {
+//   return rows.map((r) => ({
+//     ...r,
+//     score: 0,
+//     grade: "-",
+//     status: "ยังไม่ได้ประเมิน",
+//   }));
+// }
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);

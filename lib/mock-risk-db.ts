@@ -14,7 +14,6 @@ export type RowOverride = {
 
 /** เก็บ state ไว้ใน global เพื่อให้ dev hot-reload แล้วข้อมูลยังอยู่ */
 declare global {
-  // eslint-disable-next-line no-var
   var __riskdb:
     | {
         forms: Record<string, AssessmentForm>; // key = `${rowId}:${year}`
@@ -24,11 +23,10 @@ declare global {
 }
 
 /** DB ในหน่วยความจำ */
-export const db =
-  global.__riskdb ?? {
-    forms: {} as Record<string, AssessmentForm>,
-    overrides: {} as Record<string, RowOverride>,
-  };
+export const db = global.__riskdb ?? {
+  forms: {} as Record<string, AssessmentForm>,
+  overrides: {} as Record<string, RowOverride>,
+};
 
 if (!global.__riskdb) global.__riskdb = db;
 
