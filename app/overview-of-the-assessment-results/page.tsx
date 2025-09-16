@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, ChevronRight } from "lucide-react";
 import DashboardSection from "@/components/features/inspector/risk-assessment/risk-assessment-dashboard-section";
@@ -34,6 +34,7 @@ type InspectorDataType = {
 
 export default function RiskAssessmentPage() {
   const router = useRouter();
+  const searchParams = useSearchParams(); // 👈
   const [outerTab, setOuterTab] = useState<
     "summary" | "reorder" | "unitRanking"
   >("summary");
@@ -74,21 +75,15 @@ export default function RiskAssessmentPage() {
   // ตรวจสอบว่ามีข้อมูลส่งมาจาก Inspector หรือไม่
   const [dataFromInspector, setDataFromInspector] =
     useState<InspectorDataType | null>(null);
-
   useEffect(() => {
-    // ถ้ามี URL parameter หรือ localStorage ที่บ่งบอกว่ามีข้อมูลใหม่ส่งมา
-    const searchParams = new URLSearchParams(window.location.search);
     const fromInspector = searchParams.get("fromInspector");
     const action = searchParams.get("action");
 
     if (fromInspector === "true") {
-      console.log("📥 Data received from Inspector - refreshing...");
-
-      // โหลดข้อมูลจาก API เพื่อดูรายละเอียดที่ส่งมา
-      fetch("/api/chief-risk-assessment-results")
+      // ยิงใหม่ทุกครั้งที่ query เปลี่ยน
+      fetch("/api/chief-risk-assessment-results", { cache: "no-store" })
         .then((res) => res.json())
         .then((data) => {
-          console.log("📊 Received data from Inspector:", data);
           setDataFromInspector({
             timestamp: new Date().toISOString(),
             source: "inspector_submission",
@@ -99,13 +94,18 @@ export default function RiskAssessmentPage() {
             rawData: data,
           });
 
-          // ถ้าเป็นการจัดลำดับให้เปิดแท็บ reorder
           if (
             action === "reorder" ||
             data.submissionInfo?.action === "submit_reorder"
           ) {
             setOuterTab("reorder");
           }
+
+          // ถ้าอยากเคลียร์ query หลังอ่านแล้ว (กัน reload ซ้ำ)
+          const sp = new URLSearchParams(searchParams.toString());
+          sp.delete("fromInspector");
+          sp.delete("action");
+          router.replace(`?${sp.toString()}`, { scroll: false });
         })
         .catch((error) => {
           console.error("Error loading inspector data:", error);
@@ -117,7 +117,8 @@ export default function RiskAssessmentPage() {
           });
         });
     }
-  }, [setOuterTab]);
+    // ✅ ให้ effect ทำงานเมื่อ query เปลี่ยน
+  }, [searchParams, router]);
 
   return (
     <div className="min-h-svh space-y-4 pt-4">
@@ -190,7 +191,6 @@ export default function RiskAssessmentPage() {
         filter={filter}
         sortBy={sortBy}
         sortDir={scoreSortDir}
-        onSortByChange={setSortBy}
         onSortDirChange={setScoreSortDir}
         onDataChange={setTableData}
       />
