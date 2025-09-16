@@ -1,0 +1,56 @@
+{
+  "action": "submit_reorder",
+  "year": "2568", 
+  "tab": "all",
+  "data": [
+    {
+      "id": "w1",
+      "index": "2",
+      "unit": "สลก.",
+      "work": "มาตรการควบคุมการใช้งบประมาณ",
+      "score": 85,
+      "grade": "E", 
+      "status": "ประเมินแล้ว",
+      "mission": "-",
+      "project": "-",
+      "carry": "-", 
+      "activity": "-",
+      "process": "-",
+      "system": "-",
+      "itType": "-",
+      "hasDoc": true
+    },
+    {
+      "id": "w2", 
+      "index": "1",
+      "unit": "ชพน.",
+      "work": "งานพัสดุ",
+      "score": 46,
+      "grade": "M",
+      "status": "ประเมินแล้ว", 
+      "mission": "-",
+      "project": "-",
+      "carry": "-",
+      "activity": "-", 
+      "process": "-",
+      "system": "-",
+      "itType": "-",
+      "hasDoc": true
+    }
+  ],
+  "originalOrder": ["w1", "w2"],
+  "newOrder": ["w2", "w1"], 
+  "changedItem": "w2",
+  "reason": "จัดลำดับความเสี่ยงใหม่เนื่องจากงานพัสดุมีความเสี่ยงสูงกว่า",
+  "metadata": {
+    "pageTitle": "ผลการประเมิน",
+    "subtitle": "การประเมินความเสี่ยง", 
+    "assessmentName": "ผลการประเมินความเสี่ยง แผนการตรวจสอบประจำปี 2568",
+    "statusLine": {
+      "label": "สถานะ",
+      "value": "ประเมินแล้ว"
+    },
+    "totalItems": 2,
+    "reorderTime": "2025-01-11T10:00:00Z"
+  }
+}
