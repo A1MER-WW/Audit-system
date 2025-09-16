@@ -50,6 +50,7 @@ export async function GET(request: Request){
     const { searchParams } = new URL(request.url)
     
     // Support query parameters for filtering
+    const id = searchParams.get('id')
     const department = searchParams.get('department')
     const search = searchParams.get('search')
     const status = searchParams.get('status')
@@ -66,6 +67,9 @@ export async function GET(request: Request){
         doc.status.toLowerCase().includes(search.toLowerCase()) ||
         doc.display.toLowerCase().includes(search.toLowerCase())
       )
+    }
+    if(id) {
+      filteredDocuments = filteredDocuments.filter(doc => doc.id === Number(id))
     }
     
     // Filter by department

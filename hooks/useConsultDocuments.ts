@@ -10,10 +10,11 @@ export type consultDocumentType = {
   display:string,
 }
 type UseConsultDocumentOptions = {
+  id?:number
   search?: string
   department?: string
   status?: string
-  display?:string,
+  display?:string
 }
 
 export function useConsultDocuments(options: UseConsultDocumentOptions = {}){
@@ -27,6 +28,7 @@ export function useConsultDocuments(options: UseConsultDocumentOptions = {}){
       setError(null)
       
       const params = new URLSearchParams()
+      if (options.id) params.append('id', options.id.toString())
       if (options.search) params.append('search', options.search)
       if (options.department) params.append('department', options.department)
       if (options.status) params.append('status', options.status)

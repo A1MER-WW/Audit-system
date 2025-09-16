@@ -44,6 +44,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { useConsultDocuments, type consultDocumentType as consultDocumentsType } from "@/hooks/useConsultDocuments"
+import { useRouter } from "next/navigation"
 
 
 const columns: ColumnDef<consultDocumentsType>[] = [
@@ -120,57 +121,58 @@ const columns: ColumnDef<consultDocumentsType>[] = [
         </div>
     ),
   },
-  {
-    id: "actions",
-    header: "การดำเนินการ",
-    enableHiding: false,
-    cell: ({ row }) => {
-      return (
-          <div className="flex items-center justify-center gap-2">
-            <Button
-                variant="outline"
-                size="sm"
-                className="h-8 w-8 p-0"
-                onClick={(e) => {
-                    e.stopPropagation()
-                    handleView(row.id)
-                }}
-                title="ดูรายละเอียด"
-            >
-                <Eye className="h-4 w-4" />
-            </Button>
-            <Button
-                variant="outline"
-                size="sm"
-                className="h-8 w-8 p-0"
-                onClick={(e) => {
-                    e.stopPropagation()
-                    // handleEdit(item.id)
-                }}
-                title="แก้ไข"
-            >
-                <Edit className="h-4 w-4" />
-            </Button>
-            <Button
-                variant="outline"
-                size="sm"
-                className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                onClick={(e) => {
-                    e.stopPropagation()
-                    // handleDelete(item.id)
-                }}
-                title="ลบ"
-            >
-                <Trash2 className="h-4 w-4" />
-            </Button>
-        </div>
-      )
-    },
-  }
+  // {
+  //   id: "actions",
+  //   header: "การดำเนินการ",
+  //   enableHiding: false,
+  //   cell: ({ row }) => {
+  //     return (
+  //         <div className="flex items-center justify-center gap-2">
+  //           <Button
+  //               variant="outline"
+  //               size="sm"
+  //               className="h-8 w-8 p-0"
+  //               onClick={(e) => {
+  //                   e.stopPropagation()
+  //                   handleView(row.id)
+  //               }}
+  //               title="ดูรายละเอียด"
+  //           >
+  //               <Eye className="h-4 w-4" />
+  //           </Button>
+  //           <Button
+  //               variant="outline"
+  //               size="sm"
+  //               className="h-8 w-8 p-0"
+  //               onClick={(e) => {
+  //                   e.stopPropagation()
+  //                   // handleEdit(item.id)
+  //               }}
+  //               title="แก้ไข"
+  //           >
+  //               <Edit className="h-4 w-4" />
+  //           </Button>
+  //           <Button
+  //               variant="outline"
+  //               size="sm"
+  //               className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+  //               onClick={(e) => {
+  //                   e.stopPropagation()
+  //                   // handleDelete(item.id)
+  //               }}
+  //               title="ลบ"
+  //           >
+  //               <Trash2 className="h-4 w-4" />
+  //           </Button>
+  //       </div>
+  //     )
+  //   },
+  // }
 ]
 
 export default function ConsultPage() {
 
+  const router = useRouter()
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     []
@@ -180,10 +182,6 @@ export default function ConsultPage() {
   const [rowSelection, setRowSelection] = React.useState({})
   const [searchValue, setSearchValue] = React.useState("")
 
-
-//  const loading = false
-//  const error = ""
-
 // ใช้ useDocuments hook เพื่อดึงข้อมูลจาก API
   const { documents, loading, error, refetch } = useConsultDocuments({
     search: searchValue
@@ -191,9 +189,9 @@ export default function ConsultPage() {
 
 
   // ------HandleView
-  const handleView = (id: number) => {
-        // router.push(`/maindatabase/plan/budgetplan?id=${planId}&name=${encodeURIComponent(planName)}`)
-    console.log(" ID:", id)  
+  const handleView = (id: number , name:string) => {
+    //router.push(`/consult/addconsult?id=${id}&name=${encodeURIComponent(name)}`)
+    router.push(`/consult/viewconsult?id=${id}&name=${encodeURIComponent(name)}`)
   }
   const handleEdit = (id: number) => {
     console.log(" ID:", id)
@@ -366,6 +364,46 @@ export default function ConsultPage() {
                         )}
                       </TableCell>
                     ))}
+                    <TableCell>
+                      <div className="flex items-center justify-center gap-2">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            onClick={(e) => {
+                                e.stopPropagation()
+                                handleView(row.index+1,row.original.title)
+                            }}
+                            title="ดูรายละเอียด"
+                        >
+                            <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            onClick={(e) => {
+                                e.stopPropagation()
+                                handleEdit(row.index+1)
+                            }}
+                            title="แก้ไข"
+                        >
+                            <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                            onClick={(e) => {
+                                e.stopPropagation()
+                                handleDelete(row.index+1)
+                            }}
+                            title="ลบ"
+                        >
+                            <Trash2 className="h-4 w-4" />
+                        </Button>
+                    </div>
+                    </TableCell>
                   </TableRow>
                 ))
               ) : (
