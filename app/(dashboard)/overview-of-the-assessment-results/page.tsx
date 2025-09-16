@@ -249,6 +249,9 @@ export default function RiskAssessmentPage() {
           };
           [key: string]: unknown;
         }}
+        hideDocumentIcon={true}
+        hideEditButton={true}
+        hideStatusColumn={true}
       />
     </div>
   );

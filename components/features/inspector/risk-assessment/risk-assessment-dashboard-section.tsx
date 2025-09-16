@@ -205,10 +205,10 @@ export default function DashboardSection({
     const calculatedDonut: RiskSlice[] = [];
     
     if (gradeCounts.excellent > 0) {
-      calculatedDonut.push({ key: "excellent", name: "มากที่สุด", value: gradeCounts.excellent, color: gradeColors.E, grade: "E" });
+      calculatedDonut.push({ key: "excellent", name: "สูงมาก", value: gradeCounts.excellent, color: gradeColors.E, grade: "E" });
     }
     if (gradeCounts.high > 0) {
-      calculatedDonut.push({ key: "high", name: "มาก", value: gradeCounts.high, color: gradeColors.H, grade: "H" });
+      calculatedDonut.push({ key: "high", name: "สูง", value: gradeCounts.high, color: gradeColors.H, grade: "H" });
     }
     if (gradeCounts.medium > 0) {
       calculatedDonut.push({ key: "medium", name: "ปานกลาง", value: gradeCounts.medium, color: gradeColors.M, grade: "M" });
@@ -217,7 +217,7 @@ export default function DashboardSection({
       calculatedDonut.push({ key: "low", name: "น้อย", value: gradeCounts.low, color: gradeColors.L, grade: "L" });
     }
     if (gradeCounts.none > 0) {
-      calculatedDonut.push({ key: "none", name: "ไม่ประเมิน", value: gradeCounts.none, color: gradeColors.N, grade: "N" });
+      calculatedDonut.push({ key: "none", name: "น้อยมาก", value: gradeCounts.none, color: gradeColors.N, grade: "N" });
     }
 
     // จัดกลุ่มตามประเภท (รองรับทุกเกรด)
@@ -476,10 +476,10 @@ export default function DashboardSection({
 
                           const compareDonut: RiskSlice[] = [];
                           if (compareGradeCounts.excellent > 0) {
-                            compareDonut.push({ key: "excellent", name: "มากที่สุด", value: compareGradeCounts.excellent, color: gradeColors.E, grade: "E" });
+                            compareDonut.push({ key: "excellent", name: "สูงมาก", value: compareGradeCounts.excellent, color: gradeColors.E, grade: "E" });
                           }
                           if (compareGradeCounts.high > 0) {
-                            compareDonut.push({ key: "high", name: "มาก", value: compareGradeCounts.high, color: gradeColors.H, grade: "H" });
+                            compareDonut.push({ key: "high", name: "สูง", value: compareGradeCounts.high, color: gradeColors.H, grade: "H" });
                           }
                           if (compareGradeCounts.medium > 0) {
                             compareDonut.push({ key: "medium", name: "ปานกลาง", value: compareGradeCounts.medium, color: gradeColors.M, grade: "M" });
@@ -488,7 +488,7 @@ export default function DashboardSection({
                             compareDonut.push({ key: "low", name: "น้อย", value: compareGradeCounts.low, color: gradeColors.L, grade: "L" });
                           }
                           if (compareGradeCounts.none > 0) {
-                            compareDonut.push({ key: "none", name: "ไม่ประเมิน", value: compareGradeCounts.none, color: gradeColors.N, grade: "N" });
+                            compareDonut.push({ key: "none", name: "น้อยมาก", value: compareGradeCounts.none, color: gradeColors.N, grade: "N" });
                           }
 
                           const compareTotal = compareDonut.reduce((s, d) => s + d.value, 0);
@@ -605,7 +605,7 @@ export default function DashboardSection({
                         <Bar 
                           dataKey="veryHigh" 
                           stackId="a" 
-                          name="มากที่สุด (E)" 
+                          name="สูงมาก" 
                           fill={gradeColors.E}
                           fillOpacity={activeFilter?.grade === "E" || !activeFilter?.grade ? 1 : 0.3}
                           onClick={(data) => {
@@ -618,7 +618,7 @@ export default function DashboardSection({
                         <Bar 
                           dataKey="high" 
                           stackId="a" 
-                          name="มาก (H)" 
+                          name="สูง" 
                           fill={gradeColors.H}
                           fillOpacity={activeFilter?.grade === "H" || !activeFilter?.grade ? 1 : 0.3}
                           onClick={(data) => {
@@ -631,7 +631,7 @@ export default function DashboardSection({
                         <Bar 
                           dataKey="medium" 
                           stackId="a" 
-                          name="ปานกลาง (M)" 
+                          name="ปานกลาง" 
                           fill={gradeColors.M}
                           fillOpacity={activeFilter?.grade === "M" || !activeFilter?.grade ? 1 : 0.3}
                           onClick={(data) => {
@@ -644,7 +644,7 @@ export default function DashboardSection({
                         <Bar 
                           dataKey="low" 
                           stackId="a" 
-                          name="น้อย (L)" 
+                          name="น้อย" 
                           fill={gradeColors.L}
                           fillOpacity={activeFilter?.grade === "L" || !activeFilter?.grade ? 1 : 0.3}
                           onClick={(data) => {
@@ -657,7 +657,7 @@ export default function DashboardSection({
                         <Bar 
                           dataKey="veryLow" 
                           stackId="a" 
-                          name="ไม่ประเมิน (N)" 
+                          name="น้อยมาก" 
                           fill={gradeColors.N}
                           fillOpacity={activeFilter?.grade === "N" || !activeFilter?.grade ? 1 : 0.3}
                           onClick={(data) => {
@@ -752,7 +752,7 @@ export default function DashboardSection({
                                 <Bar 
                                   dataKey="veryHigh" 
                                   stackId="a" 
-                                  name="มากที่สุด (E)" 
+                                  name="สูงมาก" 
                                   fill={gradeColors.E}
                                   fillOpacity={activeFilter?.grade === "E" || !activeFilter?.grade ? 1 : 0.3}
                                   onClick={(data) => {
@@ -765,7 +765,7 @@ export default function DashboardSection({
                                 <Bar 
                                   dataKey="high" 
                                   stackId="a" 
-                                  name="มาก (H)" 
+                                  name="สูง" 
                                   fill={gradeColors.H}
                                   fillOpacity={activeFilter?.grade === "H" || !activeFilter?.grade ? 1 : 0.3}
                                   onClick={(data) => {
@@ -778,7 +778,7 @@ export default function DashboardSection({
                                 <Bar 
                                   dataKey="medium" 
                                   stackId="a" 
-                                  name="ปานกลาง (M)" 
+                                  name="ปานกลาง" 
                                   fill={gradeColors.M}
                                   fillOpacity={activeFilter?.grade === "M" || !activeFilter?.grade ? 1 : 0.3}
                                   onClick={(data) => {
@@ -791,7 +791,7 @@ export default function DashboardSection({
                                 <Bar 
                                   dataKey="low" 
                                   stackId="a" 
-                                  name="น้อย (L)" 
+                                  name="น้อย" 
                                   fill={gradeColors.L}
                                   fillOpacity={activeFilter?.grade === "L" || !activeFilter?.grade ? 1 : 0.3}
                                   onClick={(data) => {
@@ -804,7 +804,7 @@ export default function DashboardSection({
                                 <Bar 
                                   dataKey="veryLow" 
                                   stackId="a" 
-                                  name="ไม่ประเมิน (N)" 
+                                  name="น้อยมาก" 
                                   fill={gradeColors.N}
                                   fillOpacity={activeFilter?.grade === "N" || !activeFilter?.grade ? 1 : 0.3}
                                   onClick={(data) => {
@@ -857,11 +857,11 @@ function MatrixReport({
   };
 }) {
   const columns = [
-    { key: "veryLow",  label: "น้อยที่สุด (1)",  color: colorsScale.veryLow, grade: "N" as const },
-    { key: "low",      label: "น้อย (2)",       color: colorsScale.low, grade: "L" as const },
-    { key: "medium",   label: "ปานกลาง (3)",    color: colorsScale.medium, grade: "M" as const },
-    { key: "high",     label: "มาก (4)",        color: colorsScale.high, grade: "H" as const },
-    { key: "veryHigh", label: "มากที่สุด (5)",  color: colorsScale.veryHigh, grade: "E" as const },
+    { key: "veryLow",  label: "น้อยมาก",  color: colorsScale.veryLow, grade: "N" as const },
+    { key: "low",      label: "น้อย",       color: colorsScale.low, grade: "L" as const },
+    { key: "medium",   label: "ปานกลาง",    color: colorsScale.medium, grade: "M" as const },
+    { key: "high",     label: "สูง",        color: colorsScale.high, grade: "H" as const },
+    { key: "veryHigh", label: "สูงมาก",  color: colorsScale.veryHigh, grade: "E" as const },
   ] as const;
 
 
@@ -997,12 +997,12 @@ function MatrixReport({
 /** ---------- Palette ---------- */
 // ระบบสีที่ตรงกับภาพตัวอย่าง และสอดคล้องกันระหว่าง Donut, Bar chart และ Matrix
 const gradeColors = {
-  // ตามลำดับความเสี่ยง: สูงไปต่ำ
-  E: "#9333EA", // purple-600 - Excellent (มากที่สุด) 
-  H: "#EF4444", // red-500 - High Risk (มาก)
-  M: "#F97316", // orange-500 - Medium Risk (ปานกลาง) 
-  L: "#10B981", // emerald-500 - Low Risk (น้อย)
-  N: "#6B7280"  // gray-500 - Not Assessed (ไม่ประเมิน)
+  // ตามลำดับความเสี่ยง: สูงไปต่ำ (ตรงตามภาพ)
+  E: "#DC2626", // red-600 - สูงมาก (แดงเข้ม)
+  H: "#EA580C", // orange-600 - สูง (ส้มแดง) 
+  M: "#FACC15", // yellow-400 - ปานกลาง (เหลือง)
+  L: "#65A30D", // lime-600 - น้อย (เขียวอ่อน)
+  N: "#16A34A"  // green-600 - น้อยมาก (เขียวเข้ม)
 };
 
 
@@ -1011,11 +1011,11 @@ const gradeColors = {
 
 // เฉดสีหลักสำหรับเมทริกซ์ (ตรงกับสีหลัก)
 const colorsScale = {
-  veryHigh: "#9333EA", // Excellent (E) - ม่วง
-  high:     "#EF4444", // High Risk (H) - แดง  
-  medium:   "#F97316", // Medium Risk (M) - ส้ม
-  low:      "#10B981", // Low Risk (L) - เขียว
-  veryLow:  "#6B7280"  // Not Assessed (N) - เทา
+  veryHigh: "#DC2626", // สูงมาก (E) - แดงเข้ม
+  high:     "#EA580C", // สูง (H) - ส้มแดง
+  medium:   "#FACC15", // ปานกลาง (M) - เหลือง
+  low:      "#65A30D", // น้อย (L) - เขียวอ่อน
+  veryLow:  "#16A34A"  // น้อยมาก (N) - เขียวเข้ม
 } as const;
 
 

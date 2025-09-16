@@ -140,11 +140,11 @@ function GradeBadge({ grade }: { grade: Row["grade"] }) {
   if (!grade || grade === "-")
     return <span className="text-muted-foreground">-</span>;
   const map = {
-    E: { txt: "มากที่สุด", cls: "bg-purple-100 text-purple-700 border-purple-200" },
-    H: { txt: "มาก", cls: "bg-red-100 text-red-700 border-red-200" },
-    M: { txt: "ปานกลาง", cls: "bg-amber-100 text-amber-700 border-amber-200" },
-    L: { txt: "น้อย", cls: "bg-sky-100 text-sky-700 border-sky-200" },
-    N: { txt: "น้อยที่สุด", cls: "bg-gray-100 text-gray-700 border-gray-200" },
+    E: { txt: "สูงมาก", cls: "bg-red-100 text-red-700 border-red-200" },
+    H: { txt: "สูง", cls: "bg-orange-100 text-orange-700 border-orange-200" },
+    M: { txt: "ปานกลาง", cls: "bg-yellow-100 text-yellow-700 border-yellow-200" },
+    L: { txt: "น้อย", cls: "bg-lime-100 text-lime-700 border-lime-200" },
+    N: { txt: "น้อยมาก", cls: "bg-green-100 text-green-700 border-green-200" },
   } as const;
   const it = map[grade as keyof typeof map];
   if (!it) return <span className="text-muted-foreground">-</span>;

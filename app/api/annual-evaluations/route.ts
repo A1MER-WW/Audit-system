@@ -791,6 +791,476 @@ export const mockAnnualEvaluations: ApiAnnualEvaluation[] = [
       },
     ],
   },
+  // ข้อมูลปี 2567 สำหรับการเปรียบเทียบ
+  {
+    id: 2,
+    fiscalYear: 2567,
+    status: "DIRECTOR_APPROVED",
+    auditor_signature: "นางสาวสมหญิง ใจดี",
+    director_signature: "นายสมชาย ใจกล้า", 
+    director_comment: "อนุมัติผลการประเมินความเสี่ยงปี 2567",
+    version: 1,
+    RiskEvaluations: [
+      {
+        id: 1,
+        category: { id: 1, name: "งาน" },
+        auditTopics: [
+          {
+            id: 101,
+            auditTopic: "การควบคุมภายใน",
+            auditTopicType: {
+              id: 1,
+              name: "หัวข้องานตรวจสอบ",
+              isActive: true,
+            },
+            DepartmentAssessmentScore: [
+              {
+                department: {
+                  id: 1,
+                  departmentName: "สลก.",
+                  composite_score: 72,
+                  grade: "H",
+                },
+              },
+            ],
+            total_score: 72,
+            composite_score: 72,
+            grade: "H",
+            order: 1,
+            order_by_user: 1,
+            reason_for_new_order: "ความเสี่ยงหลักขององค์กร",
+            evaluation_status: "DONE",
+          },
+          {
+            id: 102,
+            auditTopic: "สำรวจผลผลิตข้าว",
+            auditTopicType: {
+              id: 1,
+              name: "หัวข้องานตรวจสอบ",
+              isActive: true,
+            },
+            DepartmentAssessmentScore: [
+              {
+                department: {
+                  id: 3,
+                  departmentName: "ศกช.",
+                  composite_score: 68,
+                  grade: "H",
+                },
+              },
+            ],
+            total_score: 68,
+            composite_score: 68,
+            grade: "H",
+            order: 2,
+            order_by_user: 2,
+            reason_for_new_order: "งานประจำสำคัญ",
+            evaluation_status: "DONE",
+          },
+          {
+            id: 103,
+            auditTopic: "สำรวจพื้นที่เพาะปลูก",
+            auditTopicType: {
+              id: 1,
+              name: "หัวข้องานตรวจสอบ",
+              isActive: true,
+            },
+            DepartmentAssessmentScore: [
+              {
+                department: {
+                  id: 5,
+                  departmentName: "ศสท.1",
+                  composite_score: 45,
+                  grade: "M",
+                },
+              },
+            ],
+            total_score: 45,
+            composite_score: 45,
+            grade: "M",
+            order: 3,
+            order_by_user: 3,
+            reason_for_new_order: "งานสำรวจประจำปี",
+            evaluation_status: "DONE",
+          },
+        ],
+      },
+      {
+        id: 2,
+        category: { id: 2, name: "โครงการ" },
+        auditTopics: [
+          {
+            id: 201,
+            auditTopic: "พัฒนาระบบฐานข้อมูล",
+            auditTopicType: {
+              id: 2,
+              name: "หัวข้อโครงการ",
+              isActive: true,
+            },
+            DepartmentAssessmentScore: [
+              {
+                department: {
+                  id: 6,
+                  departmentName: "กพร.",
+                  composite_score: 52,
+                  grade: "M",
+                },
+              },
+            ],
+            total_score: 52,
+            composite_score: 52,
+            grade: "M",
+            order: 1,
+            order_by_user: 1,
+            reason_for_new_order: "โครงการพัฒนาสำคัญ",
+            evaluation_status: "DONE",
+          },
+        ],
+      },
+      {
+        id: 3,
+        category: { id: 3, name: "โครงการกันเงินเหลื่อมปี" },
+        auditTopics: [
+          {
+            id: 301,
+            auditTopic: "ปรับปรุงระบบเงินเดือน",
+            auditTopicType: {
+              id: 3,
+              name: "หัวข้อโครงการกันเงิน",
+              isActive: true,
+            },
+            DepartmentAssessmentScore: [
+              {
+                department: {
+                  id: 6,
+                  departmentName: "กพร.",
+                  composite_score: 38,
+                  grade: "L",
+                },
+              },
+            ],
+            total_score: 38,
+            composite_score: 38,
+            grade: "L",
+            order: 1,
+            order_by_user: 1,
+            reason_for_new_order: "โครงการค้างจากปีก่อน",
+            evaluation_status: "DONE",
+          },
+        ],
+      },
+      {
+        id: 4,
+        category: { id: 4, name: "กิจกรรม" },
+        auditTopics: [
+          {
+            id: 401,
+            auditTopic: "ประเมินโครงการ",
+            auditTopicType: {
+              id: 4,
+              name: "หัวข้อกิจกรรม",
+              isActive: true,
+            },
+            DepartmentAssessmentScore: [
+              {
+                department: {
+                  id: 7,
+                  departmentName: "ศปผ.",
+                  composite_score: 58,
+                  grade: "M",
+                },
+              },
+            ],
+            total_score: 58,
+            composite_score: 58,
+            grade: "M",
+            order: 1,
+            order_by_user: 1,
+            reason_for_new_order: "กิจกรรมประจำปี",
+            evaluation_status: "DONE",
+          },
+          {
+            id: 402,
+            auditTopic: "อบรมบุคลากร",
+            auditTopicType: {
+              id: 4,
+              name: "หัวข้อกิจกรรม",
+              isActive: true,
+            },
+            DepartmentAssessmentScore: [
+              {
+                department: {
+                  id: 8,
+                  departmentName: "กศป.",
+                  composite_score: 35,
+                  grade: "L",
+                },
+              },
+            ],
+            total_score: 35,
+            composite_score: 35,
+            grade: "L",
+            order: 2,
+            order_by_user: 2,
+            reason_for_new_order: "พัฒนาทักษะ",
+            evaluation_status: "DONE",
+          },
+        ],
+      },
+      {
+        id: 5,
+        category: { id: 5, name: "กระบวนงาน" },
+        auditTopics: [
+          {
+            id: 501,
+            auditTopic: "จัดซื้อจัดจ้าง",
+            auditTopicType: {
+              id: 5,
+              name: "หัวข้อกระบวนงาน",
+              isActive: true,
+            },
+            DepartmentAssessmentScore: [
+              {
+                department: {
+                  id: 1,
+                  departmentName: "สลก.",
+                  composite_score: 48,
+                  grade: "M",
+                },
+              },
+            ],
+            total_score: 48,
+            composite_score: 48,
+            grade: "M",
+            order: 1,
+            order_by_user: 1,
+            reason_for_new_order: "กระบวนการสำคัญ",
+            evaluation_status: "DONE",
+          },
+          {
+            id: 502,
+            auditTopic: "พัฒนาระบบฐานข้อมูล",
+            auditTopicType: {
+              id: 5,
+              name: "หัวข้อกระบวนงาน",
+              isActive: true,
+            },
+            DepartmentAssessmentScore: [
+              {
+                department: {
+                  id: 9,
+                  departmentName: "ศสส.",
+                  composite_score: 75,
+                  grade: "H",
+                },
+              },
+            ],
+            total_score: 75,
+            composite_score: 75,
+            grade: "H",
+            order: 2,
+            order_by_user: 2,
+            reason_for_new_order: "ปรับปรุงระบบ",
+            evaluation_status: "DONE",
+          },
+        ],
+      },
+      {
+        id: 6,
+        category: { id: 6, name: "IT/Non-IT" },
+        auditTopics: [
+          {
+            id: 601,
+            auditTopic: "ระบบคลังข้อมูลกลาง",
+            auditTopicType: {
+              id: 6,
+              name: "หัวข้อระบบ IT",
+              isActive: true,
+            },
+            DepartmentAssessmentScore: [
+              {
+                department: {
+                  id: 9,
+                  departmentName: "ศสส.",
+                  composite_score: 82,
+                  grade: "E",
+                },
+              },
+            ],
+            total_score: 82,
+            composite_score: 82,
+            grade: "E",
+            order: 1,
+            order_by_user: 1,
+            reason_for_new_order: "ระบบหลักสำคัญ",
+            evaluation_status: "DONE",
+          },
+          {
+            id: 602,
+            auditTopic: "ระบบสารบรรณ",
+            auditTopicType: {
+              id: 6,
+              name: "หัวข้อระบบ IT",
+              isActive: true,
+            },
+            DepartmentAssessmentScore: [
+              {
+                department: {
+                  id: 1,
+                  departmentName: "สลก.",
+                  composite_score: 42,
+                  grade: "M",
+                },
+              },
+            ],
+            total_score: 42,
+            composite_score: 42,
+            grade: "M",
+            order: 2,
+            order_by_user: 2,
+            reason_for_new_order: "ระบบสนับสนุนงาน",
+            evaluation_status: "DONE",
+          },
+          {
+            id: 603,
+            auditTopic: "ระบบบริหารงานบุคคล",
+            auditTopicType: {
+              id: 6,
+              name: "หัวข้อระบบ Non-IT",
+              isActive: true,
+            },
+            DepartmentAssessmentScore: [
+              {
+                department: {
+                  id: 8,
+                  departmentName: "กศป.",
+                  composite_score: 28,
+                  grade: "L",
+                },
+              },
+            ],
+            total_score: 28,
+            composite_score: 28,
+            grade: "L",
+            order: 3,
+            order_by_user: 3,
+            reason_for_new_order: "ระบบบริหารงาน",
+            evaluation_status: "DONE",
+          },
+          {
+            id: 604,
+            auditTopic: "ระบบติดตามโครงการ",
+            auditTopicType: {
+              id: 6,
+              name: "หัวข้อระบบ IT",
+              isActive: true,
+            },
+            DepartmentAssessmentScore: [
+              {
+                department: {
+                  id: 7,
+                  departmentName: "ศปผ.",
+                  composite_score: 65,
+                  grade: "H",
+                },
+              },
+            ],
+            total_score: 65,
+            composite_score: 65,
+            grade: "H",
+            order: 4,
+            order_by_user: 4,
+            reason_for_new_order: "ติดตามผลงาน",
+            evaluation_status: "DONE",
+          },
+          {
+            id: 605,
+            auditTopic: "ระบบจัดเก็บข้อมูลสำรวจ",
+            auditTopicType: {
+              id: 6,
+              name: "หัวข้อระบบ IT",
+              isActive: true,
+            },
+            DepartmentAssessmentScore: [
+              {
+                department: {
+                  id: 3,
+                  departmentName: "ศกช.",
+                  composite_score: 55,
+                  grade: "M",
+                },
+              },
+            ],
+            total_score: 55,
+            composite_score: 55,
+            grade: "M",
+            order: 5,
+            order_by_user: 5,
+            reason_for_new_order: "จัดเก็บข้อมูล",
+            evaluation_status: "DONE",
+          },
+          {
+            id: 606,
+            auditTopic: "ระบบรายงานผลสำรวจ",
+            auditTopicType: {
+              id: 6,
+              name: "หัวข้อระบบ Non-IT",
+              isActive: true,
+            },
+            DepartmentAssessmentScore: [
+              {
+                department: {
+                  id: 5,
+                  departmentName: "ศสท.1",
+                  composite_score: 32,
+                  grade: "L",
+                },
+              },
+            ],
+            total_score: 32,
+            composite_score: 32,
+            grade: "L",
+            order: 6,
+            order_by_user: 6,
+            reason_for_new_order: "รายงานผล",
+            evaluation_status: "DONE",
+          },
+        ],
+      },
+      {
+        id: 7,
+        category: { id: 7, name: "หน่วยงาน" },
+        auditTopics: [
+          {
+            id: 701,
+            auditTopic: "บริหารจัดการทั่วไป",
+            auditTopicType: {
+              id: 7,
+              name: "หัวข้อหน่วยงาน",
+              isActive: true,
+            },
+            DepartmentAssessmentScore: [
+              {
+                department: {
+                  id: 1,
+                  departmentName: "สลก.",
+                  composite_score: 60,
+                  grade: "H",
+                },
+              },
+            ],
+            total_score: 60,
+            composite_score: 60,
+            grade: "H",
+            order: 1,
+            order_by_user: 1,
+            reason_for_new_order: "ภารกิจหลัก",
+            evaluation_status: "DONE",
+          },
+        ],
+      },
+    ],
+  },
 ];
 
 /** ========= Helpers ========= */
