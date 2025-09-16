@@ -519,6 +519,18 @@ export default function RiskAssessmentResultsPage({
   // เดิมมี handleConfirm อยู่แล้ว แก้นิดหน่อยให้ปิด SubmitDialog
   const handleConfirm = async () => {
     try {
+      // รวบรวมข้อมูลทั้งหมดจากทุก tab สำหรับส่งไปยัง Chief Inspector
+      const allTabsData = {
+        all: allRows,
+        work: getTabRows("work"),
+        project: getTabRows("project"), 
+        carry: getTabRows("carry"),
+        activity: getTabRows("activity"),
+        process: getTabRows("process"),
+        unit: getTabRows("unit"),
+        it: getTabRows("it")
+      };
+
       // เตรียมข้อมูลการส่งตามประเภท
       let submissionData;
       
@@ -526,9 +538,39 @@ export default function RiskAssessmentResultsPage({
         // สำหรับ reorder: ส่งข้อมูลการจัดลำดับ
         const originalOrder = paginatedParents.map(r => r.id);
         const newOrder = orderIds || originalOrder;
-        const hasChanges = JSON.stringify(originalOrder) !== JSON.stringify(newOrder);
+        const hasChanges = orderIds !== null && JSON.stringify(originalOrder) !== JSON.stringify(newOrder);
         const changedItems = Object.keys(reasonById);
         
+        console.log("🔄 Preparing reorder submission:", {
+          originalOrder,
+          newOrder,
+          orderIds,
+          hasChanges,
+          orderedParentsCount: orderedParents.length,
+          reasonById
+        });
+        
+        // สร้างข้อมูลที่ถูกจัดลำดับใหม่โดยใช้ filteredParents เป็นฐาน
+        const reorderedData = newOrder.map(id => {
+          return filteredParents.find(item => item.id === id);
+        }).filter(Boolean);
+        
+        console.log("🔄 Creating reordered data for submission:", {
+          originalOrderCount: originalOrder.length,
+          newOrderCount: newOrder.length,
+          filteredParentsCount: filteredParents.length,
+          reorderedDataCount: reorderedData.length,
+          newOrderIds: newOrder,
+          reorderedDataIds: reorderedData.map((item) => item?.id).filter(Boolean)
+        });
+        
+        // สร้างข้อมูล allTabsData ที่รวมข้อมูลการจัดลำดับใหม่
+        const updatedAllTabsData = {
+          ...allTabsData,
+          [tab]: reorderedData, // ใช้ข้อมูลที่จัดลำดับใหม่สำหรับแท็บปัจจุบัน
+          all: reorderedData // ใช้ข้อมูลที่จัดลำดับใหม่สำหรับแท็บ "all" ด้วย
+        };
+
         submissionData = {
           action: "submit_reorder",
           year,
@@ -538,15 +580,16 @@ export default function RiskAssessmentResultsPage({
           changedItem: changedItems.length > 0 ? changedItems[0] : null,
           reason: Object.values(reasonById).join("; ") || "การจัดลำดับตามความเสี่ยง",
           hasChanges,
-          data: orderedParents.length > 0 ? orderedParents : paginatedParents,
+          data: reorderedData, // ใช้ข้อมูลที่จัดลำดับใหม่แล้ว
           reasonById, // ส่งข้อมูลเหตุผลทั้งหมด
           metadata: {
             pageTitle,
             subtitle,
             assessmentName,
             statusLine,
-            totalItems: orderedParents.length > 0 ? orderedParents.length : paginatedParents.length,
-            reorderTime: new Date().toISOString()
+            totalItems: reorderedData.length,
+            reorderTime: new Date().toISOString(),
+            allTabsData: updatedAllTabsData // ใช้ข้อมูลที่อัพเดตแล้ว
           }
         };
       } else {
@@ -562,7 +605,8 @@ export default function RiskAssessmentResultsPage({
             assessmentName,
             statusLine,
             totalItems: filteredParents.length,
-            submissionTime: new Date().toISOString()
+            submissionTime: new Date().toISOString(),
+            allTabsData // เพิ่มข้อมูลทุก tab
           }
         };
       }
@@ -807,8 +851,22 @@ export default function RiskAssessmentResultsPage({
 
     // เฉพาะ parent
     dataRows = dataRows.filter((r) => !r.index.includes("."));
-    const usedSortBy = outerTab === "summary" ? "index" : sortBy;
-    const usedSortAsc = outerTab === "summary" ? true : sortAsc;
+    
+    // กำหนดการเรียงลำดับตาม outerTab
+    let usedSortBy: string;
+    let usedSortAsc: boolean;
+    
+    if (outerTab === "summary") {
+      usedSortBy = "index";
+      usedSortAsc = true;  // เรียงตาม index จากน้อยไปมาก
+    } else if (outerTab === "reorder") {
+      usedSortBy = "index";
+      usedSortAsc = true;  // ใน reorder แสดงลำดับปกติจากน้อยไปมาก
+    } else {
+      usedSortBy = sortBy;
+      usedSortAsc = sortAsc;
+    }
+    
     dataRows.sort((a: { score?: number; index?: string; unit?: string }, b: { score?: number; index?: string; unit?: string }) => {
       const dir = usedSortAsc ? 1 : -1;
 

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db, formsMap } from "@/lib/mock-risk-db";
+import { db, formsMap, getReorderData } from "@/lib/mock-risk-db";
 
 // Import types from annual evaluations
 import {
@@ -43,7 +43,7 @@ export type ResultRow = {
   itType: "IT" | "Non-IT" | "-" | "";
   score: number;
   maxScore?: number;
-  grade: "H" | "M" | "L" | "-";
+  grade: "E" | "H" | "M" | "L" | "N" | "-";
   status: string;
   hasDoc: boolean;
 };
@@ -142,9 +142,9 @@ function syncWithMockDatabase(
   }));
 }
 
-// Grade helper
-const gradeFromScore = (s?: number) =>
-  !s || s <= 0 ? "-" : s >= 60 ? "H" : s >= 41 ? "M" : "L";
+// Grade helper - ใช้เกณฑ์เดียวกันกับ Inspector
+const gradeFromScore = (s?: number): "E" | "H" | "M" | "L" | "N" | "-" =>
+  !s || s <= 0 ? "N" : s >= 80 ? "E" : s >= 60 ? "H" : s >= 40 ? "M" : s >= 20 ? "L" : "N";
 
 // แปลงข้อมูล annual evaluations เป็น ResultRow
 function convertToResultRows(
@@ -208,7 +208,7 @@ function convertToResultRows(
               : "-",
             score: ds.department.composite_score ?? 0,
             maxScore: 100,
-            grade: (ds.department.grade as ResultRow["grade"]) ?? (gradeFromScore(ds.department.composite_score ?? 0) as ResultRow["grade"]),
+            grade: (ds.department.grade as ResultRow["grade"]) ?? gradeFromScore(ds.department.composite_score ?? 0),
             status: (ds.department.composite_score ?? 0) > 0 ? "ประเมินแล้ว" : "ยังไม่ได้ประเมิน",
             hasDoc: true,
           };
@@ -242,6 +242,34 @@ export async function GET(request: NextRequest) {
 
     // แปลงเป็น result rows
     const rowsByTab = convertToResultRows(data);
+
+    // ตรวจสอบและใช้ข้อมูลการจัดลำดับที่บันทึกไว้
+    for (const tabKey of Object.keys(rowsByTab) as Array<Exclude<TabKey, "all">>) {
+      const reorderData = getReorderData(year, tabKey);
+      if (reorderData && reorderData.newOrder && rowsByTab[tabKey]) {
+        console.log(`🔄 Applying saved reorder for tab '${tabKey}':`, {
+          originalCount: rowsByTab[tabKey]!.length,
+          newOrderCount: reorderData.newOrder.length,
+          timestamp: reorderData.timestamp
+        });
+
+        // จัดเรียงตาม newOrder ที่บันทึกไว้
+        const dataMap = new Map(rowsByTab[tabKey]!.map((item) => [item.id, item]));
+        const reorderedData = reorderData.newOrder
+          .map((id) => dataMap.get(id))
+          .filter((item): item is ResultRow => item !== undefined);
+
+        // อัพเดทเหตุผลที่บันทึกไว้
+        reorderedData.forEach((item) => {
+          if (reorderData.reasonById[item.id]) {
+            (item as ResultRow & { reorderReason?: string }).reorderReason = reorderData.reasonById[item.id];
+          }
+        });
+
+        rowsByTab[tabKey] = reorderedData;
+        console.log(`✅ Applied reorder for tab '${tabKey}': ${reorderedData.length} items`);
+      }
+    }
 
     // สร้าง response
     const response: ResultsApiResponse = {

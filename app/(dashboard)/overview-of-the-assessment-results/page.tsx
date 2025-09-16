@@ -106,10 +106,28 @@ export default function RiskAssessmentPage() {
     const action = searchParams.get("action");
 
     if (fromInspector === "true") {
-      // ยิงใหม่ทุกครั้งที่ query เปลี่ยน
-      fetch("/api/chief-risk-assessment-results", { cache: "no-store" })
+      console.log("🔄 Fetching updated data from Inspector...");
+      
+      // รีเซ็ตข้อมูลตารางก่อนโหลดใหม่
+      setTableData({});
+      
+      // ยิงใหม่ทุกครั้งที่ query เปลี่ยน พร้อม timestamp เพื่อ bypass cache
+      fetch(`/api/chief-risk-assessment-results?_t=${Date.now()}`, { 
+        cache: "no-store",
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      })
         .then((res) => res.json())
         .then((data) => {
+          console.log("✅ Received updated data:", {
+            hasRowsByTab: !!data.rowsByTab,
+            rowsByTabKeys: Object.keys(data.rowsByTab || {}),
+            hasReorderInfo: !!data.reorderInfo,
+            action: data.submissionInfo?.action
+          });
+
           setDataFromInspector({
             timestamp: new Date().toISOString(),
             source: "inspector_submission",
@@ -219,6 +237,18 @@ export default function RiskAssessmentPage() {
         sortDir={scoreSortDir}
         onSortDirChange={setScoreSortDir}
         onDataChange={(data) => setTableData(data as { donut?: RiskSlice[]; stacked?: StackedRow[]; matrix?: MatrixRow[] })}
+        overrideData={dataFromInspector?.rawData as {
+          submissionInfo?: { action?: string };
+          reorderInfo?: {
+            hasChanges?: boolean;
+            newOrder?: string[];
+            originalOrder?: string[];
+            changedItem?: string;
+            reason?: string;
+            reasonById?: Record<string, string>;
+          };
+          [key: string]: unknown;
+        }}
       />
     </div>
   );

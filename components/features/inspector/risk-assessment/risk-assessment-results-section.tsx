@@ -23,7 +23,6 @@ import { cn } from "@/lib/utils";
 import { ChevronDown, ChevronUp, FileText, GripVertical } from "lucide-react";
 import Link from "next/link";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import ChangeOrderReasonDialog from "../../popup/reason-for-change";
 
 /* ======================== Types ======================== */
 export type TabKey =
@@ -560,6 +559,18 @@ type ResultsProps = {
   showCompare?: boolean; // แสดงโหมดเปรียบเทียบ
   compareYear?: number; // ปีที่จะเปรียบเทียบ
   currentYear?: number; // ปีปัจจุบัน
+  overrideData?: {
+    submissionInfo?: { action?: string };
+    reorderInfo?: {
+      hasChanges?: boolean;
+      newOrder?: string[];
+      originalOrder?: string[];
+      changedItem?: string;
+      reason?: string;
+      reasonById?: Record<string, string>;
+    };
+    [key: string]: unknown;
+  }; // ข้อมูลที่ส่งมาจาก parent (ใช้แทน useSWR)
 };
 
 function getCategory(r: Row): string {
@@ -586,6 +597,7 @@ export default function RiskAssessmentResultsSectionPage({
   showCompare = false,
   compareYear,
   currentYear = 2568,
+  overrideData,
 }: ResultsProps) {
   // โหมดชั้นนอก (ไม่มี UI เปลี่ยน แต่ยังรองรับผ่าน props)
   const [outerTabUncontrolled] =
@@ -600,10 +612,24 @@ export default function RiskAssessmentResultsSectionPage({
   const PAGE_SIZE = 200;
   const [page, setPage] = useState(1);
 
-  const { data, error, isLoading } = useSWR<ApiResponse>(
-    `/api/chief-risk-assessment-results?year=${year}`,
+  // ใช้ overrideData ถ้ามี ไม่งั้นใช้ useSWR
+  const swrResult = useSWR<ApiResponse>(
+    overrideData ? null : `/api/chief-risk-assessment-results?year=${year}`,
     fetcher
   );
+  
+  const data = overrideData || swrResult.data;
+  const error = swrResult.error;
+  const isLoading = overrideData ? false : swrResult.isLoading;
+
+  console.log("📊 Data source in component:", {
+    hasOverrideData: !!overrideData,
+    hasSWRData: !!swrResult.data,
+    finalDataSource: overrideData ? "overrideData" : "SWR",
+    hasReorderInfo: !!data?.reorderInfo,
+    submissionAction: data?.submissionInfo?.action,
+    isLoading
+  });
 
   // rows - ตรวจสอบข้อมูลการจัดลำดับใหม่
   const rowsByTab = useMemo(() => {
@@ -614,6 +640,8 @@ export default function RiskAssessmentResultsSectionPage({
       hasRowsByTab: !!data?.rowsByTab,
       hasReorderInfo: !!data?.reorderInfo,
       action: data?.submissionInfo?.action,
+      submissionTime: data && typeof data === 'object' && 'submissionTime' in data ? data.submissionTime : undefined,
+      rowsByTabKeys: data?.rowsByTab ? Object.keys(data.rowsByTab) : []
     });
 
     // ถ้ายังโหลดอยู่ให้ return empty object เพื่อไม่แสดงข้อมูล mock
@@ -622,25 +650,34 @@ export default function RiskAssessmentResultsSectionPage({
       return {};
     }
 
-    // ถ้ามี error ให้ใช้ mock data
-    if (error) {
-      console.log("❌ Error loading data, using mock rows");
+    // ถ้ามี error ให้ใช้ mock data เฉพาะเมื่อไม่มีข้อมูลเก่า
+    if (error && !data) {
+      console.log("❌ Error loading data and no cached data, using mock rows");
       return buildMockRows();
     }
 
     // ตรวจสอบว่ามีข้อมูลจริงจาก API หรือไม่
-    const hasValidData =
-      data &&
-      Object.values(data.rowsByTab ?? {}).some((v) => (v?.length ?? 0) > 0);
+    const hasValidRowsByTab = data?.rowsByTab && 
+      Object.values(data.rowsByTab).some((v) => Array.isArray(v) && v.length > 0);
 
-    if (hasValidData) {
-      console.log("✅ Using submitted data from Inspector");
+    if (hasValidRowsByTab) {
+      console.log("✅ Using submitted data from Inspector", {
+        tabsWithData: Object.entries(data!.rowsByTab!).map(([key, value]) => 
+          ({ tab: key, count: Array.isArray(value) ? value.length : 0 })
+        )
+      });
+      
       if (data?.reorderInfo?.hasChanges) {
         console.log("🔄 Data includes reorder changes");
       }
       return data!.rowsByTab as ApiResponse["rowsByTab"];
     } else {
-      console.log("⚠️ No submitted data available, returning empty data");
+      console.log("⚠️ No valid rowsByTab data available", {
+        hasData: !!data,
+        hasRowsByTab: !!data?.rowsByTab,
+        rowsByTabType: typeof data?.rowsByTab,
+        rowsByTabKeys: data?.rowsByTab ? Object.keys(data.rowsByTab) : 'no keys'
+      });
       return {};
     }
   }, [data, isLoading, error]);
@@ -930,10 +967,62 @@ export default function RiskAssessmentResultsSectionPage({
   /* ---------- Reorder state & actions ---------- */
   const [orderIds, setOrderIds] = useState<string[] | null>(null);
   const orderedParents = useMemo(() => {
+    console.log("🔍 orderedParents useMemo called:", {
+      outerTab,
+      tab,
+      hasData: !!data,
+      dataAction: data && typeof data === 'object' && 'action' in data ? data.action : undefined,
+      hasRowsByTab: !!rowsByTab,
+      rowsByTabKeys: rowsByTab ? Object.keys(rowsByTab) : [],
+      hasReorderInfo: !!data?.reorderInfo,
+      filteredParentsCount: filteredParents.length
+    });
+
+    // สำหรับ overview page: ถ้ามีข้อมูลจาก rowsByTab ที่จัดลำดับแล้ว ให้ใช้เลย
+    const isReorderAction = (data && typeof data === 'object' && 'action' in data && data.action === "submit_reorder") || 
+                           data?.submissionInfo?.action === "submit_reorder";
+    
+    // ตรวจสอบว่าเป็น reorder mode และมีข้อมูล reorder หรือไม่
+    if (outerTab === "reorder" && (isReorderAction || data?.reorderInfo)) {
+      console.log("🎯 In reorder mode, checking for data:", {
+        isReorderAction,
+        hasReorderInfo: !!data?.reorderInfo,
+        hasRowsByTab: !!rowsByTab,
+        rowsByTabKeys: rowsByTab ? Object.keys(rowsByTab) : [],
+        currentTab: tab
+      });
+      
+      // ลองใช้ข้อมูลจาก rowsByTab ก่อน
+      if (rowsByTab && Object.keys(rowsByTab).length > 0) {
+        const rowsByTabRecord = rowsByTab as Record<string, unknown[]>;
+        // ลองหา tab "all" ก่อน แล้วค่อยหา tab ที่เจาะจง
+        const reorderedData = rowsByTabRecord["all"] || rowsByTabRecord[tab] || [];
+        const validRows = reorderedData.filter((item: unknown): item is Row => 
+          Boolean(item && typeof item === 'object' && 'id' in item)
+        );
+        
+        if (validRows.length > 0) {
+          console.log("🔄 Using data from rowsByTab:", {
+            source: rowsByTabRecord["all"] ? "all" : tab,
+            rowCount: validRows.length,
+            rowIds: validRows.map((r: Row) => r.id).slice(0, 5), // แสดงแค่ 5 ตัวแรก
+            hasReorderInfo: !!data?.reorderInfo
+          });
+          return validRows;
+        } else {
+          console.log("⚠️ No valid rows found in rowsByTab:", {
+            availableTabs: Object.keys(rowsByTabRecord),
+            tabData: rowsByTabRecord[tab] ? `${(rowsByTabRecord[tab] as unknown[]).length} items` : 'null',
+            allData: rowsByTabRecord["all"] ? `${(rowsByTabRecord["all"] as unknown[]).length} items` : 'null'
+          });
+        }
+      }
+    }
+
     // ถ้ามีข้อมูลจาก Inspector (reorderInfo) ให้ใช้ลำดับนั้นก่อน
     if (
       data?.reorderInfo?.newOrder &&
-      data.reorderInfo.hasChanges &&
+      Array.isArray(data.reorderInfo.newOrder) &&
       data.reorderInfo.newOrder.length > 0
     ) {
       console.log("🔄 Using reorder data from Inspector:", {
@@ -942,36 +1031,59 @@ export default function RiskAssessmentResultsSectionPage({
         changedItem: data.reorderInfo.changedItem,
         reason: data.reorderInfo.reason,
         reasonById: data.reorderInfo.reasonById,
-        paginatedParentsIds: paginatedParents.map((p) => p.id),
+        hasChanges: data.reorderInfo.hasChanges,
+        filteredParentsIds: filteredParents.map((p) => p.id),
+        outerTab,
+        currentTab: tab
       });
 
-      // ใช้ paginatedParents แทน filteredParents เพื่อให้ตรงกับที่แสดงผล
-      const allParents = paginatedParents;
+      // ใช้ filteredParents เพื่อให้ครอบคลุมข้อมูลทั้งหมด
+      const allParents = filteredParents;
       const map = new Map(allParents.map((r) => [r.id, r]));
 
       // จัดลำดับตาม newOrder ที่ส่งมาจาก Inspector
       const reorderedRows = data.reorderInfo.newOrder
         .map((id: string) => map.get(id))
-        .filter((row): row is Row => row !== undefined);
+        .filter((row: Row | undefined): row is Row => row !== undefined);
 
-      console.log("✅ Reordered rows:", {
+      console.log("✅ Reordered rows in overview:", {
         newOrderCount: data.reorderInfo.newOrder.length,
         reorderedCount: reorderedRows.length,
-        reorderedIds: reorderedRows.map((r) => r.id),
+        reorderedIds: reorderedRows.map((r: Row) => r.id),
+        allParentsCount: allParents.length,
+        missingIds: data.reorderInfo.newOrder.filter((id: string) => !map.has(id))
       });
 
       // ถ้าจัดลำดับไม่ครบ ให้เติมที่เหลือ
       const newOrderSet = new Set(data.reorderInfo.newOrder);
       const remainingRows = allParents.filter((r) => !newOrderSet.has(r.id));
 
+      if (remainingRows.length > 0) {
+        console.log("📝 Adding remaining rows:", remainingRows.map((r) => r.id));
+      }
+
       return [...reorderedRows, ...remainingRows];
     }
 
     // ถ้าไม่มีข้อมูลจาก Inspector ให้ใช้ orderIds ภายในหน้า
-    if (!orderIds) return paginatedParents;
+    if (!orderIds) {
+      console.log("🔄 No reorder data, using paginatedParents:", {
+        count: paginatedParents.length,
+        ids: paginatedParents.map((p) => p.id)
+      });
+      return paginatedParents;
+    }
+    
     const map = new Map(paginatedParents.map((r) => [r.id, r]));
-    return orderIds.map((id) => map.get(id)!).filter(Boolean);
-  }, [orderIds, paginatedParents, data?.reorderInfo]);
+    const result = orderIds.map((id) => map.get(id)!).filter(Boolean);
+    console.log("🔄 Using local orderIds:", {
+      orderIdsCount: orderIds.length,
+      resultCount: result.length,
+      orderIds,
+      resultIds: result.map((r) => r.id)
+    });
+    return result;
+  }, [orderIds, paginatedParents, data, outerTab, rowsByTab, tab, filteredParents]);
 
 
 
@@ -1019,7 +1131,7 @@ export default function RiskAssessmentResultsSectionPage({
               setExpanded={setExpanded}
               isLoading={isLoading}
               error={!!error}
-              hasData={Object.keys(rowsByTab).length > 0}
+              hasData={Object.keys(rowsByTab).length > 0 && evaluatedRows.length > 0}
               groupChildren={groupChildren} // << เพิ่ม
             />
           )}
@@ -1028,17 +1140,10 @@ export default function RiskAssessmentResultsSectionPage({
             <ReorderSection
               tab={tab}
               parents={orderedParents}
-              onReorderByDrag={(newIds, movedId) => {
-                console.log("🔄 Reordering:", { newIds, movedId });
-                // สำหรับตอนนี้ให้แค่ log เอาไว้ก่อน
-              }}
-              reasonById={{}}
-              onUpdateReason={(id, reason) => {
-                console.log("📝 Update reason:", { id, reason });
-                // สำหรับตอนนี้ให้แค่ log เอาไว้ก่อน
-              }}
+              reasonById={data?.reorderInfo?.reasonById || {}}
               isLoading={isLoading}
               error={!!error}
+              readOnly={true} // หน้า overview เป็นแค่แสดงผล ไม่ให้แก้ไข
             />
           )}
 
@@ -1308,83 +1413,33 @@ function SummarySection(props: {
   );
 }
 
+// ReorderSection สำหรับหน้า Overview (แสดงผลเท่านั้น ไม่มีฟังก์ชัน drag)
 function ReorderSection(props: {
   tab: TabKey;
   parents: Row[];
-  onReorderByDrag: (newIds: string[], movedId: string) => void; // <-- เพิ่ม movedId
+  onReorderByDrag?: (newIds: string[], movedId: string) => void;
   reasonById: Record<string, string>;
-  onUpdateReason?: (id: string, reason: string) => void; // <-- เพิ่ม callback สำหรับอัพเดตเหตุผล
+  onUpdateReason?: (id: string, reason: string) => void;
   isLoading: boolean;
   error: boolean;
+  readOnly?: boolean; // เพิ่ม prop สำหรับโหมดอ่านอย่างเดียว
 }) {
   const {
     tab,
     parents,
-    onReorderByDrag,
     isLoading,
     error,
     reasonById,
-    onUpdateReason,
+    readOnly = false, // default เป็น false (มีฟังก์ชัน drag)
   } = props;
-
-  const arrayMove = (arr: string[], from: number, to: number) => {
-    const a = [...arr];
-    const [m] = a.splice(from, 1);
-    a.splice(to, 0, m);
-    return a;
-  };
-
-  const [draggingId, setDraggingId] = useState<string | null>(null);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [openEditDialog, setOpenEditDialog] = useState(false);
-  const ids = useMemo(() => parents.map((r) => r.id), [parents]);
-  const indexOf = (id: string) => ids.indexOf(id);
-
-  const handleDragStart = (e: React.DragEvent, id: string) => {
-    e.dataTransfer.setData("text/plain", id);
-    e.dataTransfer.effectAllowed = "move";
-    setDraggingId(id);
-  };
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
-  };
-  const handleDropOnRow = (e: React.DragEvent, overId: string) => {
-    e.preventDefault();
-    const fromId = e.dataTransfer.getData("text/plain") || draggingId;
-    if (!fromId || fromId === overId) return;
-
-    const from = indexOf(fromId);
-    const to = indexOf(overId);
-    if (from < 0 || to < 0 || from === to) return;
-
-    const newIds = arrayMove(ids, from, to);
-    onReorderByDrag(newIds, fromId); // <-- ส่ง movedId ขึ้นไป
-    setDraggingId(null);
-  };
-
-  const handleEditReason = (id: string) => {
-    setEditingId(id);
-    setOpenEditDialog(true);
-  };
-
-  const handleConfirmEdit = (payload: {
-    note: string;
-    acknowledged: boolean;
-  }) => {
-    if (editingId && onUpdateReason) {
-      onUpdateReason(editingId, payload.note);
-    }
-    setOpenEditDialog(false);
-    setEditingId(null);
-  };
 
   return (
     <div className="rounded-xl border overflow-hidden">
       <Table>
         <TableHeader className="sticky top-0 z-10 bg-muted/50">
           <TableRow>
-            <TableHead className="w-[44px]"></TableHead>
+            {/* ซ่อนคอลัมน์ drag ถ้าเป็น readOnly */}
+            {!readOnly && <TableHead className="w-[44px]"></TableHead>}
             <TableHead className="w-[90px]">ลำดับ</TableHead>
             <TableHead>หน่วยงาน</TableHead>
             <TableHead className="align-middle !whitespace-normal break-words leading-snug">
@@ -1394,45 +1449,39 @@ function ReorderSection(props: {
             </TableHead>
             <TableHead className="w-[120px]">คะแนนประเมิน</TableHead>
             <TableHead className="w-[120px]">เกรด</TableHead>
-            {/* เปลี่ยนจาก "สถานะการประเมินผล" เป็น "เหตุผล" */}
             <TableHead className="w-[220px]">เหตุผล</TableHead>
-            <TableHead className="w-[100px]">แก้ไข</TableHead>
+            {/* ซ่อนคอลัมน์แก้ไขถ้าเป็น readOnly */}
+            {!readOnly && <TableHead className="w-[100px]">แก้ไข</TableHead>}
           </TableRow>
         </TableHeader>
 
         <TableBody>
           {isLoading ? (
-            <RowLoading colSpan={8} />
+            <RowLoading colSpan={readOnly ? 6 : 8} />
           ) : error ? (
-            <RowError colSpan={8} />
+            <RowError colSpan={readOnly ? 6 : 8} />
           ) : parents.length === 0 ? (
-            <RowEmpty colSpan={8} />
+            <RowEmpty colSpan={readOnly ? 6 : 8} />
           ) : (
-            parents.map((r) => {
+            parents.map((r, index) => {
               return (
-                <TableRow
-                  key={r.id}
-                  onDragOver={handleDragOver}
-                  onDrop={(e) => handleDropOnRow(e, r.id)}
-                  className={cn(
-                    draggingId === r.id && "opacity-60",
-                    "cursor-default select-none"
+                <TableRow key={r.id}>
+                  {/* ซ่อนคอลัมน์ drag ถ้าเป็น readOnly */}
+                  {!readOnly && (
+                    <TableCell className="text-center">
+                      <button
+                        aria-label="ลากเพื่อจัดลำดับ"
+                        draggable
+                        className="h-7 w-7 inline-flex items-center justify-center rounded hover:bg-muted cursor-grab active:cursor-grabbing"
+                        title="ลากเพื่อจัดลำดับ"
+                      >
+                        <GripVertical className="h-4 w-4 text-muted-foreground" />
+                      </button>
+                    </TableCell>
                   )}
-                >
-                  <TableCell className="text-center">
-                    <button
-                      aria-label="ลากเพื่อจัดลำดับ"
-                      draggable
-                      onDragStart={(e) => handleDragStart(e, r.id)}
-                      className="h-7 w-7 inline-flex items-center justify-center rounded hover:bg-muted cursor-grab active:cursor-grabbing"
-                      title="ลากเพื่อจัดลำดับ"
-                    >
-                      <GripVertical className="h-4 w-4 text-muted-foreground" />
-                    </button>
-                  </TableCell>
 
                   <TableCell className="font-mono text-xs md:text-sm">
-                    {r.index}
+                    {readOnly ? index + 1 : r.index}
                   </TableCell>
                   <TableCell className="whitespace-nowrap">{r.unit}</TableCell>
                   <TableCell className="text-muted-foreground align-top !whitespace-normal break-words">
@@ -1445,35 +1494,29 @@ function ReorderSection(props: {
                     <GradeBadge grade={r.grade} />
                   </TableCell>
 
-                  {/* คอลัมน์เหตุผล: ถ้าไม่มีให้แสดง "-" */}
+                  {/* คอลัมน์เหตุผล */}
                   <TableCell className="text-muted-foreground align-top !whitespace-normal break-words">
                     {reasonById[r.id]?.trim() ? reasonById[r.id] : "-"}
                   </TableCell>
 
-                  {/* คอลัมน์แก้ไข */}
-                  <TableCell className="text-center">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleEditReason(r.id)}
-                      className="h-8 px-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50"
-                    >
-                      แก้ไข
-                    </Button>
-                  </TableCell>
+                  {/* ซ่อนคอลัมน์แก้ไขถ้าเป็น readOnly */}
+                  {!readOnly && (
+                    <TableCell className="text-center">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 px-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50"
+                      >
+                        แก้ไข
+                      </Button>
+                    </TableCell>
+                  )}
                 </TableRow>
               );
             })
           )}
         </TableBody>
       </Table>
-
-      {/* Dialog สำหรับแก้ไขเหตุผล */}
-      <ChangeOrderReasonDialog
-        open={openEditDialog}
-        onOpenChange={setOpenEditDialog}
-        onConfirm={handleConfirmEdit}
-      />
     </div>
   );
 }
