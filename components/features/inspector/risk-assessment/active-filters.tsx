@@ -11,11 +11,11 @@ export function ActiveFilters({ grade, category, onClear }: Props) {
   if (!grade && !category) return null;
 
   const gradeLabel = 
-    grade === "E" ? "มากที่สุด" : 
-    grade === "H" ? "มาก" : 
+    grade === "E" ? "สูงมาก" : 
+    grade === "H" ? "สูง" : 
     grade === "M" ? "ปานกลาง" : 
     grade === "L" ? "น้อย" : 
-    grade === "N" ? "ไม่ประเมิน" : "";
+    grade === "N" ? "น้อยมาก" : "";
   
   return (
     <div className="p-4 border rounded-lg bg-white space-y-2">

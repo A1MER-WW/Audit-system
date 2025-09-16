@@ -105,17 +105,26 @@ function GradeBadge({ grade }: { grade: string }) {
     return <span className="text-muted-foreground">-</span>;
   const intent =
     grade === "E"
-      ? "bg-purple-100 text-purple-700 border-purple-200"
-      : grade === "H"
       ? "bg-red-100 text-red-700 border-red-200"
+      : grade === "H"
+      ? "bg-orange-100 text-orange-700 border-orange-200"
       : grade === "M"
-      ? "bg-amber-100 text-amber-700 border-amber-200"
+      ? "bg-yellow-100 text-yellow-700 border-yellow-200"
       : grade === "L"
-      ? "bg-sky-100 text-sky-700 border-sky-200"
-      : "bg-gray-100 text-gray-700 border-gray-200"; // N หรืออื่นๆ
+      ? "bg-lime-100 text-lime-700 border-lime-200"
+      : "bg-green-100 text-green-700 border-green-200"; // N หรืออื่นๆ
+  
+  const gradeText = 
+    grade === "E" ? "สูงมาก"
+    : grade === "H" ? "สูง"
+    : grade === "M" ? "ปานกลาง"
+    : grade === "L" ? "น้อย"
+    : grade === "N" ? "น้อยมาก"
+    : grade;
+    
   return (
     <Badge variant="outline" className={cn("rounded-full px-2", intent)}>
-      {grade}
+      {gradeText}
     </Badge>
   );
 }

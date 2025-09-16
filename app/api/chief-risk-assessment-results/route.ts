@@ -345,7 +345,7 @@ function getMockDataForYear2567() {
           maxScore: 100,
           grade: "M",
           status: "ประเมินแล้ว",
-          hasDoc: false
+          hasDoc: true
         },
         {
           id: "2567-004",
@@ -381,7 +381,7 @@ function getMockDataForYear2567() {
           maxScore: 100,
           grade: "M",
           status: "ประเมินแล้ว",
-          hasDoc: false
+          hasDoc: true
         },
         {
           id: "2567-006",
@@ -417,7 +417,7 @@ function getMockDataForYear2567() {
           maxScore: 100,
           grade: "L",
           status: "ประเมินแล้ว",
-          hasDoc: false
+          hasDoc: true
         },
         {
           id: "2567-008",
@@ -489,7 +489,7 @@ function getMockDataForYear2567() {
           maxScore: 100,
           grade: "M",
           status: "ประเมินแล้ว",
-          hasDoc: false
+          hasDoc: true
         },
         {
           id: "2567-012",

@@ -157,24 +157,24 @@ function GradeBadge({ grade }: { grade: Row["grade"] }) {
     return <span className="text-muted-foreground">-</span>;
   const map = {
     E: {
-      txt: "มากที่สุด",
-      cls: "bg-purple-100 text-purple-700 border-purple-200",
+      txt: "สูงมาก",
+      cls: "bg-red-100 text-red-700 border-red-200",
     },
     H: {
-      txt: "มาก",
-      cls: "bg-red-100 text-red-700 border-red-200",
+      txt: "สูง",
+      cls: "bg-orange-100 text-orange-700 border-orange-200",
     },
     M: {
       txt: "ปานกลาง",
-      cls: "bg-orange-100 text-orange-700 border-orange-200",
+      cls: "bg-yellow-100 text-yellow-700 border-yellow-200",
     },
     L: {
       txt: "น้อย",
-      cls: "bg-emerald-100 text-emerald-700 border-emerald-200",
+      cls: "bg-lime-100 text-lime-700 border-lime-200",
     },
     N: {
-      txt: "น้อยที่สุด",
-      cls: "bg-gray-100 text-gray-700 border-gray-200",
+      txt: "น้อยมาก",
+      cls: "bg-green-100 text-green-700 border-green-200",
     },
   } as const;
   const it = map[grade];
@@ -186,24 +186,26 @@ function GradeBadge({ grade }: { grade: Row["grade"] }) {
 }
 
 function topicByTab(row: Row, tab: TabKey): string {
-  if (tab === "unit") return row.mission;
-  if (tab === "work") return row.work;
-  if (tab === "project") return row.project;
-  if (tab === "carry") return row.carry;
-  if (tab === "activity") return row.activity;
-  if (tab === "process") return row.process;
-  if (tab === "it") return row.system;
-  return (
-    [
-      row.work,
-      row.project,
-      row.carry,
-      row.activity,
-      row.process,
-      row.system,
-      row.mission,
-    ].find((v) => v && v !== "-") || "-"
-  );
+  if (tab === "unit" && row.mission && row.mission !== "-") return row.mission;
+  if (tab === "work" && row.work && row.work !== "-") return row.work;
+  if (tab === "project" && row.project && row.project !== "-") return row.project;
+  if (tab === "carry" && row.carry && row.carry !== "-") return row.carry;
+  if (tab === "activity" && row.activity && row.activity !== "-") return row.activity;
+  if (tab === "process" && row.process && row.process !== "-") return row.process;
+  if (tab === "it" && row.system && row.system !== "-") return row.system;
+  
+  // สำหรับ tab "all" หรือ fallback ให้ใช้ข้อมูลที่มีอยู่
+  const candidates = [
+    row.work,
+    row.project,
+    row.carry,
+    row.activity,
+    row.process,
+    row.system,
+    row.mission,
+  ].filter((v) => v && v !== "-" && v.trim() !== "");
+  
+  return candidates.length > 0 ? candidates[0] : "ไม่ระบุหัวข้อ";
 }
 
 const STATUS_LABELS = {
@@ -571,6 +573,9 @@ type ResultsProps = {
     };
     [key: string]: unknown;
   }; // ข้อมูลที่ส่งมาจาก parent (ใช้แทน useSWR)
+  hideDocumentIcon?: boolean; // ซ่อนไอคอนเอกสาร
+  hideEditButton?: boolean; // ซ่อนปุ่มแก้ไข
+  hideStatusColumn?: boolean; // ซ่อนคอลัมน์สถานะการประเมินผล
 };
 
 function getCategory(r: Row): string {
@@ -598,6 +603,9 @@ export default function RiskAssessmentResultsSectionPage({
   compareYear,
   currentYear = 2568,
   overrideData,
+  hideDocumentIcon = false,
+  hideEditButton = false,
+  hideStatusColumn = false,
 }: ResultsProps) {
   // โหมดชั้นนอก (ไม่มี UI เปลี่ยน แต่ยังรองรับผ่าน props)
   const [outerTabUncontrolled] =
@@ -814,18 +822,18 @@ export default function RiskAssessmentResultsSectionPage({
     if (gradeCounts.excellent > 0) {
       donut.push({
         key: "excellent",
-        name: "มากที่สุด",
+        name: "สูงมาก",
         value: gradeCounts.excellent,
-        color: "#9333EA",
+        color: "#DC2626",
         grade: "E",
       });
     }
     if (gradeCounts.high > 0) {
       donut.push({
         key: "high",
-        name: "มาก",
+        name: "สูง",
         value: gradeCounts.high,
-        color: "#EF4444",
+        color: "#EA580C",
         grade: "H",
       });
     }
@@ -834,7 +842,7 @@ export default function RiskAssessmentResultsSectionPage({
         key: "medium",
         name: "ปานกลาง",
         value: gradeCounts.medium,
-        color: "#F97316",
+        color: "#FACC15",
         grade: "M",
       });
     }
@@ -843,16 +851,16 @@ export default function RiskAssessmentResultsSectionPage({
         key: "low",
         name: "น้อย",
         value: gradeCounts.low,
-        color: "#10B981",
+        color: "#65A30D",
         grade: "L",
       });
     }
     if (gradeCounts.none > 0) {
       donut.push({
         key: "none",
-        name: "ไม่ประเมิน",
+        name: "น้อยมาก",
         value: gradeCounts.none,
-        color: "#6B7280",
+        color: "#16A34A",
         grade: "N",
       });
     }
@@ -1133,6 +1141,8 @@ export default function RiskAssessmentResultsSectionPage({
               error={!!error}
               hasData={Object.keys(rowsByTab).length > 0 && evaluatedRows.length > 0}
               groupChildren={groupChildren} // << เพิ่ม
+              hideDocumentIcon={hideDocumentIcon}
+              hideStatusColumn={hideStatusColumn}
             />
           )}
 
@@ -1155,6 +1165,7 @@ export default function RiskAssessmentResultsSectionPage({
               isLoading={isLoading}
               error={!!error}
               sortDir={sortDir}
+              hideEditButton={hideEditButton}
             />
           )}
 
@@ -1238,6 +1249,8 @@ function SummarySection(props: {
   error: boolean;
   hasData: boolean;
   groupChildren: Record<string, Row[]>;
+  hideDocumentIcon?: boolean;
+  hideStatusColumn?: boolean;
 }) {
   const {
     tab,
@@ -1248,6 +1261,8 @@ function SummarySection(props: {
     error,
     hasData,
     groupChildren,
+    hideDocumentIcon = false,
+    hideStatusColumn = false,
   } = props;
 
   return (
@@ -1257,6 +1272,7 @@ function SummarySection(props: {
           <TableRow>
             <TableHead className="w-[90px]">ลำดับ</TableHead>
             <TableHead>หน่วยงาน</TableHead>
+            <TableHead className="w-[44px] text-center"></TableHead>
             <TableHead className="align-middle !whitespace-normal break-words leading-snug">
               <span className="block max-w-[18rem] md:max-w-[32rem]">
                 {DYNAMIC_HEAD[tab]}
@@ -1264,27 +1280,29 @@ function SummarySection(props: {
             </TableHead>
             <TableHead className="w-[120px]">คะแนนประเมิน</TableHead>
             <TableHead className="w-[120px]">เกรด</TableHead>
-            <TableHead className="w-[170px]">สถานะการประเมินผล</TableHead>
+            {!hideStatusColumn && (
+              <TableHead className="w-[170px]">สถานะการประเมินผล</TableHead>
+            )}
             <TableHead className="w-[64px] text-center"></TableHead>
           </TableRow>
         </TableHeader>
 
         <TableBody>
           {isLoading && !hasData ? (
-            <RowLoading colSpan={7} />
+            <RowLoading colSpan={hideStatusColumn ? 7 : 8} />
           ) : error ? (
-            <RowError colSpan={7} />
+            <RowError colSpan={hideStatusColumn ? 7 : 8} />
           ) : !hasData ? (
             <TableRow>
               <TableCell
-                colSpan={7}
+                colSpan={hideStatusColumn ? 7 : 8}
                 className="h-24 text-center text-muted-foreground"
               >
                 รอการส่งข้อมูลจากหน่วยตรวจสอบภายใน
               </TableCell>
             </TableRow>
           ) : parents.length === 0 ? (
-            <RowEmpty colSpan={7} />
+            <RowEmpty colSpan={8} />
           ) : (
             parents.map((r) => {
               const isHigh = r.grade === "H";
@@ -1300,6 +1318,17 @@ function SummarySection(props: {
                     </TableCell>
                     <TableCell className="whitespace-nowrap">
                       {r.unit}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <div className="flex justify-center gap-2">
+                        {hasChildren && (
+                          <ExpandBtn
+                            id={r.id}
+                            expanded={expanded}
+                            setExpanded={setExpanded}
+                          />
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell className="text-muted-foreground align-top !whitespace-normal break-words">
                       <span
@@ -1320,30 +1349,24 @@ function SummarySection(props: {
                     <TableCell>
                       <GradeBadge grade={r.grade} />
                     </TableCell>
-                    <TableCell>
-                      <StatusBadge value={r.status} />
-                    </TableCell>
+                    {!hideStatusColumn && (
+                      <TableCell>
+                        <StatusBadge value={r.status} />
+                      </TableCell>
+                    )}
                     <TableCell className="text-center">
                       <div className="flex justify-center gap-2">
-                        {hasChildren ? (
-                          <ExpandBtn
-                            id={r.id}
-                            expanded={expanded}
-                            setExpanded={setExpanded}
-                          />
-                        ) : (
-                          r.hasDoc && (
-                            <Button
-                              asChild
-                              variant="ghost"
-                              size="icon"
-                              aria-label="กรอก/ดูเอกสาร"
-                            >
-                              <Link href={`/risk-assessment-form/${r.id}`}>
-                                <FileText className="h-4 w-4" />
-                              </Link>
-                            </Button>
-                          )
+                        {!hasChildren && !hideDocumentIcon && r.hasDoc && (
+                          <Button
+                            asChild
+                            variant="ghost"
+                            size="icon"
+                            aria-label="กรอก/ดูเอกสาร"
+                          >
+                            <Link href={`/risk-assessment-form/${r.id}`}>
+                              <FileText className="h-4 w-4" />
+                            </Link>
+                          </Button>
                         )}
                       </div>
                     </TableCell>
@@ -1364,6 +1387,9 @@ function SummarySection(props: {
                           <TableCell className="whitespace-nowrap pl-6">
                             {c.unit}
                           </TableCell>
+                          <TableCell>
+                            {/* Empty cell for expand button column */}
+                          </TableCell>
                           <TableCell className="text-muted-foreground align-top !whitespace-normal break-words">
                             <span
                               className="block line-clamp-2 md:line-clamp-3"
@@ -1383,11 +1409,13 @@ function SummarySection(props: {
                           <TableCell>
                             <GradeBadge grade={c.grade} />
                           </TableCell>
-                          <TableCell>
-                            <StatusBadge value={deriveStatus(c)} />
-                          </TableCell>
+                          {!hideStatusColumn && (
+                            <TableCell>
+                              <StatusBadge value={deriveStatus(c)} />
+                            </TableCell>
+                          )}
                           <TableCell className="text-center">
-                            {c.hasDoc && (
+                            {!hideDocumentIcon && c.hasDoc && (
                               <Button
                                 asChild
                                 variant="ghost"
@@ -1528,8 +1556,9 @@ function UnitRankingSection(props: {
   isLoading: boolean;
   error: boolean;
   sortDir: "desc" | "asc";
+  hideEditButton?: boolean;
 }) {
-  const { tab, allRows, isLoading, error, sortDir } = props;
+  const { tab, allRows, isLoading, error, sortDir, hideEditButton = false } = props;
   const topicOf = useCallback((r: Row) => topicByTab(r, tab) || "-", [tab]);
   const isTopicRow = useCallback((r: Row) => topicOf(r) !== "-" && topicOf(r).trim() !== "", [topicOf]);
 
@@ -1683,16 +1712,18 @@ function UnitRankingSection(props: {
                         <TableCell>{r.maxScore ?? "-"}</TableCell>
                         <TableCell>{r.score ?? "-"}</TableCell>
                         <TableCell className="text-center">
-                          <Button
-                            asChild
-                            variant="ghost"
-                            size="sm"
-                            className="px-2"
-                          >
-                            <Link href={`/risk-assessment/${r.id}/edit`}>
-                              แก้ไข
-                            </Link>
-                          </Button>
+                          {!hideEditButton && (
+                            <Button
+                              asChild
+                              variant="ghost"
+                              size="sm"
+                              className="px-2"
+                            >
+                              <Link href={`/risk-assessment/${r.id}/edit`}>
+                                แก้ไข
+                              </Link>
+                            </Button>
+                          )}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -1755,13 +1786,14 @@ function ExpandBtn({
     <Button
       variant="ghost"
       size="icon"
+      className="h-8 w-8 rounded-full bg-white hover:bg-gray-50 border border-gray-400 shadow-sm"
       aria-label="แสดงหัวข้อย่อย"
       onClick={() => setExpanded((prev) => ({ ...prev, [id]: !prev[id] }))}
     >
       {isOpen ? (
-        <ChevronUp className="h-4 w-4" />
+        <ChevronUp className="h-4 w-4 text-gray-700" />
       ) : (
-        <ChevronDown className="h-4 w-4" />
+        <ChevronDown className="h-4 w-4 text-gray-700" />
       )}
     </Button>
   );
