@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 // Import ข้อมูลจาก inspector API
 import { GET as InspectorGET } from "../risk-assessment-results/route";
+import { setReorderData, type ReorderData } from "@/lib/mock-risk-db";
 
 // เก็บข้อมูลที่ส่งมาจาก Inspector (ในระบบจริงจะเก็บในฐานข้อมูล)
 interface SubmittedData {
@@ -17,6 +18,7 @@ interface SubmittedData {
   reasonById?: Record<string, string>;
   metadata?: Record<string, unknown>;
   rowsByTab?: Record<string, unknown[]>;
+  submissionTime?: string; // เพิ่มเวลาที่ส่ง
 }
 
 let submittedData: SubmittedData | null = null;
@@ -75,6 +77,13 @@ export async function GET(request: NextRequest) {
         };
       }
 
+      console.log("📤 Sending response data:", {
+        hasRowsByTab: !!responseData.rowsByTab,
+        rowsByTabKeys: responseData.rowsByTab ? Object.keys(responseData.rowsByTab as Record<string, unknown>) : [],
+        hasReorderInfo: !!responseData.reorderInfo,
+        submissionAction: responseData.submissionInfo && typeof responseData.submissionInfo === 'object' && 'action' in responseData.submissionInfo ? responseData.submissionInfo.action : 'unknown'
+      });
+
       return NextResponse.json(responseData);
     }
 
@@ -117,28 +126,102 @@ export async function POST(request: NextRequest) {
       timestamp: new Date().toISOString()
     });
 
-    // สำหรับ reorder: จัดเรียงข้อมูลตามลำดับใหม่
+    // สร้าง rowsByTab ที่ครบถ้วนจากข้อมูลที่ส่งมา
+    let rowsByTab: Record<string, unknown[]> = {};
     let orderedData = body.data;
+
+    // ถ้ามีข้อมูล allTabsData ให้ใช้เป็นข้อมูลพื้นฐาน
+    if (body.metadata?.allTabsData && typeof body.metadata.allTabsData === 'object') {
+      const allTabsData = body.metadata.allTabsData as Record<string, unknown[]>;
+      console.log("📋 Using allTabsData from metadata:", {
+        availableTabs: Object.keys(allTabsData),
+        tabCounts: Object.entries(allTabsData).map(([key, value]) => ({
+          tab: key,
+          count: Array.isArray(value) ? value.length : 0
+        }))
+      });
+      
+      // ใช้ข้อมูลจาก allTabsData เป็นข้อมูลพื้นฐาน
+      rowsByTab = { ...allTabsData };
+    }
+
+    // สำหรับ reorder: จัดเรียงข้อมูลตามลำดับใหม่
     if (body.action === "submit_reorder" && body.newOrder && Array.isArray(body.data)) {
       console.log("🔄 Reordering data according to new order:", {
         originalOrder: body.originalOrder,
         newOrder: body.newOrder,
         changedItem: body.changedItem,
-        reason: body.reason
+        reason: body.reason,
+        reasonById: body.reasonById
       });
       
+      // จัดเรียงข้อมูลตาม newOrder
       const dataMap = new Map(body.data.map((item: { id: string }) => [item.id, item]));
       orderedData = body.newOrder.map((id: string) => dataMap.get(id)).filter(Boolean);
-      
-      // เก็บ index เดิมไว้ เพื่อไม่ให้เกิดปัญหาในการ match ข้อมูล
-      // orderedData จะถูกจัดลำดับตาม newOrder แล้ว
-      // ไม่ต้องอัปเดต index เพราะจะทำให้เกิดปัญหาในการ match กับข้อมูลเดิม
       
       console.log("✅ Data reordered successfully:", {
         originalCount: body.data.length,
         reorderedCount: orderedData.length,
         newOrder: body.newOrder,
         orderedDataIds: orderedData.map((item: { id: string }) => item.id)
+      });
+
+      // อัพเดท rowsByTab สำหรับแท็บ reorder
+      if (body.tab && rowsByTab[body.tab]) {
+        // จัดเรียงข้อมูลในแท็บนี้ตาม newOrder
+        const tabDataMap = new Map((rowsByTab[body.tab] as Record<string, unknown>[]).map((item: Record<string, unknown>) => [item.id as string, item]));
+        const reorderedTabData = body.newOrder.map((id: string) => tabDataMap.get(id)).filter(Boolean);
+        rowsByTab[body.tab] = reorderedTabData;
+        
+        console.log("📋 Updated tab data for reorder:", {
+          tab: body.tab,
+          originalCount: (rowsByTab[body.tab] || []).length,
+          reorderedCount: reorderedTabData.length
+        });
+      }
+
+      // อัพเดท "all" tab ด้วยข้อมูลที่จัดลำดับใหม่
+      if (rowsByTab["all"]) {
+        const allDataMap = new Map((rowsByTab["all"] as Record<string, unknown>[]).map((item: Record<string, unknown>) => [item.id as string, item]));
+        const reorderedAllData = body.newOrder.map((id: string) => allDataMap.get(id)).filter(Boolean);
+        
+        // เติมข้อมูลที่เหลือที่ไม่ได้อยู่ใน newOrder
+        const newOrderSet = new Set(body.newOrder);
+        const remainingData = (rowsByTab["all"] as Record<string, unknown>[]).filter((item: Record<string, unknown>) => !newOrderSet.has(item.id as string));
+        
+        rowsByTab["all"] = [...reorderedAllData, ...remainingData];
+        
+        console.log("📋 Updated 'all' tab data for reorder:", {
+          reorderedCount: reorderedAllData.length,
+          remainingCount: remainingData.length,
+          totalCount: rowsByTab["all"].length
+        });
+      }
+    } else if (orderedData && Array.isArray(orderedData)) {
+      // สำหรับ action อื่นๆ (summary, unitRanking)
+      rowsByTab[body.tab] = orderedData;
+      if (!rowsByTab["all"] || rowsByTab["all"].length === 0) {
+        rowsByTab["all"] = orderedData;
+      }
+    }
+
+    // บันทึกข้อมูลการจัดลำดับใน mock database สำหรับให้ Inspector อ่านกลับได้
+    if (body.action === "submit_reorder" && body.newOrder && body.tab) {
+      const reorderData: ReorderData = {
+        year,
+        tab: body.tab,
+        newOrder: body.newOrder,
+        originalOrder: body.originalOrder || [],
+        reasonById: body.reasonById || {},
+        timestamp: new Date().toISOString()
+      };
+      
+      setReorderData(reorderData);
+      console.log("💾 Saved reorder data to mock database:", {
+        year,
+        tab: body.tab,
+        orderLength: body.newOrder.length,
+        reasonCount: Object.keys(body.reasonById || {}).length
       });
     }
 
@@ -155,8 +238,9 @@ export async function POST(request: NextRequest) {
       hasChanges: body.hasChanges,
       reasonById: body.reasonById || {},
       metadata: body.metadata,
-      // แปลงข้อมูลให้อยู่ในรูปแบบที่ dashboard ต้องการ
-      rowsByTab: orderedData ? { [body.tab]: orderedData } : {}
+      // ใช้ rowsByTab ที่สร้างขึ้นใหม่
+      rowsByTab: rowsByTab,
+      submissionTime: new Date().toISOString() // เพิ่มเวลาที่ส่ง
     };
 
     // อัปเดตสถานะ

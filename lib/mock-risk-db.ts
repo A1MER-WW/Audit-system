@@ -12,12 +12,23 @@ export type RowOverride = {
   status?: string;
 };
 
+/** โครงสร้างข้อมูลการจัดลำดับความเสี่ยง */
+export type ReorderData = {
+  year: string;
+  tab: string;
+  newOrder: string[];
+  originalOrder: string[];
+  reasonById: Record<string, string>;
+  timestamp: string;
+};
+
 /** เก็บ state ไว้ใน global เพื่อให้ dev hot-reload แล้วข้อมูลยังอยู่ */
 declare global {
   var __riskdb:
     | {
         forms: Record<string, AssessmentForm>; // key = `${rowId}:${year}`
         overrides: Record<string, RowOverride>; // key = rowId
+        reorderData: Record<string, ReorderData>; // key = `${year}:${tab}`
       }
     | undefined;
 }
@@ -26,6 +37,7 @@ declare global {
 export const db = global.__riskdb ?? {
   forms: {} as Record<string, AssessmentForm>,
   overrides: {} as Record<string, RowOverride>,
+  reorderData: {} as Record<string, ReorderData>,
 };
 
 if (!global.__riskdb) global.__riskdb = db;
@@ -68,4 +80,19 @@ export function refreshFormsMap() {
   for (const f of Object.values(db.forms)) {
     if (f.year === YEAR_DEFAULT) formsMap.set(f.rowId, f);
   }
+}
+
+/** จัดการข้อมูลการจัดลำดับ */
+export function getReorderKey(year: string, tab: string) {
+  return `${year}:${tab}`;
+}
+
+export function getReorderData(year: string, tab: string): ReorderData | null {
+  return db.reorderData[getReorderKey(year, tab)] || null;
+}
+
+export function setReorderData(reorderData: ReorderData) {
+  const key = getReorderKey(reorderData.year, reorderData.tab);
+  db.reorderData[key] = reorderData;
+  return reorderData;
 }

@@ -2,16 +2,6 @@
 
 import { Fragment, useEffect, useMemo, useState, useCallback } from "react";
 import useSWR from "swr";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
 import {
   Table,
@@ -32,6 +22,16 @@ import { cn } from "@/lib/utils";
 import { ChevronDown, ChevronUp, FileText, Info } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
 export type TabKey =
   | "all"
@@ -94,8 +94,6 @@ const TAB_LABELS: Record<TabKey, string> = {
   process: "กระบวนงาน",
   it: "IT และ Non-IT",
 };
-
-
 
 function StatusBadge({ value }: { value: string }) {
   const map: Record<string, string> = {
@@ -210,7 +208,10 @@ export default function RiskAssessmentPlanningPage({
   // --- End revalidate triggers ---
 
   const rowsByTab = useMemo(() => data?.rowsByTab ?? {}, [data?.rowsByTab]);
-  const getTabRows = useCallback((k: Exclude<TabKey, "all">): Row[] => rowsByTab[k] ?? [], [rowsByTab]);
+  const getTabRows = useCallback(
+    (k: Exclude<TabKey, "all">): Row[] => rowsByTab[k] ?? [],
+    [rowsByTab]
+  );
 
   const allRows: Row[] = useMemo(() => {
     return [
@@ -230,115 +231,128 @@ export default function RiskAssessmentPlanningPage({
   );
 
   /** แผนที่ค่าสถานะ (ไทย/อังกฤษ) ให้เหลือ 3 ค่าหลักใน UI */
-  const STATUS_LABELS = useMemo(() => ({
-    DONE: "ประเมินแล้ว",
-    IN_PROGRESS: "กำลังประเมิน",
-    NOT_STARTED: "ยังไม่ได้ประเมิน",
-  } as const), []);
+  const STATUS_LABELS = useMemo(
+    () =>
+      ({
+        DONE: "ประเมินแล้ว",
+        IN_PROGRESS: "กำลังประเมิน",
+        NOT_STARTED: "ยังไม่ได้ประเมิน",
+      } as const),
+    []
+  );
 
-  const normalizeStatus = useCallback((raw?: string) => {
-    if (!raw) return STATUS_LABELS.NOT_STARTED;
-    const thai = ["ประเมินแล้ว", "กำลังประเมิน", "ยังไม่ได้ประเมิน"];
-    if (thai.includes(raw)) return raw as (typeof thai)[number];
+  const normalizeStatus = useCallback(
+    (raw?: string) => {
+      if (!raw) return STATUS_LABELS.NOT_STARTED;
+      const thai = ["ประเมินแล้ว", "กำลังประเมิน", "ยังไม่ได้ประเมิน"];
+      if (thai.includes(raw)) return raw as (typeof thai)[number];
 
-    const t = raw.toUpperCase();
-    if (
-      [
-        "DONE",
-        "COMPLETED",
-        "FINISHED",
-        "APPROVED",
-        "SUBMITTED",
-        "EVALUATED",
-        "EVALUATION_COMPLETED",
-      ].includes(t)
-    )
-      return STATUS_LABELS.DONE;
-    if (["IN_PROGRESS", "DOING", "DRAFT", "STARTED", "WORKING"].includes(t))
-      return STATUS_LABELS.IN_PROGRESS;
-    if (["NOT_STARTED", "PENDING", "NEW", "TO_DO", "UNASSESSED"].includes(t))
-      return STATUS_LABELS.NOT_STARTED;
+      const t = raw.toUpperCase();
+      if (
+        [
+          "DONE",
+          "COMPLETED",
+          "FINISHED",
+          "APPROVED",
+          "SUBMITTED",
+          "EVALUATED",
+          "EVALUATION_COMPLETED",
+        ].includes(t)
+      )
+        return STATUS_LABELS.DONE;
+      if (["IN_PROGRESS", "DOING", "DRAFT", "STARTED", "WORKING"].includes(t))
+        return STATUS_LABELS.IN_PROGRESS;
+      if (["NOT_STARTED", "PENDING", "NEW", "TO_DO", "UNASSESSED"].includes(t))
+        return STATUS_LABELS.NOT_STARTED;
 
-    // fallback: ถ้าไม่รู้จัก คืนค่าเดิม (แต่ UI ยังมี fallback ชั้นถัดไป)
-    return raw;
-  }, [STATUS_LABELS]);
+      // fallback: ถ้าไม่รู้จัก คืนค่าเดิม (แต่ UI ยังมี fallback ชั้นถัดไป)
+      return raw;
+    },
+    [STATUS_LABELS]
+  );
 
-  const gradeFromScore = useCallback((s?: number) =>
-    !s || s <= 0 ? "-" : s >= 60 ? "H" : s >= 41 ? "M" : "L", []);
+  const gradeFromScore = useCallback(
+    (s?: number) => (!s || s <= 0 ? "-" : s >= 60 ? "H" : s >= 41 ? "M" : "L"),
+    []
+  );
 
-  const deriveStatus = useCallback((r: Row) => {
-    if (r.hasDoc && (r.score ?? 0) > 0) return STATUS_LABELS.DONE;
-    return normalizeStatus(r.status);
-  }, [STATUS_LABELS, normalizeStatus]);
+  const deriveStatus = useCallback(
+    (r: Row) => {
+      if (r.hasDoc && (r.score ?? 0) > 0) return STATUS_LABELS.DONE;
+      return normalizeStatus(r.status);
+    },
+    [STATUS_LABELS, normalizeStatus]
+  );
 
   const groupingEnabled = true;
 
-  const makeParentRow = useCallback((topic: string, rows: Row[]): Row => {
-    const sorted = [...rows].sort((a, b) => {
-      const A = a.index.split(".").map(Number);
-      const B = b.index.split(".").map(Number);
-      return A[0] !== B[0] ? A[0] - B[0] : (A[1] || 0) - (B[1] || 0);
-    });
+  const makeParentRow = useCallback(
+    (topic: string, rows: Row[]): Row => {
+      const sorted = [...rows].sort((a, b) => {
+        const A = a.index.split(".").map(Number);
+        const B = b.index.split(".").map(Number);
+        return A[0] !== B[0] ? A[0] - B[0] : (A[1] || 0) - (B[1] || 0);
+      });
 
-    const uniqUnits = Array.from(new Set(sorted.map((r) => r.unit))).filter(
-      Boolean
-    );
-    const unitLabel =
-      uniqUnits.length > 1
-        ? `${uniqUnits[0]} และอีก ${uniqUnits.length - 1} หน่วยงาน`
-        : uniqUnits[0] || "-";
+      const uniqUnits = Array.from(new Set(sorted.map((r) => r.unit))).filter(
+        Boolean
+      );
+      const unitLabel =
+        uniqUnits.length > 1
+          ? `${uniqUnits[0]} และอีก ${uniqUnits.length - 1} หน่วยงาน`
+          : uniqUnits[0] || "-";
 
+      const totalScore = sorted.reduce((sum, r) => sum + (r.score || 0), 0);
+      const childrenStatuses = sorted.map(deriveStatus);
+      const allDone = childrenStatuses.every((s) => s === STATUS_LABELS.DONE);
+      const someDone = childrenStatuses.some((s) => s === STATUS_LABELS.DONE);
+      const someNotStarted = childrenStatuses.some(
+        (s) => s === STATUS_LABELS.NOT_STARTED
+      );
+      const someDoing = childrenStatuses.some(
+        (s) => s === STATUS_LABELS.IN_PROGRESS
+      );
 
-    const totalScore = sorted.reduce((sum, r) => sum + (r.score || 0), 0);
-    const childrenStatuses = sorted.map(deriveStatus);
-    const allDone = childrenStatuses.every((s) => s === STATUS_LABELS.DONE);
-    const someDone = childrenStatuses.some((s) => s === STATUS_LABELS.DONE);
-    const someNotStarted = childrenStatuses.some(
-      (s) => s === STATUS_LABELS.NOT_STARTED
-    );
-    const someDoing = childrenStatuses.some(
-      (s) => s === STATUS_LABELS.IN_PROGRESS
-    );
+      let status: string;
+      if (allDone) {
+        status = STATUS_LABELS.DONE;
+      } else if (someDoing || (someDone && someNotStarted)) {
+        status = STATUS_LABELS.IN_PROGRESS;
+      } else {
+        status = STATUS_LABELS.NOT_STARTED;
+      }
 
-
-    let status: string;
-    if (allDone) {
-      status = STATUS_LABELS.DONE;
-    } else if (someDoing || (someDone && someNotStarted)) {
-      status = STATUS_LABELS.IN_PROGRESS;
-    } else {
-      status = STATUS_LABELS.NOT_STARTED;
-    }
-
-    const base: Row = {
-      id: `group:${tab}:${encodeURIComponent(topic)}`,
-      index: sorted[0]?.index?.split(".")[0] || "-", // ใช้เลขหลักแรกเป็นลำดับพาเรนต์
-      unit: unitLabel,
-      mission: "-",
-      work: "-",
-      project: "-",
-      carry: "-",
-      activity: "-",
-      process: "-",
-      system: "-",
-      itType: "-",
-      score: totalScore,
-      grade: gradeFromScore(totalScore),
-      status,
-      hasDoc: false,
-    };
-    if (tab === "unit") base.mission = topic;
-    else if (tab === "work") base.work = topic;
-    else if (tab === "project") base.project = topic;
-    else if (tab === "carry") base.carry = topic;
-    else if (tab === "activity") base.activity = topic;
-    else if (tab === "process") base.process = topic;
-    else if (tab === "it") base.system = topic;
-    if (tab === "all") {
-      base.work = topic;
-    }
-    return base;
-  }, [STATUS_LABELS, tab, deriveStatus, gradeFromScore]);
+      const base: Row = {
+        id: `group:${tab}:${encodeURIComponent(topic)}`,
+        index: sorted[0]?.index?.split(".")[0] || "-", // ใช้เลขหลักแรกเป็นลำดับพาเรนต์
+        unit: unitLabel,
+        mission: "-",
+        work: "-",
+        project: "-",
+        carry: "-",
+        activity: "-",
+        process: "-",
+        system: "-",
+        itType: "-",
+        score: totalScore,
+        grade: gradeFromScore(totalScore),
+        status,
+        hasDoc: false,
+      };
+      if (tab === "unit") base.mission = topic;
+      else if (tab === "work") base.work = topic;
+      else if (tab === "project") base.project = topic;
+      else if (tab === "carry") base.carry = topic;
+      else if (tab === "activity") base.activity = topic;
+      else if (tab === "process") base.process = topic;
+      else if (tab === "it") base.system = topic;
+      if (tab === "all") {
+        base.work = topic;
+      }
+      return base;
+    },
+    [STATUS_LABELS, tab, deriveStatus, gradeFromScore]
+  );
 
   const { parentRows, groupChildren } = useMemo(() => {
     if (!groupingEnabled) {
@@ -410,18 +424,23 @@ export default function RiskAssessmentPlanningPage({
       dataRows = dataRows.filter((r) => r.status === status);
     if (onlyIT) dataRows = dataRows.filter((r) => r.itType && r.itType !== "-");
 
-    dataRows.sort((a: { score?: number; index?: string; unit?: string }, b: { score?: number; index?: string; unit?: string }) => {
-      const dir = sortAsc ? 1 : -1;
-      if (sortBy === "score") return ((a.score || 0) - (b.score || 0)) * dir;
-      if (sortBy === "unit")
-        return String(a.unit).localeCompare(String(b.unit)) * dir;
+    dataRows.sort(
+      (
+        a: { score?: number; index?: string; unit?: string },
+        b: { score?: number; index?: string; unit?: string }
+      ) => {
+        const dir = sortAsc ? 1 : -1;
+        if (sortBy === "score") return ((a.score || 0) - (b.score || 0)) * dir;
+        if (sortBy === "unit")
+          return String(a.unit).localeCompare(String(b.unit)) * dir;
 
-      const toNum = (s: string) => s.split(".").map(Number);
-      const [a1, a2 = 0] = toNum(a.index ?? "");
-      const [b1, b2 = 0] = toNum(b.index ?? "");
-      if (a1 !== b1) return (a1 - b1) * dir;
-      return (a2 - b2) * dir;
-    });
+        const toNum = (s: string) => s.split(".").map(Number);
+        const [a1, a2 = 0] = toNum(a.index ?? "");
+        const [b1, b2 = 0] = toNum(b.index ?? "");
+        if (a1 !== b1) return (a1 - b1) * dir;
+        return (a2 - b2) * dir;
+      }
+    );
 
     return dataRows;
   }, [parentRows, query, status, onlyIT, sortBy, sortAsc]);
