@@ -20,6 +20,7 @@ import {
 import { Label } from "@radix-ui/react-label";
 import DropzoneComponent from "@/components/dropzone/dropzone";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { SignatureComponent } from "@/components/signature-component";
 
 
 export default function ViewConsult() {
@@ -34,6 +35,10 @@ export default function ViewConsult() {
 
     const [showPreviewDialog, setShowPreviewDialog] = React.useState<boolean>(false);
     const [showApproveDialog, setShowApproveDialog] = React.useState<boolean>(false);
+    const [showSignDialog, setShowSignDialog] = React.useState<boolean>(false);
+    const [signatureData, setSignatureData] = React.useState<{name: string; signature: string | null}>({name: "", signature: null});
+    const [signatureChoice, setSignatureChoice] = React.useState<'new' | 'saved' | null>(null);
+    const [showConpleteDialog, setShowCompleteDialog] = React.useState<boolean>(false);
 
     //---Event Handle
       const handleEditByPolicy =() =>{
@@ -49,10 +54,20 @@ export default function ViewConsult() {
       }
       const handleApproved =() => {
         console.log("PrerviewConsult")
-        //setShowApproveDialog(true)
+        setSignatureChoice('new')
+        setShowSignDialog(true)
       }
       const handleSaved =() => {
         console.log("Saved")
+        setSignatureData({name: "", signature: null});
+      }
+
+      const handleSignedConfirm =() => {
+        console.log("Saved")
+        setSignatureData({name: "", signature: null});
+        setShowCompleteDialog(true)
+        setShowApproveDialog(false)
+        setShowSignDialog(false)
       }
 
     //--------------------
@@ -207,8 +222,9 @@ export default function ViewConsult() {
           <DialogContent className="sm:max-w-lg">
             <DialogHeader>
                 <DialogTitle className="font-semibold">
-                        {data?.title}
+                        Preview
                 </DialogTitle>
+                <h1>{data?.title}</h1>
             </DialogHeader>
             <div className="mt-4">
                 {data?.detial}
@@ -268,12 +284,45 @@ export default function ViewConsult() {
                 ยืนยันเพื่อเสนอพิจารณาหัวข้อของงานตรวจสอบ 
                 </p>
                 <div className="flex gap-4 mt-4">
-                      <Button variant="outline" className="flex-1">ยกเลิก</Button>
-                      <Button className="flex-1 bg-[#3E52B9]"
-                      onClick={handleApproved}
-                      >ยืนยัน</Button>
-                    </div>
+                    <Button variant="outline" className="flex-1">ยกเลิก</Button>
+                    <Button className="flex-1 bg-[#3E52B9]"
+                    onClick={handleApproved}
+                    >ยืนยัน</Button>
+                </div>
              </DialogContent>
+        </Dialog>
+        {/* dialog for signed */}
+        <Dialog open={showSignDialog} onOpenChange={setShowSignDialog}>
+            <DialogContent className="sm:max-w-lg">
+                <DialogTitle className="font-semibold">
+                        ลงลายมือชื่อ
+                </DialogTitle>
+                <p className="text-muted-foreground text-sm text-balance pt-4 ">
+                ลงลายมือชื่อเพื่อพิจารณาอนุมัติ 
+                </p>
+                 {signatureChoice === 'new' && (
+                        <div className="mt-4">
+                        <SignatureComponent
+                            onSignatureChange={setSignatureData}
+                            initialName="ผู้อนุมัติ"
+                        />
+                        </div>
+                    )}
+                    <div className="flex gap-4 mt-4">
+                        <Button variant="outline" className="flex-1">ยกเลิก</Button>
+                        <Button className="flex-1 bg-[#3E52B9]"
+                        onClick={handleSignedConfirm}
+                        >ยืนยัน</Button>
+                </div>
+            </DialogContent>
+        </Dialog>
+        {/* dialog for Complate */}
+        <Dialog open={showConpleteDialog} onOpenChange={setShowCompleteDialog}>
+            <DialogContent className="sm:max-w-lg">
+                <DialogTitle className="font-semibold">
+                        อนุมัติเรียบร้อย
+                </DialogTitle>
+            </DialogContent>
         </Dialog>
     </div>
     )
