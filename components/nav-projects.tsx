@@ -1,42 +1,36 @@
-"use client"
+"use client";
 
-import {
-  Folder,
-  Forward,
-  Logs,
-  type LucideIcon,
-} from "lucide-react"
+import { Folder, Forward, Logs, type LucideIcon } from "lucide-react";
 
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from "@/components/ui/dropdown-menu";
 import {
   SidebarGroup,
   SidebarGroupLabel,
   SidebarMenu,
-  SidebarMenuAction,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarMenuSub,
   useSidebar,
-} from "@/components/ui/sidebar"
-import { Collapsible, CollapsibleTrigger } from "./ui/collapsible"
-import { Badge } from "@/components/ui/badge"
+} from "@/components/ui/sidebar";
+import { Collapsible, CollapsibleTrigger } from "./ui/collapsible";
+import { Badge } from "@/components/ui/badge";
+import Link from "next/link";
 
 export function NavProjects({
   projects,
 }: {
   projects: {
-    name: string
-    url: string
-    icon: LucideIcon
-  }[]
+    name: string;
+    url: string;
+    icon: LucideIcon;
+  }[];
 }) {
-  const { isMobile } = useSidebar()
+  const { isMobile } = useSidebar();
 
   return (
     <SidebarGroup className="group-data-[collapsible=icon]:hidden ">
@@ -65,7 +59,6 @@ export function NavProjects({
               >
                 <span>วางแผนงานตรวจสอบภายใน</span>
 
-
                 {/* 1. Audit Universe */}
                 <Collapsible>
                   <CollapsibleTrigger asChild>
@@ -76,28 +69,66 @@ export function NavProjects({
                   </CollapsibleTrigger>
 
                   <SidebarMenuSub>
-                    <a href="">
-                      <span className="text-sm">ทบทวนหัวข้อของงานตรวจสอบทั้งหมด (Audit Universe)</span>
-                    </a>
+                    <Link href="/planaudit">
+                      <span className="text-sm">
+                        ทบทวนหัวข้อของงานตรวจสอบทั้งหมด (Audit Universe)
+                        (ผู้ตรวจสอบ)
+                      </span>
+                    </Link>
                   </SidebarMenuSub>
-
+                  <SidebarMenuSub>
+                    <Link href="/planaudit/thetopics-manager">
+                      <span className="text-sm">
+                        ทบทวนหัวข้อของงานตรวจสอบทั้งหมด (Audit Universe)
+                        (หัวหน้ากลุ่มตรวจสอบภายใน)
+                      </span>
+                    </Link>
+                  </SidebarMenuSub>
+                  <SidebarMenuSub>
+                    <Link href="/planaudit/theaudittopics">
+                      <span className="text-sm">
+                        จัดการหัวข้อของงานตรวจสอบ (ผู้ตรวจสอบ)
+                      </span>
+                    </Link>
+                  </SidebarMenuSub>
+                  <SidebarMenuSub>
+                    <Link href="/summary">
+                      <span className="text-sm">
+                        สรุปความเห็นหัวข้อของงานตรวจสอบทั้งหมด (ผู้ตรวจสอบภายใน)
+                      </span>
+                    </Link>
+                  </SidebarMenuSub>
+                  <SidebarMenuSub>
+                    <Link href="/summary-manager">
+                      <span className="text-sm">
+                        สรุปความเห็นหัวข้อของงานตรวจสอบทั้งหมด
+                        (หัวหน้าหน่วยตรวจสอบ)
+                      </span>
+                    </Link>
+                  </SidebarMenuSub>
 
                   <SidebarMenuSub>
-                    <a href="">
-                      <span className="text-sm">สรุปความเห็นหัวข้อของงานตรวจสอบทั้งหมด</span>
-                    </a>
+                    <Link href="/comment">
+                      <span className="text-sm">
+                        แสดงความคิดเห็นหัวข้อของงานตรวจสอบ (หน่วยงานในสังกัด)
+                      </span>
+                    </Link>
                   </SidebarMenuSub>
-
+                  <SidebarMenuSub>
+                    <Link href="/planaudit/alltopics">
+                      <span className="text-sm">
+                        จัดการหัวข้องานตรวจสอบทั้งหมด (ผู้ตรวจสอบ)
+                      </span>
+                    </Link>
+                  </SidebarMenuSub>
                 </Collapsible>
 
                 {/* 2. Annual Plan */}
                 <Collapsible>
-
                   <SidebarMenuButton>
                     <Folder className="text-muted-foreground" />
                     <span>ประเมินแผนการตรวจสอบประจำปี</span>
                   </SidebarMenuButton>
-
 
                   <SidebarMenuSub>
                     <a href="/risk-assessments">
@@ -119,8 +150,11 @@ export function NavProjects({
 
 
                   <SidebarMenuSub>
-                    <a href="">
-                      <span className="text-sm">การประเมินความเสี่ยงและการจัดลำดับความเสี่ยง</span>
+                    <a href="/risk-assessment">
+                      <span className="text-sm">
+                        การประเมินความเสี่ยงและการจัดลำดับความเสี่ยง
+                        (ผู้ตรวจสอบ)
+                      </span>
                       <Badge
                         className="h-5 w-5 rounded-full px-1 font-mono tabular-nums"
                         variant="destructive"
@@ -128,19 +162,29 @@ export function NavProjects({
                         8
                       </Badge>
                     </a>
-
                   </SidebarMenuSub>
-
+                  <SidebarMenuSub>
+                    <a href="/chief-inspector-assessment-results">
+                      <span className="text-sm">
+                        การประเมินความเสี่ยงและการจัดลำดับความเสี่ยง
+                        (หัวหน้าผู้ตรวจสอบ)
+                      </span>
+                      <Badge
+                        className="h-5 w-5 rounded-full px-1 font-mono tabular-nums"
+                        variant="destructive"
+                      >
+                        8
+                      </Badge>
+                    </a>
+                  </SidebarMenuSub>
                 </Collapsible>
 
                 {/* 3. Audit Plan */}
                 <Collapsible>
-
                   <SidebarMenuButton>
                     <Folder className="text-muted-foreground" />
                     <span>จัดทำแผนการตรวจสอบ</span>
                   </SidebarMenuButton>
-
 
                   <SidebarMenuSub>
                     <a href="">
@@ -148,27 +192,25 @@ export function NavProjects({
                     </a>
                   </SidebarMenuSub>
 
-
                   <SidebarMenuSub>
                     <a href="">
                       <span className="text-sm">จัดทำแผนการตรวจสอบระยะยาว</span>
                     </a>
                   </SidebarMenuSub>
-
                 </Collapsible>
 
                 {/* 4. Operational Risk */}
                 <Collapsible>
-
                   <SidebarMenuButton>
                     <Folder className="text-muted-foreground" />
                     <span>ประเมินความเสี่ยงระดับแผนปฏิบัติงาน</span>
                   </SidebarMenuButton>
 
-
                   <SidebarMenuSub>
                     <a href="">
-                      <span className="text-sm">กำหนดปัจจัยเสี่ยงและเกณฑ์การพิจารณาความเสี่ยง</span>
+                      <span className="text-sm">
+                        กำหนดปัจจัยเสี่ยงและเกณฑ์การพิจารณาความเสี่ยง
+                      </span>
                     </a>
                   </SidebarMenuSub>
                   
@@ -186,20 +228,19 @@ export function NavProjects({
                     </a>
                   </SidebarMenuSub>
 
-
                   <SidebarMenuSub>
                     <a href="">
                       <span className="text-sm">กำหนดเกณฑ์โอกาส</span>
                     </a>
                   </SidebarMenuSub>
 
-
                   <SidebarMenuSub>
-                    <a href="">
-                      <span className="text-sm">ประเมินความเสี่ยงและการจัดลำดับความเสี่ยง</span>
-                    </a>
+                    <Link href="/audit-program-risk-evaluation">
+                      <span className="text-sm">
+                        ประเมินความเสี่ยงและการจัดลำดับความเสี่ยง
+                      </span>
+                    </Link>
                   </SidebarMenuSub>
-
                 </Collapsible>
 
                 {/* 5. Final Item */}
@@ -213,6 +254,5 @@ export function NavProjects({
         ))}
       </SidebarMenu>
     </SidebarGroup>
-
-  )
+  );
 }
