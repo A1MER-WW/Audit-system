@@ -272,7 +272,7 @@ export default function ConsultPage() {
           </DropdownMenuContent>
         </DropdownMenu>
         </div>
-         <div className="overflow-hidden rounded-md border">
+        <div className="overflow-hidden rounded-md border">
           <Table>
             <TableHeader>
               {tableView.getHeaderGroups().map((headerGroup) => (
@@ -395,7 +395,7 @@ export default function ConsultPage() {
                      ถัดไป
                    </Button>
                  </div>
-               </div>
+        </div>
       </div> 
   );
 }

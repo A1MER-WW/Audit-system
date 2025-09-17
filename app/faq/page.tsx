@@ -41,6 +41,7 @@ export default function FaqPage() {
               </Breadcrumb>
             </div>
           </div>
+          
         </div>
     </div>
     )
