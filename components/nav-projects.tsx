@@ -105,6 +105,18 @@ export function NavProjects({
                     </a>
                   </SidebarMenuSub>
 
+                  <SidebarMenuSub>
+                    <a href="/chief-internal-auditor">
+                      <span className="text-sm">กำหนดปัจจัยเสี่ยงและเกณฑ์การพิจารณาความเสี่ยง(หัวหน้าผู้ตรวจสอบ)</span>
+                    </a>
+                  </SidebarMenuSub>
+
+                  <SidebarMenuSub>
+                    <a href="/risk-assessments">
+                      <span className="text-sm">กำหนดปัจจัยเสี่ยงและเกณฑ์การพิจารณาความเสี่ยง(หน่วยงานในสังกัด)</span>
+                    </a>
+                  </SidebarMenuSub>
+
 
                   <SidebarMenuSub>
                     <a href="">
@@ -157,6 +169,20 @@ export function NavProjects({
                   <SidebarMenuSub>
                     <a href="">
                       <span className="text-sm">กำหนดปัจจัยเสี่ยงและเกณฑ์การพิจารณาความเสี่ยง</span>
+                    </a>
+                  </SidebarMenuSub>
+                  
+
+                  <SidebarMenuSub>
+                    <a href="">
+                      <span className="text-sm">กำหนดปัจจัยเสี่ยงและเกณฑ์การพิจารณาความเสี่ยง(หัวหน้าผู้ตรวจสอบ)</span>
+                    </a>
+                  </SidebarMenuSub>
+
+
+                  <SidebarMenuSub>
+                    <a href="">
+                      <span className="text-sm">กำหนดปัจจัยเสี่ยงและเกณฑ์การพิจารณาความเสี่ยง(หน่วยงานในสังกัด)</span>
                     </a>
                   </SidebarMenuSub>
 

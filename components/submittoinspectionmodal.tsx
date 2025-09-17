@@ -95,13 +95,12 @@ export default function SubmitToInspectionModal({
             ยกเลิก
           </button>
 
-          <Link
-            href="/chief-internal-auditor"
+          <div 
             className="rounded-xl bg-indigo-600 px-6 py-2 text-white hover:bg-indigo-700"
             onClick={onConfirm}
           >
             ยืนยัน
-          </Link>
+          </div>
         </div>
       </div>
     </div>
