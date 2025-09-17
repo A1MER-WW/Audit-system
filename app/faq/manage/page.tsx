@@ -184,8 +184,9 @@ export default function FaqManagePage() {
     const handleView = (id: number , name:string) => {
         router.push(`/faq/manage/view?id=${id}&name=${encodeURIComponent(name)}`)
     }
-    const handleEdit = (id: number) => {
+    const handleEdit = (id: number, name:string) => {
         console.log(" ID:", id)
+        router.push(`/faq/manage/view?id=${id}&name=${encodeURIComponent(name)}`)
     }
     const handleDelete = (id: number) => {
         console.log(" ID:", id)
@@ -375,7 +376,8 @@ export default function FaqManagePage() {
                                 ))}
                                 <TableCell>
                                     <div className="flex items-center justify-center gap-2">
-                                    <Button
+                                    {/* //-- view
+                                     <Button
                                         variant="outline"
                                         size="sm"
                                         className="h-8 w-8 p-0"
@@ -386,19 +388,20 @@ export default function FaqManagePage() {
                                         title="ดูรายละเอียด"
                                     >
                                         <Eye className="h-4 w-4" />
-                                    </Button>
+                                    </Button> */}
                                     <Button
                                         variant="outline"
                                         size="sm"
                                         className="h-8 w-8 p-0"
                                         onClick={(e) => {
                                             e.stopPropagation()
-                                            handleEdit(row.index+1)
+                                            handleEdit(row.index+1,row.original.title)
                                         }}
                                         title="แก้ไข"
                                     >
                                         <Edit className="h-4 w-4" />
                                     </Button>
+                                    {/*  // --- delete
                                     <Button
                                         variant="outline"
                                         size="sm"
@@ -410,7 +413,7 @@ export default function FaqManagePage() {
                                         title="ลบ"
                                     >
                                         <Trash2 className="h-4 w-4" />
-                                    </Button>
+                                    </Button> */}
                                 </div>
                                 </TableCell>
                                 </TableRow>
@@ -458,7 +461,7 @@ export default function FaqManagePage() {
                 <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
                     ข้อผิดพลาด: {error}
                     <button 
-                    // onClick={refetch}
+                    onClick={refetch}
                     className="ml-2 text-red-800 underline hover:no-underline"
                     >
                     ลองใหม่
@@ -578,7 +581,8 @@ export default function FaqManagePage() {
                                     ))}
                                     <TableCell>
                                         <div className="flex items-center justify-center gap-2">
-                                        <Button
+                                        {/* //--view page 
+                                         <Button
                                             variant="outline"
                                             size="sm"
                                             className="h-8 w-8 p-0"
@@ -589,19 +593,20 @@ export default function FaqManagePage() {
                                             title="ดูรายละเอียด"
                                         >
                                             <Eye className="h-4 w-4" />
-                                        </Button>
+                                        </Button> */}
                                         <Button
                                             variant="outline"
                                             size="sm"
                                             className="h-8 w-8 p-0"
                                             onClick={(e) => {
                                                 e.stopPropagation()
-                                                handleEdit(row.index+1)
+                                                handleEdit(row.index+1,row.original.title)
                                             }}
                                             title="แก้ไข"
                                         >
                                             <Edit className="h-4 w-4" />
                                         </Button>
+                                        {/*  //-- delete
                                         <Button
                                             variant="outline"
                                             size="sm"
@@ -613,7 +618,7 @@ export default function FaqManagePage() {
                                             title="ลบ"
                                         >
                                             <Trash2 className="h-4 w-4" />
-                                        </Button>
+                                        </Button> */}
                                     </div>
                                     </TableCell>
                                     </TableRow>

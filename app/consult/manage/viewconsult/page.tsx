@@ -72,9 +72,7 @@ export default function ViewConsult() {
         setTimeout(() =>{
             router.push('/consult')
         },2000)
-
       }
-
     //--------------------
 
     return (
