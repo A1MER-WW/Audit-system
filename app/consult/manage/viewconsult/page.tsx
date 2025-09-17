@@ -31,9 +31,7 @@ export default function ViewConsult() {
     const { documents, loading, error } = useConsultDocuments({
         id: Number(searchParams.get('id'))
       })
-      console.log(searchParams.get('id'))
-      console.log(documents.at(0))
-      const data = documents.at(0)
+    const data = documents.at(0)
 
     const [showPreviewDialog, setShowPreviewDialog] = React.useState<boolean>(false);
     const [showApproveDialog, setShowApproveDialog] = React.useState<boolean>(false);
@@ -72,7 +70,7 @@ export default function ViewConsult() {
         setShowSignDialog(false)
 
         setTimeout(() =>{
-                  router.push('/consult')
+            router.push('/consult')
         },2000)
 
       }

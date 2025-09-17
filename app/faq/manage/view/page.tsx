@@ -12,14 +12,22 @@ import {
   type LucideIcon
 } from "lucide-react"
 
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button";
-import { Breadcrumb, BreadcrumbItem, BreadcrumbList } from "@/components/ui/breadcrumb";
+import { Breadcrumb, BreadcrumbItem, BreadcrumbList, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
+import { useFaqDocuments } from "@/hooks/useFaqDocument";
 
 
 export default function FaqManageViewPage() {
 
     const { goBack } = useNavigationHistory();
+    const router = useRouter();
+    const searchParams = useSearchParams();
+    const { documents, loading, error } = useFaqDocuments({
+            id: Number(searchParams.get('id'))
+          })
+    
+    const data = documents.at(0)
 
     return(
     <div className="w-full">
@@ -36,6 +44,10 @@ export default function FaqManageViewPage() {
                 <BreadcrumbList>
                   <BreadcrumbItem >
                     ทะเบียนคุมงานให้บริการและคำปรึกษา(FAQ)
+                  </BreadcrumbItem>
+                  <BreadcrumbSeparator />
+                  <BreadcrumbItem >
+                  {searchParams.values().toArray().at(1)}
                   </BreadcrumbItem>
                 </BreadcrumbList>
               </Breadcrumb>

@@ -182,8 +182,7 @@ export default function FaqManagePage() {
             localStorage.setItem("faq-active-tab", value)
         }
     const handleView = (id: number , name:string) => {
-    //router.push(`/consult/addconsult?id=${id}&name=${encodeURIComponent(name)}`)
-        router.push(`/consult/manage/viewconsult?id=${id}&name=${encodeURIComponent(name)}`)
+        router.push(`/faq/manage/view?id=${id}&name=${encodeURIComponent(name)}`)
     }
     const handleEdit = (id: number) => {
         console.log(" ID:", id)
