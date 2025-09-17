@@ -77,7 +77,9 @@ export function NavConsults({
                             <CollapsibleTrigger asChild>
                                 <SidebarMenuButton>
                                 <NotebookPen className="text-muted-foreground" />
+                                <Link href="/faq/manage" key="faq">
                                 <span>ทะเบียนคุมงานให้บริการและคำปรึกษา (FAQ)</span>
+                                </Link>
                                 </SidebarMenuButton>
                             </CollapsibleTrigger>
                             </Collapsible>
@@ -87,7 +89,9 @@ export function NavConsults({
                             <CollapsibleTrigger asChild>
                                 <SidebarMenuButton>
                                 <FilePen className="text-muted-foreground" />
+                                <Link href="/law-record/manage" key="law-record">
                                 <span>ทะเบียนคุมฐานข้อมูลด้านกฎหมาย</span>
+                                </Link>
                                 </SidebarMenuButton>
                             </CollapsibleTrigger>
                             </Collapsible>
@@ -97,7 +101,9 @@ export function NavConsults({
                             <CollapsibleTrigger asChild>
                                 <SidebarMenuButton>
                                 <Globe  className="text-muted-foreground" />
+                                <Link href="/" key="">
                                 <span>เว็ปไซต์ระบบให้คำปรึกษา</span>
+                                </Link>
                                 </SidebarMenuButton>
                             </CollapsibleTrigger>
                             </Collapsible>

@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useNavigationHistory } from '@/hooks/navigation-history';
 import { useConsultDocuments } from '@/hooks/useConsultDocuments';
-import { Badge, ChevronLeft, Edit } from 'lucide-react';
+import { Badge, ChevronLeft, Edit, LoaderIcon } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { Input } from "@/components/ui/input";
 import {
@@ -21,10 +21,12 @@ import { Label } from "@radix-ui/react-label";
 import DropzoneComponent from "@/components/dropzone/dropzone";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { SignatureComponent } from "@/components/signature-component";
+import { useRouter } from "next/navigation"
 
 
 export default function ViewConsult() {
     const { goBack } = useNavigationHistory();
+    const router = useRouter();
     const searchParams = useSearchParams();
     const { documents, loading, error } = useConsultDocuments({
         id: Number(searchParams.get('id'))
@@ -68,6 +70,11 @@ export default function ViewConsult() {
         setShowCompleteDialog(true)
         setShowApproveDialog(false)
         setShowSignDialog(false)
+
+        setTimeout(() =>{
+                  router.push('/consult')
+        },2000)
+
       }
 
     //--------------------
@@ -321,6 +328,9 @@ export default function ViewConsult() {
             <DialogContent className="sm:max-w-lg">
                 <DialogTitle className="font-semibold">
                         อนุมัติเรียบร้อย
+                        <div className="flex justify-center items-center">
+                          <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500"></div>
+                        </div>
                 </DialogTitle>
             </DialogContent>
         </Dialog>
