@@ -70,7 +70,7 @@ export default function ViewConsult() {
         setShowSignDialog(false)
 
         setTimeout(() =>{
-            router.push('/consult')
+            router.push('/consult/manage')
         },2000)
       }
     //--------------------

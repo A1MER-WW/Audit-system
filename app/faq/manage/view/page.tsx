@@ -19,6 +19,7 @@ import { useFaqDocuments } from "@/hooks/useFaqDocument";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { SignatureComponent } from "@/components/signature-component";
 
 
 export default function FaqManageViewPage() {
@@ -70,7 +71,7 @@ export default function FaqManageViewPage() {
         setShowSignDialog(false)
 
         setTimeout(() =>{
-            router.push('/consult')
+            router.push('/faq/manage')
         },2000)
       }
     //--------------------
@@ -251,6 +252,42 @@ export default function FaqManageViewPage() {
                     >ยืนยัน</Button>
                 </div>
              </DialogContent>
+        </Dialog>
+        {/* dialog for signed */}
+        <Dialog open={showSignDialog} onOpenChange={setShowSignDialog}>
+            <DialogContent className="sm:max-w-lg">
+                <DialogTitle className="font-semibold">
+                        ลงลายมือชื่อ
+                </DialogTitle>
+                <p className="text-muted-foreground text-sm text-balance pt-4 ">
+                ลงลายมือชื่อเพื่อพิจารณาอนุมัติ 
+                </p>
+                    {signatureChoice === 'new' && (
+                        <div className="mt-4">
+                        <SignatureComponent
+                            onSignatureChange={setSignatureData}
+                            initialName="ผู้อนุมัติ"
+                        />
+                        </div>
+                    )}
+                    <div className="flex gap-4 mt-4">
+                        <Button variant="outline" className="flex-1">ยกเลิก</Button>
+                        <Button className="flex-1 bg-[#3E52B9]"
+                        onClick={handleSignedConfirm}
+                        >ยืนยัน</Button>
+                </div>
+            </DialogContent>
+        </Dialog>
+        {/* dialog for Complate */}
+        <Dialog open={showConpleteDialog} onOpenChange={setShowCompleteDialog}>
+            <DialogContent className="sm:max-w-lg">
+                <DialogTitle className="font-semibold">
+                        อนุมัติเรียบร้อย
+                        <div className="flex justify-center items-center">
+                            <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500"></div>
+                        </div>
+                </DialogTitle>
+            </DialogContent>
         </Dialog>
     </div>
     )
