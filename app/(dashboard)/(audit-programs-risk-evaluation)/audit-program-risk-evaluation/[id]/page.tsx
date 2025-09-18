@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useAuditPrograms } from "@/hooks/useAuditPrograms";
 import DetailView from "@/components/features/audit-program-risk-evaluation/DetailView";
 import type { AuditProgramRiskEvaluation, AuditActivityRisk } from "@/hooks/useAuditProgramRiskEvaluation";
@@ -15,6 +15,19 @@ export default function AuditProgramRiskEvaluationDetailPage() {
   
   // State สำหรับเก็บปัจจัยเสี่ยงที่เพิ่มเข้ามา
   const [activityRisks, setActivityRisks] = useState<AuditActivityRisk[]>([]);
+
+  // โหลดข้อมูลจาก localStorage เมื่อ component mount
+  useEffect(() => {
+    const savedRisks = localStorage.getItem(`audit-risks-${id}`);
+    if (savedRisks) {
+      try {
+        const parsed = JSON.parse(savedRisks);
+        setActivityRisks(parsed);
+      } catch (error) {
+        console.error('Error loading saved risks:', error);
+      }
+    }
+  }, [id]);
   
   const detail = useMemo((): AuditProgramRiskEvaluation | null => {
     if (!programs || isLoading) return null;
@@ -33,17 +46,27 @@ export default function AuditProgramRiskEvaluationDetailPage() {
     const newRisk: AuditActivityRisk = {
       id: Date.now(), // ใช้ timestamp เป็น id ชั่วคราว
       processes: values.process || "",
-      risk_factors: values.dimension || "",
+      risk_factors: Array.isArray(values.dimension) ? values.dimension.join(",") : (values.dimension || ""),
       object: values.riskFactor || "",
       risks_assessment: [] // เริ่มต้นด้วย array ว่าง
     };
 
-    setActivityRisks(prev => [...prev, newRisk]);
+    setActivityRisks(prev => {
+      const updated = [...prev, newRisk];
+      // บันทึกไปยัง localStorage
+      localStorage.setItem(`audit-risks-${id}`, JSON.stringify(updated));
+      return updated;
+    });
   };
 
   // ฟังก์ชันลบปัจจัยเสี่ยง
   const handleDeleteFactor = (riskId: number) => {
-    setActivityRisks(prev => prev.filter(risk => risk.id !== riskId));
+    setActivityRisks(prev => {
+      const updated = prev.filter(risk => risk.id !== riskId);
+      // บันทึกไปยัง localStorage
+      localStorage.setItem(`audit-risks-${id}`, JSON.stringify(updated));
+      return updated;
+    });
   };
 
   // ฟังก์ชันบันทึกข้อมูล

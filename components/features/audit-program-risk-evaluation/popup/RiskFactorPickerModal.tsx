@@ -19,17 +19,27 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { factorOptionsByDimension as factorsData } from "@/lib/risk-factors-data";
+
+// แปลงข้อมูลจาก factorsData เป็นรูปแบบ string[] เพื่อใช้ใน component นี้
+const convertToStringArray = () => {
+  const result: Record<string, string[]> = {};
+  Object.entries(factorsData).forEach(([dimension, factors]) => {
+    result[dimension] = factors.map(f => f.factor);
+  });
+  return result;
+};
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
-import { Search } from "lucide-react";
+import { Search, Eye, EyeOff, List, Grid } from "lucide-react";
 
 type Option = { label: string; value: string };
 
 export type RiskFactorPickerValues = {
   process?: string;
-  dimension?: string; // เช่น "strategy" | "operation" | ...
+  dimension?: string[]; // เปลี่ยนเป็น array เพื่อรองรับหลายด้าน
   riskFactor?: string; // จะถูกเติมหลังเลือกจาก Dialog ปัจจัย
 };
 
@@ -63,60 +73,14 @@ export function RiskFactorPickerDialog({
   onConfirm,
   processOptions = [],
   dimensionOptions = [],
-  factorOptionsByDimension = {
-    strategy: [
-      "แผนยุทธศาสตร์/แผนปฏิบัติการ ไม่ถูกขับเคลื่อนครบทุกภารกิจ",
-      "เป้าหมาย/ตัวชี้วัดไม่ชัดเจน ส่งผลให้ติดตามความสำเร็จคลาดเคลื่อน",
-      "การจัดลำดับความสำคัญโครงการไม่สอดคล้องกับทรัพยากร",
-      "การสื่อสารทิศทางยุทธศาสตร์ไม่ทั่วถึงทุกหน่วยงาน",
-      "การติดตามทบทวนแผนไม่ต่อเนื่อง/ขาดวงรอบ PDCA",
-    ],
-
-    finance: [
-      "การประมาณการงบประมาณคลาดเคลื่อน/การเบิกจ่ายล่าช้า",
-      "ระเบียบการใช้จ่าย/หลักฐานประกอบไม่ครบถ้วน",
-      "การควบคุมภายในด้านการเงินไม่เพียงพอ (การแยกหน้าที่/การอนุมัติ)",
-      "การติดตามงบลงทุน/โครงการผูกพันไม่ใกล้ชิด",
-      "ความถูกต้องของรายงานการเงิน/การกระทบยอดบัญชีล่าช้า",
-    ],
-
-    operations: [
-      "การกำหนดแผน/ประเด็นติดตามโครงการยังไม่ครอบคลุมประเด็นสำคัญ",
-      "ขาดทรัพยากรบุคคลช่วงพีกงาน ทำให้กิจกรรมล่าช้า",
-      "ขั้นตอนงานซ้ำซ้อน/มาตรฐานกระบวนงานไม่สอดคล้องกันระหว่างหน่วย",
-      "SLA/มาตรฐานการให้บริการไม่ชัดเจนหรือไม่ถูกติดตาม",
-      "การจัดซื้อจัดจ้าง/โลจิสติกส์กระทบต่อกำหนดการดำเนินงาน",
-    ],
-
-    informationtechnology: [
-      "ข้อมูลผลลัพธ์/สถานะไม่ครบถ้วน ทำให้วิเคราะห์คลาดเคลื่อน",
-      "ระบบสารสนเทศรองรับการติดตามโครงการไม่เพียงพอ",
-      "การสำรอง/กู้คืนข้อมูลและแผนความต่อเนื่องทางธุรกิจไม่พร้อม",
-      "การกำกับสิทธิ์การเข้าถึง/ความมั่นคงปลอดภัยของข้อมูลไม่เข้มงวด",
-      "การบูรณาการข้อมูลระหว่างระบบไม่สมบูรณ์",
-    ],
-
-    regulatorycompliance: [
-      "การปฏิบัติตามระเบียบพัสดุ/การเบิกจ่ายไม่ครบถ้วน",
-      "การสื่อสารแนวปฏิบัติ/ระเบียบใหม่ยังไม่ทั่วถึง",
-      "เอกสารอนุมัติ/หลักฐานการปฏิบัติงานไม่เป็นปัจจุบัน",
-      "การยื่นรายงานต่อหน่วยงานกำกับล่าช้าหรือไม่ครบถ้วน",
-      "ขาดการติดตามข้อกำหนดเฉพาะทาง/กฎหมายใหม่",
-    ],
-
-    fraudrisk: [
-      "การแยกหน้าที่ (SoD) ไม่ชัดเจน เปิดช่องทุจริต",
-      "การตรวจทาน/อนุมัติไม่เป็นอิสระหรือไม่มีหลักฐานเพียงพอ",
-      "การควบคุมเงินสด/ทรัพย์สินไม่รัดกุม",
-      "ตัวชี้วัดผลงานสร้างแรงจูงใจให้บิดเบือนข้อมูล",
-      "ช่องทางร้องเรียน/สืบสวนไม่ชัดเจนหรือไม่น่าเชื่อถือ",
-    ],
-  },
+  factorOptionsByDimension = convertToStringArray(),
 }: Props) {
   // === inner dialog: เลือกปัจจัยเสี่ยง ===
   const [openFactor, setOpenFactor] = React.useState(false);
   const [search, setSearch] = React.useState("");
   const [checked, setChecked] = React.useState<Record<string, boolean>>({});
+  const [isCollapsed, setIsCollapsed] = React.useState(false);
+  const [viewMode, setViewMode] = React.useState<'text' | 'cards'>('text');
 
   // เมื่อเปลี่ยนด้านความเสี่ยง เคลียร์ปัจจัยที่เลือกไว้เสมอ
   React.useEffect(() => {
@@ -126,10 +90,21 @@ export function RiskFactorPickerDialog({
   }, [values.dimension]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const factors = React.useMemo(() => {
-    const list = factorOptionsByDimension[values.dimension ?? ""] ?? [];
-    if (!search.trim()) return list;
+    // รวมปัจจัยจากทุกด้านที่เลือก
+    const selectedDimensions = values.dimension ?? [];
+    const allFactors: string[] = [];
+    
+    selectedDimensions.forEach(dim => {
+      const list = factorOptionsByDimension[dim] ?? [];
+      allFactors.push(...list);
+    });
+    
+    // ลบรายการซ้ำ
+    const uniqueFactors = Array.from(new Set(allFactors));
+    
+    if (!search.trim()) return uniqueFactors;
     const q = search.trim().toLowerCase();
-    return list.filter((t) => t.toLowerCase().includes(q));
+    return uniqueFactors.filter((t: string) => t.toLowerCase().includes(q));
   }, [factorOptionsByDimension, values.dimension, search]);
 
   const allVisibleChecked =
@@ -142,7 +117,7 @@ export function RiskFactorPickerDialog({
   };
 
   const openFactorPicker = () => {
-    if (!values.dimension) return; // ต้องเลือก "ด้าน" ก่อน
+    if (!values.dimension?.length) return; // ต้องเลือกอย่างน้อย 1 ด้าน
     setOpenFactor(true);
   };
 
@@ -150,15 +125,38 @@ export function RiskFactorPickerDialog({
     const picked = Object.entries(checked)
       .filter(([, v]) => v)
       .map(([k]) => k);
-    // รวมเป็นข้อความหลายบรรทัด (ตามภาพตัวอย่าง)
-    onChange({ riskFactor: picked.join("\n\n") });
+    
+    // สร้างโครงสร้างข้อมูลที่แยกตาม dimension
+    const selectedDimensions = values.dimension ?? [];
+    const factorsByDimension: Record<string, string[]> = {};
+    
+    // แยกปัจจัยตาม dimension ที่มาจากไหน
+    selectedDimensions.forEach(dim => {
+      factorsByDimension[dim] = [];
+      const factorsForDim = factorOptionsByDimension[dim] ?? [];
+      picked.forEach(factor => {
+        if (factorsForDim.includes(factor)) {
+          factorsByDimension[dim].push(factor);
+        }
+      });
+    });
+    
+    // รวมเป็นข้อความโดยมี marker บอกด้าน
+    const formattedFactors = selectedDimensions.map(dim => {
+      const factors = factorsByDimension[dim];
+      if (factors.length === 0) return null;
+      const dimLabel = dimensionOptions.find(d => d.value === dim)?.label || dim;
+      return `[${dimLabel}]\n${factors.join('\n\n')}`;
+    }).filter(Boolean).join('\n\n---\n\n');
+    
+    onChange({ riskFactor: formattedFactors });
     setOpenFactor(false);
   };
 
   // เงื่อนไขปุ่มยืนยัน (dialog หลัก)
   const disabled =
     !values.process ||
-    !values.dimension ||
+    !values.dimension?.length ||
     !(values.riskFactor ?? "").trim().length;
 
   return (
@@ -196,51 +194,190 @@ export function RiskFactorPickerDialog({
               </Select>
             </div>
 
-            {/* ด้านความเสี่ยง (เต็มแนวกว้าง) */}
-            <div className="space-y-1.5">
-              <Label htmlFor="dimension">ด้านความเสี่ยง</Label>
-              <Select
-                value={values.dimension ?? ""}
-                onValueChange={(v) => onChange({ dimension: v || undefined })}
-              >
-                <SelectTrigger
-                  id="dimension"
-                  aria-label="เลือกด้านความเสี่ยง"
-                  className="w-full" // ⬅️ เต็มแนวกว้าง
-                >
-                  <SelectValue placeholder="เลือกด้านความเสี่ยง" />
-                </SelectTrigger>
-                <SelectContent className="w-[--radix-select-trigger-width]">
-                  {dimensionOptions.map((o) => (
-                    <SelectItem key={o.value} value={o.value}>
-                      {o.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            {/* ด้านความเสี่ยง (เลือกได้หลายด้าน) */}
+            <div className="space-y-3">
+              <Label>ด้านความเสี่ยง (เลือกได้หลายด้าน)</Label>
+              <div className="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto">
+                {dimensionOptions.map((option) => {
+                  const isChecked = (values.dimension ?? []).includes(option.value);
+                  return (
+                    <label
+                      key={option.value}
+                      className={cn(
+                        "flex cursor-pointer items-center gap-3 rounded-lg border p-3 transition-colors",
+                        isChecked
+                          ? "border-blue-300 bg-blue-50"
+                          : "border-gray-200 bg-white hover:bg-gray-50"
+                      )}
+                    >
+                      <Checkbox
+                        checked={isChecked}
+                        onCheckedChange={(checked) => {
+                          const currentDimensions = values.dimension ?? [];
+                          let newDimensions: string[];
+                          
+                          if (checked) {
+                            // เพิ่มด้านใหม่
+                            newDimensions = [...currentDimensions, option.value];
+                          } else {
+                            // ลบด้านออก
+                            newDimensions = currentDimensions.filter(d => d !== option.value);
+                          }
+                          
+                          onChange({ dimension: newDimensions });
+                        }}
+                      />
+                      <span className="text-sm font-medium">{option.label}</span>
+                    </label>
+                  );
+                })}
+              </div>
             </div>
 
             {/* ปัจจัยเสี่ยง (แสดงเฉพาะข้อความที่เลือกแล้ว) + ปุ่ม picker */}
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <Label htmlFor="risk-factor">ปัจจัยเสี่ยง</Label>
-                <Button
-                  type="button"
-                  onClick={openFactorPicker}
-                  variant="default"
-                  disabled={!values.dimension} // ต้องเลือก "ด้าน" ก่อน
-                >
-                  เลือกปัจจัยเสี่ยง
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="risk-factor">ปัจจัยเสี่ยง</Label>
+                  {(() => {
+                    const content = values.riskFactor ?? "";
+                    if (content.trim()) {
+                      // นับจำนวนปัจจัยที่เลือก
+                      const sections = content.includes('[') && content.includes(']') 
+                        ? content.split('---').length 
+                        : 1;
+                      const totalFactors = content.split('\n').filter(line => 
+                        line.trim() && !line.includes('[') && !line.includes('---')
+                      ).length;
+                      
+                      return (
+                        <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
+                          {totalFactors} รายการ จาก {sections} ด้าน
+                        </span>
+                      );
+                    }
+                    return null;
+                  })()}
+                </div>
+                <div className="flex gap-2">
+                  {values.riskFactor?.trim() && (
+                    <>
+                      <Button
+                        type="button"
+                        onClick={() => setViewMode(viewMode === 'text' ? 'cards' : 'text')}
+                        variant="outline"
+                        size="sm"
+                      >
+                        {viewMode === 'text' ? <Grid className="h-4 w-4" /> : <List className="h-4 w-4" />}
+                      </Button>
+                      {viewMode === 'text' && (
+                        <Button
+                          type="button"
+                          onClick={() => setIsCollapsed(!isCollapsed)}
+                          variant="outline"
+                          size="sm"
+                        >
+                          {isCollapsed ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                        </Button>
+                      )}
+                    </>
+                  )}
+                  <Button
+                    type="button"
+                    onClick={openFactorPicker}
+                    variant="default"
+                    disabled={!values.dimension?.length} // ต้องเลือกอย่างน้อย 1 ด้าน
+                  >
+                    เลือกปัจจัยเสี่ยง
+                  </Button>
+                </div>
               </div>
 
-              <Textarea
-                id="risk-factor"
-                rows={4}
-                placeholder="ยังไม่ได้เลือกปัจจัย — กรุณากด 'เลือกปัจจัยเสี่ยง'"
-                value={values.riskFactor ?? ""}
-                onChange={(e) => onChange({ riskFactor: e.target.value })}
-              />
+              {(() => {
+                const content = values.riskFactor ?? "";
+                
+                if (viewMode === 'cards' && content.trim()) {
+                  // แสดงแบบ Card View
+                  if (content.includes('[') && content.includes(']')) {
+                    const sections = content.split('---').map(s => s.trim());
+                    return (
+                      <div className="max-h-[400px] overflow-y-auto space-y-3 border border-gray-200 rounded-lg p-3 bg-gray-50">
+                        {sections.map((section, idx) => {
+                          const lines = section.split('\n');
+                          const headerLine = lines[0];
+                          const factors = lines.slice(1).filter(line => line.trim());
+                          const dimLabel = headerLine.match(/\[(.*?)\]/)?.[1];
+                          
+                          return (
+                            <div key={idx} className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                              <div className="px-3 py-2 bg-blue-50 border-b border-gray-200">
+                                <div className="text-sm font-medium text-blue-700">{dimLabel}</div>
+                                <div className="text-xs text-blue-600">{factors.length} รายการ</div>
+                              </div>
+                              <div className="p-3">
+                                <div className="space-y-2">
+                                  {factors.map((factor, factorIdx) => (
+                                    <div key={factorIdx} className="text-sm text-gray-700 p-2 bg-gray-50 rounded border-l-2 border-blue-200">
+                                      {factor}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  } else {
+                    // ข้อมูลแบบเก่า - แสดงเป็น list
+                    const factors = content.split('\n').filter(line => line.trim());
+                    return (
+                      <div className="max-h-[400px] overflow-y-auto space-y-2 border border-gray-200 rounded-lg p-3 bg-gray-50">
+                        {factors.map((factor, idx) => (
+                          <div key={idx} className="text-sm text-gray-700 p-2 bg-white rounded border-l-2 border-blue-200">
+                            {factor}
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  }
+                } else {
+                  // แสดงแบบ Text View
+                  let displayValue = content;
+                  
+                  if (isCollapsed && content.trim()) {
+                    // แสดงแบบย่อ - เฉพาะหัวข้อด้านและจำนวนปัจจัย
+                    if (content.includes('[') && content.includes(']')) {
+                      const sections = content.split('---').map(s => s.trim());
+                      displayValue = sections.map(section => {
+                        const lines = section.split('\n');
+                        const headerLine = lines[0];
+                        const factorCount = lines.slice(1).filter(line => line.trim()).length;
+                        return `${headerLine} (${factorCount} รายการ)`;
+                      }).join('\n\n');
+                    } else {
+                      const factorCount = content.split('\n').filter(line => line.trim()).length;
+                      displayValue = `รวม ${factorCount} รายการปัจจัยเสี่ยง (กดปุ่ม 👁 เพื่อดูรายละเอียด)`;
+                    }
+                  }
+                  
+                  return (
+                    <Textarea
+                      id="risk-factor"
+                      rows={isCollapsed ? 4 : 8}
+                      className={`${isCollapsed ? 'min-h-[100px] max-h-[150px]' : 'min-h-[200px] max-h-[400px]'} resize-y`}
+                      placeholder="ยังไม่ได้เลือกปัจจัย — กรุณากด 'เลือกปัจจัยเสี่ยง'"
+                      value={displayValue}
+                      onChange={(e) => {
+                        if (!isCollapsed) {
+                          onChange({ riskFactor: e.target.value });
+                        }
+                      }}
+                      readOnly={isCollapsed}
+                    />
+                  );
+                }
+              })()}
             </div>
 
             <Separator />
@@ -269,11 +406,10 @@ export function RiskFactorPickerDialog({
           <DialogHeader>
             <DialogTitle>
               เลือกปัจจัยเสี่ยง
-              {values.dimension
-                ? ` (${
-                    dimensionOptions.find((d) => d.value === values.dimension)
-                      ?.label ?? ""
-                  })`
+              {values.dimension?.length
+                ? ` (${values.dimension.map(d => 
+                    dimensionOptions.find((opt) => opt.value === d)?.label ?? d
+                  ).join(', ')})`
                 : ""}
             </DialogTitle>
           </DialogHeader>

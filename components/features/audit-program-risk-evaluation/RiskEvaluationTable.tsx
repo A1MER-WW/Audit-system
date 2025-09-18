@@ -26,7 +26,6 @@ export default function RiskEvaluationTable({
   isLoading,
   onFiscalYearChange,
   onCreate,
-  onDelete,
 }: Props) {
   const statusLabel = (status: string) => {
     switch (status) {
@@ -122,7 +121,9 @@ export default function RiskEvaluationTable({
             <thead>
               <tr className="bg-gray-50 text-gray-600">
                 <th className="w-20 px-4 py-3 text-left">ลำดับ</th>
-                <th className="w-56 px-4 py-3 text-left">โครงการ/งานที่เข้าตรวจสอบ</th>
+                <th className="w-56 px-4 py-3 text-left">
+                  โครงการ/งานที่เข้าตรวจสอบ
+                </th>
                 <th className="w-72 px-4 py-3 text-left">หน่วยงาน</th>
                 <th className="w-80 px-4 py-3 text-left">สถานะ</th>
                 <th className="w-16 px-4 py-3 text-right">เอกสาร</th>
@@ -132,13 +133,19 @@ export default function RiskEvaluationTable({
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td className="px-4 py-6 text-center text-gray-500" colSpan={5}>
+                  <td
+                    className="px-4 py-6 text-center text-gray-500"
+                    colSpan={5}
+                  >
                     กำลังโหลด...
                   </td>
                 </tr>
               ) : rows.length === 0 ? (
                 <tr>
-                  <td className="px-4 py-6 text-center text-gray-500" colSpan={5}>
+                  <td
+                    className="px-4 py-6 text-center text-gray-500"
+                    colSpan={5}
+                  >
                     ไม่พบข้อมูล
                   </td>
                 </tr>
@@ -148,17 +155,24 @@ export default function RiskEvaluationTable({
                     <td className="px-4 py-3">{idx + 1}</td>
 
                     <td className="px-4 py-3 w-56">
-                      <p className="line-clamp-2 text-gray-900" title={r.auditTopics.auditTopic}>
+                      <p
+                        className="line-clamp-2 text-gray-900"
+                        title={r.auditTopics.auditTopic}
+                      >
                         {r.auditTopics.auditTopic}
                       </p>
                     </td>
 
                     <td className="px-4 py-3 text-gray-700">
-                      {r.auditTopics.departments.map((d) => d.departmentName).join(" / ")}
+                      {r.auditTopics.departments
+                        .map((d) => d.departmentName)
+                        .join(" / ")}
                     </td>
 
                     <td className="px-4 py-3">
-                      <span className={statusClass(r.status)}>{statusLabel(r.status)}</span>
+                      <span className={statusClass(r.status)}>
+                        {statusLabel(r.status)}
+                      </span>
                     </td>
 
                     <td className="px-4 py-2">
@@ -171,14 +185,6 @@ export default function RiskEvaluationTable({
                         >
                           <FileText className="h-4 w-4" />
                         </Link>
-
-                        <button
-                          onClick={() => onDelete(r.id)}
-                          title="ลบ"
-                          className="hidden sm:inline-flex h-9 items-center justify-center rounded-md border border-gray-200 px-3 text-gray-600 hover:bg-gray-50"
-                        >
-                          ลบ
-                        </button>
                       </div>
                     </td>
                   </tr>
