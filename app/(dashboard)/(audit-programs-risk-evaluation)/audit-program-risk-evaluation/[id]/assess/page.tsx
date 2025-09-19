@@ -19,7 +19,7 @@ export default function RiskAssessmentPage() {
     const found = programs.find((p) => p.id === id);
     if (!found) return null;
     
-    // ดึงข้อมูลปัจจัยเสี่ยงจาก localStorage (จำลองการเก็บข้อมูลจาก step 1)
+    // ดึงข้อมูลปัจจัยเสี่ยงจาก localStorage (เหมือนกับหน้า detail)
     const savedRisks = localStorage.getItem(`audit-risks-${id}`);
     let activityRisks: AuditActivityRisk[] = [];
     
@@ -29,27 +29,6 @@ export default function RiskAssessmentPage() {
       } catch (error) {
         console.error('Error parsing saved risks:', error);
       }
-    }
-    
-    // ถ้าไม่มีข้อมูลใน localStorage ใช้ mock data ทดสอบ: 1 กระบวนงาน 2 ด้าน ด้านละ 2 ข้อ
-    if (activityRisks.length === 0) {
-      activityRisks = [
-        // กรณีทดสอบตามที่ผู้ใช้ต้องการ: 1 กระบวนงาน มี 2 ด้าน ด้านละ 2 ข้อ
-        {
-          id: 1,
-          processes: "followup-evaluation",
-          risk_factors: "strategy",
-          object: "[ด้านกลยุทธ์]\nปัจจัยเสี่ยงข้อที่ 1 ของด้านกลยุทธ์\n\nปัจจัยเสี่ยงข้อที่ 2 ของด้านกลยุทธ์",
-          risks_assessment: []
-        },
-        {
-          id: 2,
-          processes: "followup-evaluation",
-          risk_factors: "finance", 
-          object: "[ด้านการเงิน]\nปัจจัยเสี่ยงข้อที่ 1 ของด้านการเงิน\n\nปัจจัยเสี่ยงข้อที่ 2 ของด้านการเงิน",
-          risks_assessment: []
-        }
-      ];
     }
     
     // แปลง AuditProgram เป็น AuditProgramRiskEvaluation

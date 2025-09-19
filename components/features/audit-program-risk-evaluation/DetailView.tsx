@@ -9,6 +9,7 @@ import {
   ChevronDown,
   ChevronRight,
   Trash2,
+  Loader2,
 } from "lucide-react";
 import * as React from "react";
 import type { AuditProgramRiskEvaluation } from "@/hooks/useAuditProgramRiskEvaluation";
@@ -25,6 +26,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { useRouter } from "next/navigation";
 
 type Props = {
   detail: AuditProgramRiskEvaluation;
@@ -44,6 +46,7 @@ export default function DetailView({
   onAddFactor,
   onDeleteFactor,
 }: Props) {
+  const router = useRouter();
   const deptText = detail.auditTopics.departments
     .map((d) => d.departmentName)
     .join(" / ");
@@ -56,10 +59,20 @@ export default function DetailView({
     riskFactor: "",
   });
 
+  // --- state สำหรับ loading ---
+  const [isNavigating, setIsNavigating] = React.useState(false);
+
   // --- state สำหรับ expand/collapse รายการปัจจัยเสี่ยง ---
   const [expandedItems, setExpandedItems] = React.useState<Set<number>>(
     new Set()
   );
+
+  // เมื่อข้อมูลเปลี่ยนแปลง ให้ expand ทุกรายการโดยอัตโนมัติ
+  React.useEffect(() => {
+    if (detail.AuditActivityRisks.length > 0) {
+      setExpandedItems(new Set(detail.AuditActivityRisks.map(risk => risk.id)));
+    }
+  }, [detail.AuditActivityRisks]);
 
   // --- state สำหรับ confirmation dialog ---
   const [deleteConfirmOpen, setDeleteConfirmOpen] = React.useState(false);
@@ -161,8 +174,32 @@ export default function DetailView({
     setDeleteTargetName("ปัจจัยเสี่ยง");
   };
 
+  // จัดการการนำทางไปหน้าประเมินความเสี่ยง
+  const handleNavigateToAssess = async () => {
+    setIsNavigating(true);
+    try {
+      // เพิ่ม delay เล็กน้อยเพื่อให้เห็น loading
+      await new Promise(resolve => setTimeout(resolve, 500));
+      await router.push(`/audit-program-risk-evaluation/${detail.id}/assess`);
+    } catch (error) {
+      console.error('Navigation error:', error);
+      setIsNavigating(false);
+    }
+  };
+
   return (
-    <div className="px-6 py-4">
+    <div className="px-6 py-4 relative">
+      {/* Loading Overlay */}
+      {isNavigating && (
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-50 flex items-center justify-center">
+          <div className="bg-white rounded-lg p-6 shadow-xl border border-gray-200 min-w-[200px] text-center">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-3 text-blue-600" />
+            <p className="text-sm font-medium text-gray-900 mb-1">กำลังโหลด</p>
+            <p className="text-xs text-gray-500">กำลังเตรียมหน้าประเมินความเสี่ยง...</p>
+          </div>
+        </div>
+      )}
+
       {/* breadcrumb */}
       <div className="mb-3">
         <Link
@@ -331,43 +368,35 @@ export default function DetailView({
                                 a.object.includes("[") &&
                                 a.object.includes("]")
                               ) {
-                                // ข้อมูลรูปแบบใหม่ที่แยกตามด้าน
-                                const sections = a.object
-                                  .split("---")
-                                  .map((s) => s.trim());
+                                // ข้อมูลรูปแบบใหม่ที่แยกตามด้าน - ใช้ regex เหมือน RiskAssessmentView
+                                const dimensionRegex = /\[([^\]]+)\]\s*([\s\S]*?)(?=\[|$)/g;
+                                const sections: Array<{dimLabel: string, content: string}> = [];
+                                let match;
+                                while ((match = dimensionRegex.exec(a.object)) !== null) {
+                                  sections.push({
+                                    dimLabel: match[1],
+                                    content: match[2].trim()
+                                  });
+                                }
                                 return (
                                   <div className="space-y-3">
-                                    {sections.map((section, idx) => {
-                                      const lines = section.split("\n");
-                                      const headerLine = lines[0];
-                                      const content = lines.slice(1).join("\n");
-
-                                      if (
-                                        headerLine.includes("[") &&
-                                        headerLine.includes("]")
-                                      ) {
-                                        const dimLabel =
-                                          headerLine.match(/\[(.*?)\]/)?.[1];
-                                        return (
-                                          <div
-                                            key={idx}
-                                            className="border border-gray-200 rounded-lg overflow-hidden"
-                                          >
-                                            <div className="px-3 py-2 bg-blue-50 border-b border-gray-200">
-                                              <div className="text-xs font-medium text-blue-700">
-                                                {dimLabel}
-                                              </div>
-                                            </div>
-                                            <div className="p-3 bg-white">
-                                              <p className="whitespace-pre-wrap text-sm leading-relaxed text-gray-700">
-                                                {content}
-                                              </p>
-                                            </div>
+                                    {sections.map((section, idx) => (
+                                      <div
+                                        key={idx}
+                                        className="border border-gray-200 rounded-lg overflow-hidden"
+                                      >
+                                        <div className="px-3 py-2 bg-blue-50 border-b border-gray-200">
+                                          <div className="text-xs font-medium text-blue-700">
+                                            {section.dimLabel}
                                           </div>
-                                        );
-                                      }
-                                      return null;
-                                    })}
+                                        </div>
+                                        <div className="p-3 bg-white">
+                                          <p className="whitespace-pre-wrap text-sm leading-relaxed text-gray-700">
+                                            {section.content}
+                                          </p>
+                                        </div>
+                                      </div>
+                                    ))}
                                   </div>
                                 );
                               } else {
@@ -459,12 +488,25 @@ export default function DetailView({
         </div>
         <div>
           {detail.AuditActivityRisks.length > 0 && (
-            <Link
-              href={`/audit-program-risk-evaluation/${detail.id}/assess`}
-              className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow hover:bg-blue-700 active:bg-blue-800"
+            <Button
+              onClick={handleNavigateToAssess}
+              disabled={isNavigating}
+              className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow hover:bg-blue-700 active:bg-blue-800 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              ไปประเมินความเสี่ยง
-            </Link>
+              {isNavigating ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  กำลังโหลด...
+                </>
+              ) : (
+                <>
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  ไปประเมินความเสี่ยง
+                </>
+              )}
+            </Button>
           )}
         </div>
       </div>

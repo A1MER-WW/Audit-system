@@ -100,6 +100,17 @@ const RiskLevelModal: React.FC<{
 }> = ({ title, levels, selectedValue, onSelect, children, context }) => {
   const [open, setOpen] = useState(false);
 
+  const handleSelect = (value: number) => {
+    console.log(
+      `[RiskLevelModal] ${title} selected:`,
+      value,
+      "from current:",
+      selectedValue
+    );
+    onSelect(value);
+    setOpen(false);
+  };
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{children}</DialogTrigger>
@@ -119,10 +130,7 @@ const RiskLevelModal: React.FC<{
 
         <RadioGroup
           value={String(selectedValue || 0)}
-          onValueChange={(v) => {
-            onSelect(Number(v));
-            setOpen(false);
-          }}
+          onValueChange={(v) => handleSelect(Number(v))}
           className="space-y-3"
         >
           {/* ตัวเลือก "ไม่ประเมิน" */}
@@ -200,55 +208,40 @@ const IndividualRiskForm: React.FC<{
   rank,
   onUpdate,
 }) => {
-  const [probability, setProbability] = useState(assessment?.probability || 0);
-  const [impact, setImpact] = useState(assessment?.impact || 0);
-
-  // แก้ไขปัญหา: sync state เมื่อ assessment prop เปลี่ยนแปลง
-  React.useEffect(() => {
-    const newProbability = assessment?.probability || 0;
-    const newImpact = assessment?.impact || 0;
-    
-    console.log(`[IndividualRiskForm] Assessment changed for "${riskText.substring(0, 30)}...":`, {
-      oldProbability: probability,
-      newProbability,
-      oldImpact: impact,
-      newImpact,
-      dimension: assessment?.dimension,
-      factorId: assessment?.factorId,
-      subFactorIndex: assessment?.subFactorIndex
-    });
-    
-    // อัปเดต state เฉพาะเมื่อค่าเปลี่ยนแปลงจริงๆ
-    if (probability !== newProbability) {
-      setProbability(newProbability);
-    }
-    if (impact !== newImpact) {
-      setImpact(newImpact);
-    }
-  }, [assessment?.probability, assessment?.impact, assessment?.dimension, assessment?.factorId, assessment?.subFactorIndex, probability, impact, riskText]);
+  // ใช้ assessment data โดยตรงแทนการใช้ local state เพื่อหลีกเลี่ยงปัญหา sync
+  const currentProbability = assessment?.probability || 0;
+  const currentImpact = assessment?.impact || 0;
 
   const handleProbabilityChange = (value: number) => {
-    console.log(`[IndividualRiskForm] Probability changed for "${riskText.substring(0, 30)}...": ${probability} -> ${value}, impact: ${impact}`);
-    const newProbability = value;
-    setProbability(newProbability);
-    onUpdate(newProbability, impact);
-  };
-  const handleImpactChange = (value: number) => {
-    console.log(`[IndividualRiskForm] Impact changed for "${riskText.substring(0, 30)}...": ${impact} -> ${value}, probability: ${probability}`);
-    const newImpact = value;
-    setImpact(newImpact);
-    onUpdate(probability, newImpact);
+    console.log(
+      `[IndividualRiskForm] Probability changing for "${riskText.substring(
+        0,
+        30
+      )}...": ${currentProbability} -> ${value}, current impact: ${currentImpact}`
+    );
+    onUpdate(value, currentImpact);
   };
 
-  const riskScore = probability * impact;
-  const pickedBoth = probability > 0 && impact > 0;
+  const handleImpactChange = (value: number) => {
+    console.log(
+      `[IndividualRiskForm] Impact changing for "${riskText.substring(
+        0,
+        30
+      )}...": ${currentImpact} -> ${value}, current probability: ${currentProbability}`
+    );
+    onUpdate(currentProbability, value);
+  };
+
+  const riskScore = currentProbability * currentImpact;
+  const pickedBoth = currentProbability > 0 && currentImpact > 0;
 
   return (
     <div
       className="
-        grid items-center px-4 py-3
-        grid-cols-[1fr_120px_120px_56px_120px_72px]
-      "
+    grid items-center px-4 py-3
+    grid-cols-[1fr_120px_120px_56px_120px_72px]
+    gap-x-3 md:gap-x-4
+  "
     >
       {/* ซ้าย: ปัจจัย (จำกัด 2 บรรทัด) */}
       <div className="text-sm text-gray-700 pr-4">
@@ -262,7 +255,7 @@ const IndividualRiskForm: React.FC<{
         <RiskLevelModal
           title="โอกาส"
           levels={probabilityLevels}
-          selectedValue={probability}
+          selectedValue={currentProbability}
           onSelect={handleProbabilityChange}
           context={{
             dimension: "ระดับโอกาส",
@@ -274,10 +267,10 @@ const IndividualRiskForm: React.FC<{
         >
           <Button
             variant="outline"
-            className="w-full h-7 text-xs px-2 justify-start"
-            title={`โอกาส: ${probability} | Assessment: ${assessment?.probability || 'N/A'} | Dimension: ${assessment?.dimension || 'N/A'}`}
+            className="w-full h-9 text-sm justify-center font-medium tabular-nums"
+            title={`โอกาส: ${currentProbability || 0}`}
           >
-            {probability === 0 ? "-- เลือก --" : `โอกาส: ${probability}`}
+            {currentProbability === 0 ? "-" : currentProbability}
           </Button>
         </RiskLevelModal>
       </div>
@@ -287,7 +280,7 @@ const IndividualRiskForm: React.FC<{
         <RiskLevelModal
           title="ผลกระทบ"
           levels={impactLevels}
-          selectedValue={impact}
+          selectedValue={currentImpact}
           onSelect={handleImpactChange}
           context={{
             dimension: "ระดับผลกระทบ",
@@ -299,10 +292,10 @@ const IndividualRiskForm: React.FC<{
         >
           <Button
             variant="outline"
-            className="w-full h-7 text-xs px-2 justify-start"
-            title={`ผลกระทบ: ${impact} | Assessment: ${assessment?.impact || 'N/A'} | Dimension: ${assessment?.dimension || 'N/A'}`}
+            className="w-full h-9 text-sm justify-center font-medium tabular-nums"
+            title={`ผลกระทบ: ${currentImpact || 0}`}
           >
-            {impact === 0 ? "-- เลือก --" : `ผลกระทบ: ${impact}`}
+            {currentImpact === 0 ? "-" : currentImpact}
           </Button>
         </RiskLevelModal>
       </div>
@@ -365,62 +358,73 @@ const RiskAssessmentForm: React.FC<{
   onUpdate,
   selectedDimension,
 }) => {
-  // แยกปัจจัยเสี่ยงออกตาม dimension ที่เลือก
+  // แยกปัจจัยเสี่ยงออกตาม dimension ที่เลือก (แก้ไขให้ง่ายขึ้น)
   const extractFactorsForDimension = (
     content: string,
     targetDimension: string
   ): string[] => {
-    console.log(`[extractFactorsForDimension] Target dimension: ${targetDimension}, Content:`, content);
-    
+    console.log(
+      `[extractFactorsForDimension] Target dimension: ${targetDimension}, Content preview:`,
+      content.substring(0, 200) + "..."
+    );
+
+    // ทดลองแยกตามรูปแบบข้อมูลทั้งหมดก่อน
+    let factors: string[] = [];
+
     // ตรวจสอบว่าข้อมูลมี marker หรือไม่
     if (content.includes("[") && content.includes("]")) {
       // ข้อมูลรูปแบบใหม่ที่มี marker
-      const sections = content.split("---").map((s) => s.trim());
-      console.log(`[extractFactorsForDimension] Found ${sections.length} sections:`, sections);
+      const dimensionLabels: Record<string, string> = {
+        strategy: "ด้านกลยุทธ์",
+        finance: "ด้านการเงิน",
+        operations: "ด้านการดำเนินงาน",
+        informationtechnology: "ด้านเทคโนโลยีสารสนเทศ",
+        regulatorycompliance: "ด้านการปฏิบัติตามกฎระเบียบ",
+        fraudrisk: "ด้านการเกิดทุจริต",
+      };
 
-      for (const section of sections) {
-        const lines = section.split("\n");
-        const headerLine = lines[0];
+      const targetLabel = dimensionLabels[targetDimension];
+      console.log(
+        `[extractFactorsForDimension] Looking for dimension label: "${targetLabel}"`
+      );
 
-        console.log(`[extractFactorsForDimension] Processing header: "${headerLine}"`);
+      // แยกทุก section ที่มี [ด้าน...]
+      const dimensionRegex = /\[([^\]]+)\]\s*([\s\S]*?)(?=\[|$)/g;
+      let match;
 
-        // ตรวจสอบว่า header line มี dimension ที่ต้องการหรือไม่
-        if (headerLine.includes("[") && headerLine.includes("]")) {
-          const dimInBracket = headerLine.match(/\[(.*?)\]/)?.[1];
-          const dimensionLabels: Record<string, string> = {
-            strategy: "ด้านกลยุทธ์",
-            finance: "ด้านการเงิน",
-            operations: "ด้านการดำเนินงาน",
-            informationtechnology: "ด้านเทคโนโลยีสารสนเทศ",
-            regulatorycompliance: "ด้านการปฏิบัติตามกฎระเบียบ",
-            fraudrisk: "ด้านการเกิดทุจริต",
-          };
+      while ((match = dimensionRegex.exec(content)) !== null) {
+        const [, bracketContent, sectionContent] = match;
+        console.log(
+          `[extractFactorsForDimension] Found section: "${bracketContent}"`
+        );
 
-          const targetLabel = dimensionLabels[targetDimension];
-          console.log(`[extractFactorsForDimension] Dimension in bracket: "${dimInBracket}", Target label: "${targetLabel}"`);
-          
-          if (dimInBracket === targetLabel) {
-            const factors = lines
-              .slice(1)
-              .join("\n")
-              .trim()
-              .split("\n\n")
-              .filter((f) => f.trim().length > 0);
-            
-            console.log(`[extractFactorsForDimension] Found ${factors.length} factors for dimension "${targetLabel}":`, factors);
-            return factors;
-          }
+        if (bracketContent === targetLabel) {
+          factors = sectionContent
+            .trim()
+            .split(/\n\s*\n/)
+            .filter((f) => f.trim().length > 0)
+            .map((f) => f.trim());
+          console.log(
+            `[extractFactorsForDimension] Extracted ${factors.length} factors:`,
+            factors
+          );
+          break;
         }
       }
-      
-      console.log(`[extractFactorsForDimension] No factors found for dimension: ${targetDimension}`);
-      return [];
     } else {
       // ข้อมูลรูปแบบเก่า - แสดงทั้งหมด
-      const factors = content.split("\n\n").filter((factor) => factor.trim().length > 0);
-      console.log(`[extractFactorsForDimension] Legacy format, found ${factors.length} factors:`, factors);
-      return factors;
+      factors = content
+        .split(/\n\s*\n/)
+        .filter((factor) => factor.trim().length > 0);
+      console.log(
+        `[extractFactorsForDimension] Legacy format, found ${factors.length} factors`
+      );
     }
+
+    console.log(
+      `[extractFactorsForDimension] Final result: ${factors.length} factors for dimension "${targetDimension}"`
+    );
+    return factors;
   };
 
   const riskFactors = extractFactorsForDimension(
@@ -428,11 +432,15 @@ const RiskAssessmentForm: React.FC<{
     selectedDimension
   );
 
-  console.log(`[RiskAssessmentForm] Risk ID: ${risk.id}, Selected dimension: ${selectedDimension}, Factors found: ${riskFactors.length}`);
+  console.log(
+    `[RiskAssessmentForm] Risk ID: ${risk.id}, Selected dimension: ${selectedDimension}, Factors found: ${riskFactors.length}`
+  );
 
   // ถ้าไม่มีปัจจัยสำหรับด้านนี้ ไม่แสดงอะไร
   if (riskFactors.length === 0) {
-    console.log(`[RiskAssessmentForm] No factors found for risk ${risk.id} in dimension ${selectedDimension}`);
+    console.log(
+      `[RiskAssessmentForm] No factors found for risk ${risk.id} in dimension ${selectedDimension}`
+    );
     return null;
   }
 
@@ -580,7 +588,9 @@ export default function RiskAssessmentView({ detail, onSave }: Props) {
       );
       const dimensionsInProcess = [...new Set(allDimensions)];
       if (dimensionsInProcess.length > 0) {
-        console.log(`[RiskAssessmentView] Setting selectedDimension to: ${dimensionsInProcess[0]} for process: ${activeTab}`);
+        console.log(
+          `[RiskAssessmentView] Setting selectedDimension to: ${dimensionsInProcess[0]} for process: ${activeTab}`
+        );
         setSelectedDimension(dimensionsInProcess[0]);
       }
     }
@@ -588,7 +598,9 @@ export default function RiskAssessmentView({ detail, onSave }: Props) {
 
   // Debug เมื่อเปลี่ยน dimension
   React.useEffect(() => {
-    console.log(`[RiskAssessmentView] Selected dimension changed to: ${selectedDimension}`);
+    console.log(
+      `[RiskAssessmentView] Selected dimension changed to: ${selectedDimension}`
+    );
   }, [selectedDimension]);
 
   const handleAssessmentUpdate = (
@@ -599,21 +611,30 @@ export default function RiskAssessmentView({ detail, onSave }: Props) {
     impact: number,
     subFactorIndex?: number
   ) => {
-    console.log(`[handleAssessmentUpdate] Factor ID: ${factorId}, Dimension: ${dimension}, SubIndex: ${subFactorIndex}, Probability: ${probability}, Impact: ${impact}`);
-    
-    if (probability > 0 && impact > 0) {
-      updateAssessment(
-        factorId,
-        factorText,
-        dimension,
-        probability,
-        impact,
-        subFactorIndex
-      );
-      console.log(`[handleAssessmentUpdate] Assessment saved successfully`);
-    } else {
-      console.log(`[handleAssessmentUpdate] Assessment not saved - probability or impact is 0`);
-    }
+    console.log(
+      `[handleAssessmentUpdate] Factor ID: ${factorId}, Dimension: ${dimension}, SubIndex: ${subFactorIndex}, Probability: ${probability}, Impact: ${impact}`
+    );
+    console.log(
+      `[handleAssessmentUpdate] Factor Text: "${factorText.substring(
+        0,
+        50
+      )}..."`
+    );
+
+    // บันทึกทุกการประเมิน (แม้จะเป็น 0) เพื่อเก็บ state
+    updateAssessment(
+      factorId,
+      factorText,
+      dimension,
+      probability,
+      impact,
+      subFactorIndex
+    );
+    console.log(
+      `[handleAssessmentUpdate] Assessment updated: ${probability}x${impact}=${
+        probability * impact
+      }`
+    );
   };
 
   const handleSave = () => {
@@ -621,12 +642,12 @@ export default function RiskAssessmentView({ detail, onSave }: Props) {
       onSave(assessments);
     } else {
       // บันทึกการประเมินลง localStorage สำหรับใช้ใน results page
-      console.log('Saving assessments to localStorage:', assessments);
+      console.log("Saving assessments to localStorage:", assessments);
       localStorage.setItem(
         `risk-assessments-${detail.id}`,
         JSON.stringify(assessments)
       );
-      console.log('Assessments saved successfully');
+      console.log("Assessments saved successfully");
 
       // แสดงข้อความแจ้งเตือนแล้ว redirect
       alert("บันทึกการประเมินความเสี่ยงเรียบร้อยแล้ว");
@@ -790,7 +811,9 @@ export default function RiskAssessmentView({ detail, onSave }: Props) {
                                 key={dimension}
                                 variant="ghost" // ใช้ ghost ให้ปุ่มโปร่งใส
                                 onClick={() => {
-                                  console.log(`[RiskAssessmentView] Dimension button clicked: ${selectedDimension} -> ${dimension}`);
+                                  console.log(
+                                    `[RiskAssessmentView] Dimension button clicked: ${selectedDimension} -> ${dimension}`
+                                  );
                                   setSelectedDimension(dimension);
                                 }}
                                 size="sm"
@@ -799,7 +822,9 @@ export default function RiskAssessmentView({ detail, onSave }: Props) {
                                     ? "border-b-2 border-[#3E52B9] text-[#3E52B9]"
                                     : "text-gray-600 hover:text-[#3E52B9]"
                                 }`}
-                                title={`เปลี่ยนไปด้าน: ${dimensionLabels[dimension] || dimension}`}
+                                title={`เปลี่ยนไปด้าน: ${
+                                  dimensionLabels[dimension] || dimension
+                                }`}
                               >
                                 {dimensionLabels[dimension] || dimension}
                               </Button>
@@ -815,28 +840,33 @@ export default function RiskAssessmentView({ detail, onSave }: Props) {
 
                               <div className="rounded-xl border border-gray-200 overflow-hidden">
                                 {/* Header row */}
+                                {/* Header row (2 ชั้น) */}
                                 <div
                                   className="
-          hidden md:grid items-center px-4 py-2 bg-gray-50 text-xs text-gray-600
-          grid-cols-[1fr_120px_120px_56px_120px_72px]
-        "
+    hidden md:grid items-center px-4 py-2 bg-gray-50 text-xs text-gray-600
+    [grid-template-columns:1fr_120px_120px_56px_120px_72px]
+    gap-x-3 md:gap-x-4
+  "
                                 >
-                                  <div className="pr-4">
+                                  {/* แถวบน: กลุ่มหัวข้อรวม */}
+                                  <div /> {/* ช่องว่างคอลัมน์ซ้าย */}
+                                  <div className="col-start-2 col-span-4 text-center font-semibold">
                                     การประเมินความเสี่ยงระดับกิจกรรม
                                   </div>
-                                  <div className="text-center w-[120px]">
-                                    โอกาส
+                                  <div /> {/* ช่องว่างคอลัมน์ขวา */}
+                                  {/* แถวล่าง: หัวคอลัมน์ย่อย */}
+                                  <div className="pr-4 mt-1">
+                                    ความเสี่ยงและปัจจัยเสี่ยง
                                   </div>
-                                  <div className="text-center w-[120px]">
+                                  <div className="text-center mt-1">โอกาส</div>
+                                  <div className="text-center mt-1">
                                     ผลกระทบ
                                   </div>
-                                  <div className="text-center w-[56px]">
-                                    คะแนน
-                                  </div>
-                                  <div className="text-center w-[120px]">
+                                  <div className="text-center mt-1">คะแนน</div>
+                                  <div className="text-center mt-1">
                                     ระดับความเสี่ยง
                                   </div>
-                                  <div className="text-center w-[72px]">
+                                  <div className="text-center mt-1">
                                     ลำดับความเสี่ยง
                                   </div>
                                 </div>
@@ -885,7 +915,11 @@ export default function RiskAssessmentView({ detail, onSave }: Props) {
             <Button
               variant="outline"
               onClick={() => {
-                if (confirm('ต้องการล้างข้อมูลการประเมินทั้งหมดเพื่อเริ่มทดสอบใหม่หรือไม่?')) {
+                if (
+                  confirm(
+                    "ต้องการล้างข้อมูลการประเมินทั้งหมดเพื่อเริ่มทดสอบใหม่หรือไม่?"
+                  )
+                ) {
                   localStorage.removeItem(`risk-assessments-${detail.id}`);
                   window.location.reload();
                 }
@@ -898,7 +932,16 @@ export default function RiskAssessmentView({ detail, onSave }: Props) {
             <Button
               variant="outline"
               onClick={() => {
-                alert(`ข้อมูลการประเมินปัจจุบัน: ${assessments.length} รายการ\n\nรายละเอียด:\n${assessments.map(a => `- Factor ${a.factorId} (${a.dimension}): ${a.probability}x${a.impact}=${a.riskScore}`).join('\n')}`);
+                alert(
+                  `ข้อมูลการประเมินปัจจุบัน: ${
+                    assessments.length
+                  } รายการ\n\nรายละเอียด:\n${assessments
+                    .map(
+                      (a) =>
+                        `- Factor ${a.factorId} (${a.dimension}): ${a.probability}x${a.impact}=${a.riskScore}`
+                    )
+                    .join("\n")}`
+                );
               }}
             >
               📊 ดูข้อมูลการประเมิน ({assessments.length})
@@ -915,12 +958,16 @@ export default function RiskAssessmentView({ detail, onSave }: Props) {
             <Button
               onClick={() => {
                 if (!hasAssessments()) {
-                  alert("กรุณาทำการประเมินความเสี่ยงอย่างน้อย 1 รายการก่อนดูผลการประเมิน");
+                  alert(
+                    "กรุณาทำการประเมินความเสี่ยงอย่างน้อย 1 รายการก่อนดูผลการประเมิน"
+                  );
                   return;
                 }
                 // บังคับบันทึกข้อมูลก่อนไปหน้า results
                 forceSave();
-                router.push(`/audit-program-risk-evaluation/${detail.id}/results`);
+                router.push(
+                  `/audit-program-risk-evaluation/${detail.id}/results`
+                );
               }}
               className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow hover:bg-blue-700 active:bg-blue-800"
             >

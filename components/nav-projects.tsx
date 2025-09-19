@@ -144,12 +144,6 @@ export function NavProjects({
                         การประเมินความเสี่ยงและการจัดลำดับความเสี่ยง
                         (ผู้ตรวจสอบ)
                       </span>
-                      <Badge
-                        className="h-5 w-5 rounded-full px-1 font-mono tabular-nums"
-                        variant="destructive"
-                      >
-                        8
-                      </Badge>
                     </a>
                   </SidebarMenuSub>
                   <SidebarMenuSub>
@@ -158,12 +152,6 @@ export function NavProjects({
                         การประเมินความเสี่ยงและการจัดลำดับความเสี่ยง
                         (หัวหน้าผู้ตรวจสอบ)
                       </span>
-                      <Badge
-                        className="h-5 w-5 rounded-full px-1 font-mono tabular-nums"
-                        variant="destructive"
-                      >
-                        8
-                      </Badge>
                     </a>
                   </SidebarMenuSub>
                 </Collapsible>
@@ -210,11 +198,19 @@ export function NavProjects({
                   </SidebarMenuSub>
 
                   <SidebarMenuSub>
-                    <Link href="/audit-program-risk-evaluation">
-                      <span className="text-sm">
-                        ประเมินความเสี่ยงและการจัดลำดับความเสี่ยง
-                      </span>
+                    <Link
+                      href="/audit-program-risk-evaluation"
+                      className="text-sm block"
+                    >
+                      ประเมินความเสี่ยงและการจัดลำดับความเสี่ยง(ผู้ตรวจสอบภายใน)
                     </Link>
+                  </SidebarMenuSub>
+                  <SidebarMenuSub>
+                    <a href="">
+                      <span className="text-sm">
+                        ประเมินความเสี่ยงและการจัดลำดับความเสี่ยง(หัวหน้ากลุ่มตรวจสอบภายใน)
+                      </span>
+                    </a>
                   </SidebarMenuSub>
                 </Collapsible>
 

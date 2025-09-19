@@ -398,9 +398,11 @@ export default function RiskAssessmentResultView({ detail }: Props) {
                 </span>
               </div>
             </div>{" "}
-            <Button className="bg-[#3E52B9] hover:bg-[#2A3A8F] text-white flex items-center gap-2">
-              เสนอหัวหน้ากลุ่มตรวจสอบภายใน
-            </Button>
+            <a href={`/audit-program-risk-evaluation/${detail.id}/submitted`}>
+              <Button className="bg-[#3E52B9] hover:bg-[#2A3A8F] text-white flex items-center gap-2">
+                เสนอหัวหน้ากลุ่มตรวจสอบภายใน
+              </Button>
+            </a>
           </div>
         </div>
 
@@ -525,12 +527,6 @@ export default function RiskAssessmentResultView({ detail }: Props) {
                   className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-medium text-white shadow hover:bg-blue-700"
                 >
                   แก้ไขการประเมิน
-                </Link>
-                <Link
-                  href={`/audit-program-risk-evaluation/${detail.id}/submitted`}
-                  className="inline-flex items-center gap-2 rounded-lg bg-green-600 px-3 py-1.5 text-sm font-medium text-white shadow hover:bg-green-700"
-                >
-                  เสนอหัวหน้ากลุ่มตรวจสอบภายใน
                 </Link>
               </>
             ) : (

@@ -43,11 +43,35 @@ export default function AuditProgramRiskEvaluationDetailPage() {
 
   // ฟังก์ชันเพิ่มปัจจัยเสี่ยงใหม่
   const handleAddFactor = (values: RiskFactorPickerValues) => {
+    const processValue = values.process || "";
+    const riskFactorsValue = Array.isArray(values.dimension) ? values.dimension.join(",") : (values.dimension || "");
+    const objectValue = values.riskFactor || "";
+
+    // ตรวจสอบข้อมูลซ้ำ
+    const isDuplicate = activityRisks.some(risk => 
+      risk.processes === processValue && 
+      risk.risk_factors === riskFactorsValue &&
+      risk.object === objectValue
+    );
+
+    if (isDuplicate) {
+      // ใช้ dynamic import เพื่อหลีกเลี่ยง server-side rendering issues
+      import('@/hooks/useToast').then(({ showToast }) => {
+        showToast({
+          title: "พบข้อมูลที่ซ้ำกัน",
+          description: "กระบวนงาน ด้าน และปัจจัยเสี่ยงที่เลือกมีอยู่แล้ว กรุณาเลือกข้อมูลที่แตกต่างกัน",
+          variant: "warning",
+          duration: 4000
+        });
+      });
+      return;
+    }
+
     const newRisk: AuditActivityRisk = {
       id: Date.now(), // ใช้ timestamp เป็น id ชั่วคราว
-      processes: values.process || "",
-      risk_factors: Array.isArray(values.dimension) ? values.dimension.join(",") : (values.dimension || ""),
-      object: values.riskFactor || "",
+      processes: processValue,
+      risk_factors: riskFactorsValue,
+      object: objectValue,
       risks_assessment: [] // เริ่มต้นด้วย array ว่าง
     };
 
@@ -55,6 +79,17 @@ export default function AuditProgramRiskEvaluationDetailPage() {
       const updated = [...prev, newRisk];
       // บันทึกไปยัง localStorage
       localStorage.setItem(`audit-risks-${id}`, JSON.stringify(updated));
+      
+      // แสดง success toast
+      import('@/hooks/useToast').then(({ showToast }) => {
+        showToast({
+          title: "เพิ่มปัจจัยเสี่ยงสำเร็จ",
+          description: "ปัจจัยเสี่ยงได้ถูกเพิ่มในรายการแล้ว",
+          variant: "success",
+          duration: 3000
+        });
+      });
+      
       return updated;
     });
   };
@@ -73,7 +108,15 @@ export default function AuditProgramRiskEvaluationDetailPage() {
   const handleSave = () => {
     // ในอนาคตสามารถเชื่อมต่อ API เพื่อบันทึกข้อมูลได้
     console.log('บันทึกข้อมูลปัจจัยเสี่ยง:', activityRisks);
-    alert('บันทึกข้อมูลเรียบร้อยแล้ว');
+    
+    import('@/hooks/useToast').then(({ showToast }) => {
+      showToast({
+        title: "บันทึกข้อมูลเรียบร้อย",
+        description: `บันทึกปัจจัยเสี่ยง ${activityRisks.length} รายการแล้ว`,
+        variant: "success",
+        duration: 3000
+      });
+    });
   };
 
   if (Number.isNaN(id)) {

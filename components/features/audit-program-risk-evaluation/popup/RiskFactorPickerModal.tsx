@@ -89,30 +89,44 @@ export function RiskFactorPickerDialog({
     onChange({ riskFactor: "" });
   }, [values.dimension]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const factors = React.useMemo(() => {
-    // รวมปัจจัยจากทุกด้านที่เลือก
+  // เปลี่ยนจาค array เป็น object ที่จัดกลุ่มตามด้าน
+  const factorsByDimension = React.useMemo(() => {
     const selectedDimensions = values.dimension ?? [];
-    const allFactors: string[] = [];
+    const result: Record<string, string[]> = {};
     
     selectedDimensions.forEach(dim => {
       const list = factorOptionsByDimension[dim] ?? [];
-      allFactors.push(...list);
+      const dimensionLabel = dimensionOptions.find(d => d.value === dim)?.label || dim;
+      
+      if (search.trim()) {
+        const q = search.trim().toLowerCase();
+        result[dimensionLabel] = list.filter((t: string) => t.toLowerCase().includes(q));
+      } else {
+        result[dimensionLabel] = list;
+      }
     });
     
-    // ลบรายการซ้ำ
-    const uniqueFactors = Array.from(new Set(allFactors));
-    
-    if (!search.trim()) return uniqueFactors;
-    const q = search.trim().toLowerCase();
-    return uniqueFactors.filter((t: string) => t.toLowerCase().includes(q));
-  }, [factorOptionsByDimension, values.dimension, search]);
+    return result;
+  }, [factorOptionsByDimension, values.dimension, search, dimensionOptions]);
+
+  // สำหรับ backward compatibility กับ factors array
+  const factors = React.useMemo(() => {
+    const allFactors: string[] = [];
+    Object.values(factorsByDimension).forEach(dimFactors => {
+      allFactors.push(...dimFactors);
+    });
+    return Array.from(new Set(allFactors));
+  }, [factorsByDimension]);
 
   const allVisibleChecked =
     factors.length > 0 && factors.every((t) => checked[t]);
 
   const toggleAllVisible = (v: boolean) => {
     const next = { ...checked };
-    factors.forEach((t) => (next[t] = v));
+    // อัปเดตทุก factor ในทุกด้านที่แสดงอยู่
+    Object.values(factorsByDimension).forEach(dimFactors => {
+      dimFactors.forEach((factor) => (next[factor] = v));
+    });
     setChecked(next);
   };
 
@@ -141,13 +155,13 @@ export function RiskFactorPickerDialog({
       });
     });
     
-    // รวมเป็นข้อความโดยมี marker บอกด้าน
+    // รวมเป็นข้อความโดยมี marker บอกด้าน (ไม่ใช้ --- separator)
     const formattedFactors = selectedDimensions.map(dim => {
       const factors = factorsByDimension[dim];
       if (factors.length === 0) return null;
       const dimLabel = dimensionOptions.find(d => d.value === dim)?.label || dim;
       return `[${dimLabel}]\n${factors.join('\n\n')}`;
-    }).filter(Boolean).join('\n\n---\n\n');
+    }).filter(Boolean).join('\n\n');
     
     onChange({ riskFactor: formattedFactors });
     setOpenFactor(false);
@@ -243,9 +257,12 @@ export function RiskFactorPickerDialog({
                     const content = values.riskFactor ?? "";
                     if (content.trim()) {
                       // นับจำนวนปัจจัยที่เลือก
-                      const sections = content.includes('[') && content.includes(']') 
-                        ? content.split('---').length 
-                        : 1;
+                      let sections = 1;
+                      if (content.includes('[') && content.includes(']')) {
+                        const dimensionRegex = /\[([^\]]+)\]/g;
+                        const matches = content.match(dimensionRegex);
+                        sections = matches ? matches.length : 1;
+                      }
                       const totalFactors = content.split('\n').filter(line => 
                         line.trim() && !line.includes('[') && !line.includes('---')
                       ).length;
@@ -299,19 +316,25 @@ export function RiskFactorPickerDialog({
                 if (viewMode === 'cards' && content.trim()) {
                   // แสดงแบบ Card View
                   if (content.includes('[') && content.includes(']')) {
-                    const sections = content.split('---').map(s => s.trim());
+                    // ใช้ regex เหมือนกับใน RiskAssessmentView เพื่อความสอดคล้อง
+                    const dimensionRegex = /\[([^\]]+)\]\s*([\s\S]*?)(?=\[|$)/g;
+                    const sections: Array<{dimLabel: string, content: string}> = [];
+                    let match;
+                    while ((match = dimensionRegex.exec(content)) !== null) {
+                      sections.push({
+                        dimLabel: match[1],
+                        content: match[2].trim()
+                      });
+                    }
                     return (
                       <div className="max-h-[400px] overflow-y-auto space-y-3 border border-gray-200 rounded-lg p-3 bg-gray-50">
                         {sections.map((section, idx) => {
-                          const lines = section.split('\n');
-                          const headerLine = lines[0];
-                          const factors = lines.slice(1).filter(line => line.trim());
-                          const dimLabel = headerLine.match(/\[(.*?)\]/)?.[1];
+                          const factors = section.content.split('\n\n').filter(line => line.trim());
                           
                           return (
                             <div key={idx} className="bg-white border border-gray-200 rounded-lg overflow-hidden">
                               <div className="px-3 py-2 bg-blue-50 border-b border-gray-200">
-                                <div className="text-sm font-medium text-blue-700">{dimLabel}</div>
+                                <div className="text-sm font-medium text-blue-700">{section.dimLabel}</div>
                                 <div className="text-xs text-blue-600">{factors.length} รายการ</div>
                               </div>
                               <div className="p-3">
@@ -348,13 +371,16 @@ export function RiskFactorPickerDialog({
                   if (isCollapsed && content.trim()) {
                     // แสดงแบบย่อ - เฉพาะหัวข้อด้านและจำนวนปัจจัย
                     if (content.includes('[') && content.includes(']')) {
-                      const sections = content.split('---').map(s => s.trim());
-                      displayValue = sections.map(section => {
-                        const lines = section.split('\n');
-                        const headerLine = lines[0];
-                        const factorCount = lines.slice(1).filter(line => line.trim()).length;
-                        return `${headerLine} (${factorCount} รายการ)`;
-                      }).join('\n\n');
+                      const dimensionRegex = /\[([^\]]+)\]\s*([\s\S]*?)(?=\[|$)/g;
+                      const summaries: string[] = [];
+                      let match;
+                      while ((match = dimensionRegex.exec(content)) !== null) {
+                        const dimLabel = match[1];
+                        const dimContent = match[2].trim();
+                        const factorCount = dimContent.split('\n\n').filter(line => line.trim()).length;
+                        summaries.push(`[${dimLabel}] (${factorCount} รายการ)`);
+                      }
+                      displayValue = summaries.join('\n\n');
                     } else {
                       const factorCount = content.split('\n').filter(line => line.trim()).length;
                       displayValue = `รวม ${factorCount} รายการปัจจัยเสี่ยง (กดปุ่ม 👁 เพื่อดูรายละเอียด)`;
@@ -440,32 +466,70 @@ export function RiskFactorPickerDialog({
               </Label>
             </div>
 
-            {/* list */}
-            <div className="max-h-[360px] space-y-3 overflow-auto pr-1">
-              {factors.map((t) => (
-                <label
-                  key={t}
-                  className={cn(
-                    "flex cursor-pointer items-start gap-3 rounded-xl border p-3",
-                    checked[t]
-                      ? "border-indigo-300 bg-indigo-50/60"
-                      : "border-border bg-background"
-                  )}
-                >
-                  <Checkbox
-                    checked={!!checked[t]}
-                    onCheckedChange={(v) =>
-                      setChecked((prev) => ({ ...prev, [t]: Boolean(v) }))
-                    }
-                    className="mt-1"
-                  />
-                  <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
-                    {t}
-                  </p>
-                </label>
+            {/* list - แสดงแยกตามด้าน */}
+            <div className="max-h-[360px] space-y-4 overflow-auto pr-1">
+              {Object.entries(factorsByDimension).map(([dimensionLabel, dimFactors]) => (
+                <div key={dimensionLabel} className="space-y-2">
+                  {/* ชื่อด้าน */}
+                  <div className="sticky top-0 bg-white border-b border-gray-200 pb-2 mb-3">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-sm font-semibold text-blue-700 flex items-center gap-2">
+                        <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                        {dimensionLabel}
+                        <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                          {dimFactors.length} รายการ
+                        </span>
+                      </h4>
+                      
+                      {/* เลือกทั้งหมดในด้านนี้ */}
+                      <div className="flex items-center gap-2">
+                        <Checkbox
+                          checked={dimFactors.length > 0 && dimFactors.every(factor => checked[factor])}
+                          onCheckedChange={(v) => {
+                            const next = { ...checked };
+                            dimFactors.forEach(factor => next[factor] = Boolean(v));
+                            setChecked(next);
+                          }}
+                        />
+                        <Label className="text-xs text-gray-600">เลือกทั้งหมด</Label>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* รายการปัจจัยในด้านนี้ */}
+                  <div className="space-y-2 pl-2">
+                    {dimFactors.map((factor) => (
+                      <label
+                        key={`${dimensionLabel}-${factor}`}
+                        className={cn(
+                          "flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors",
+                          checked[factor]
+                            ? "border-blue-300 bg-blue-50/60"
+                            : "border-gray-200 bg-white hover:bg-gray-50"
+                        )}
+                      >
+                        <Checkbox
+                          checked={!!checked[factor]}
+                          onCheckedChange={(v) =>
+                            setChecked((prev) => ({ ...prev, [factor]: Boolean(v) }))
+                          }
+                          className="mt-1"
+                        />
+                        <div className="flex-1">
+                          <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
+                            {factor}
+                          </p>
+                          <div className="mt-1 text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-full inline-block">
+                            {dimensionLabel}
+                          </div>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                </div>
               ))}
 
-              {factors.length === 0 && (
+              {Object.keys(factorsByDimension).length === 0 && (
                 <p className="py-6 text-center text-sm text-muted-foreground">
                   ไม่พบรายการปัจจัยสำหรับคำค้นนี้
                 </p>
