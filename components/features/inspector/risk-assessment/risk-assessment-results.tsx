@@ -1011,7 +1011,7 @@ export default function RiskAssessmentResultsPage({
                 className="rounded-md bg-indigo-600 hover:bg-indigo-700 text-white"
                 onClick={onClickSubmit}
               >
-                เสนอหัวหน้าหน่วยตรวจสอบ
+                เสนอหัวหน้ากลุ่มตรวจสอบภายใน
               </Button>
 
               {/* Dialog */}

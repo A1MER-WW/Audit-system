@@ -31,6 +31,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { GripVertical, RotateCcw, Save } from "lucide-react";
+import ChangeOrderReasonDialog from "@/components/features/popup/reason-for-change";
 
 type AssessmentResult = {
   id: number;
@@ -43,16 +44,26 @@ type AssessmentResult = {
   probability: number;
   impact: number;
   uniqueKey?: string;
+  reason_for_new_risk_ranking?: string; // เหตุผลในการเปลี่ยนลำดับ
 };
 
 type DragDropRiskTableProps = {
   initialAssessments: AssessmentResult[];
   onSave: (reorderedAssessments: AssessmentResult[]) => void;
   onReset: () => void;
+  auditId?: number; // เพิ่ม auditId สำหรับการจัดการ localStorage
 };
 
 // Component สำหรับแถวที่สามารถ drag ได้
-function SortableTableRow({ assessment, index }: { assessment: AssessmentResult; index: number }) {
+function SortableTableRow({ 
+  assessment, 
+  index,
+  onEditReason 
+}: { 
+  assessment: AssessmentResult; 
+  index: number;
+  onEditReason: (assessmentId: number, currentReason: string) => void;
+}) {
   const {
     attributes,
     listeners,
@@ -150,6 +161,26 @@ function SortableTableRow({ assessment, index }: { assessment: AssessmentResult;
           </Badge>
         </div>
       </TableCell>
+
+      {/* เหตุผล */}
+      <TableCell className="text-center">
+        <div className="text-sm text-gray-600">
+          {assessment.reason_for_new_risk_ranking || "-"}
+        </div>
+      </TableCell>
+
+      {/* แก้ไข */}
+      <TableCell className="text-center">
+        <button
+          className="text-blue-600 hover:text-blue-700 hover:underline text-sm font-medium"
+          onClick={(e) => {
+            e.stopPropagation();
+            onEditReason(assessment.id, assessment.reason_for_new_risk_ranking || "");
+          }}
+        >
+          แก้ไข
+        </button>
+      </TableCell>
     </TableRow>
   );
 }
@@ -158,9 +189,17 @@ export default function DragDropRiskTable({
   initialAssessments,
   onSave,
   onReset,
+  auditId,
 }: DragDropRiskTableProps) {
   const [assessments, setAssessments] = useState<AssessmentResult[]>(initialAssessments);
   const [hasChanges, setHasChanges] = useState(false);
+  const [showReasonDialog, setShowReasonDialog] = useState(false);
+  const [pendingReorder, setPendingReorder] = useState<{
+    newAssessments: AssessmentResult[];
+    oldIndex: number;
+    newIndex: number;
+  } | null>(null);
+  const [editingReasonId, setEditingReasonId] = useState<number | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -173,14 +212,14 @@ export default function DragDropRiskTable({
     const { active, over } = event;
 
     if (active.id !== over?.id) {
-      setAssessments((items) => {
-        const oldIndex = items.findIndex((item) => item.id === active.id);
-        const newIndex = items.findIndex((item) => item.id === over?.id);
+      const oldIndex = assessments.findIndex((item) => item.id === active.id);
+      const newIndex = assessments.findIndex((item) => item.id === over?.id);
 
-        const newItems = arrayMove(items, oldIndex, newIndex);
-        setHasChanges(true);
-        return newItems;
-      });
+      const newItems = arrayMove(assessments, oldIndex, newIndex);
+      
+      // เก็บข้อมูลการจัดเรียงใหม่ไว้ชั่วคราว
+      setPendingReorder({ newAssessments: newItems, oldIndex, newIndex });
+      setShowReasonDialog(true);
     }
   }
 
@@ -211,6 +250,90 @@ export default function DragDropRiskTable({
     setAssessments(initialAssessments);
     setHasChanges(false);
     onReset();
+  };
+
+  // Handle reason confirmation from popup
+  const handleReasonConfirm = async (payload: { note: string; acknowledged: boolean }) => {
+    if (!pendingReorder) return;
+
+    const { newAssessments, oldIndex, newIndex } = pendingReorder;
+    
+    // อัพเดทเหตุผลในรายการที่ถูกย้าย
+    const movedItem = newAssessments[newIndex];
+    const updatedAssessments = newAssessments.map((item) => {
+      if (item.id === movedItem.id) {
+        return {
+          ...item,
+          reason_for_new_risk_ranking: payload.note.trim() || `ย้ายจากลำดับที่ ${oldIndex + 1} ไปลำดับที่ ${newIndex + 1}`
+        };
+      }
+      return item;
+    });
+
+    setAssessments(updatedAssessments);
+    setHasChanges(true);
+    setPendingReorder(null);
+    
+    // บันทึกลง localStorage
+    if (auditId) {
+      const reasonData = {
+        timestamp: new Date().toISOString(),
+        assessments: updatedAssessments,
+        reasons: updatedAssessments.reduce((acc: Record<number, string>, item) => {
+          if (item.reason_for_new_risk_ranking) {
+            acc[item.id] = item.reason_for_new_risk_ranking;
+          }
+          return acc;
+        }, {})
+      };
+      localStorage.setItem(`risk-reasons-${auditId}`, JSON.stringify(reasonData));
+    }
+  };
+
+  // Handle editing existing reason
+  const handleEditReason = (assessmentId: number) => {
+    setEditingReasonId(assessmentId);
+    setShowReasonDialog(true);
+  };
+
+  // Handle edit reason confirmation
+  const handleEditReasonConfirm = async (payload: { note: string; acknowledged: boolean }) => {
+    if (!editingReasonId) return;
+
+    const updatedAssessments = assessments.map(item => {
+      if (item.id === editingReasonId) {
+        return {
+          ...item,
+          reason_for_new_risk_ranking: payload.note.trim() || undefined
+        };
+      }
+      return item;
+    });
+
+    setAssessments(updatedAssessments);
+    setHasChanges(true);
+    setEditingReasonId(null);
+
+    // บันทึกลง localStorage
+    if (auditId) {
+      const reasonData = {
+        timestamp: new Date().toISOString(),
+        assessments: updatedAssessments,
+        reasons: updatedAssessments.reduce((acc: Record<number, string>, item) => {
+          if (item.reason_for_new_risk_ranking) {
+            acc[item.id] = item.reason_for_new_risk_ranking;
+          }
+          return acc;
+        }, {})
+      };
+      localStorage.setItem(`risk-reasons-${auditId}`, JSON.stringify(reasonData));
+    }
+  };
+
+  // Handle dialog cancel
+  const handleReasonCancel = () => {
+    setPendingReorder(null);
+    setEditingReasonId(null);
   };
 
   if (assessments.length === 0) {
@@ -332,6 +455,20 @@ export default function DragDropRiskTable({
                 >
                   การประเมินความเสี่ยงระดับกิจกรรม
                 </TableHead>
+
+                <TableHead
+                  className="text-center w-32 align-middle border-0"
+                  rowSpan={2}
+                >
+                  เหตุผล
+                </TableHead>
+
+                <TableHead
+                  className="text-center w-20 align-middle border-0"
+                  rowSpan={2}
+                >
+                  แก้ไข
+                </TableHead>
               </TableRow>
 
               {/* แถวที่ 2 */}
@@ -355,6 +492,7 @@ export default function DragDropRiskTable({
                     key={assessment.id}
                     assessment={assessment}
                     index={index}
+                    onEditReason={handleEditReason}
                   />
                 ))}
               </SortableContext>
@@ -362,6 +500,19 @@ export default function DragDropRiskTable({
           </Table>
         </DndContext>
       </div>
+
+      {/* Reason Dialog */}
+      <ChangeOrderReasonDialog
+        open={showReasonDialog}
+        onOpenChange={(open) => {
+          setShowReasonDialog(open);
+          if (!open) {
+            handleReasonCancel();
+          }
+        }}
+        onConfirm={editingReasonId ? handleEditReasonConfirm : handleReasonConfirm}
+        loading={false}
+      />
     </div>
   );
 }

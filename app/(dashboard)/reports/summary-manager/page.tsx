@@ -170,7 +170,7 @@ export default function SummaryManagerPage() {
                     </div>
 
                     <Button className="bg-[#3E52B9] text-white px-6">
-                        เสนอหัวหน้าหน่วยตรวจสอบ
+                        เสนอหัวหน้ากลุ่มตรวจสอบภายใน
                     </Button>
                 </div>
 

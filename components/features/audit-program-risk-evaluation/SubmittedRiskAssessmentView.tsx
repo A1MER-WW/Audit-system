@@ -2,9 +2,13 @@
 
 import React, { useState, useMemo } from "react";
 import Link from "next/link";
-import { ChevronLeft } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import {
+  ChevronLeft,
+  BarChart3,
+  CheckCircle,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -15,7 +19,6 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import type { AuditProgramRiskEvaluation } from "@/hooks/useAuditProgramRiskEvaluation";
-import DragDropRiskTable from "./DragDropRiskTable";
 
 type Props = {
   detail: AuditProgramRiskEvaluation;
@@ -31,11 +34,11 @@ type AssessmentResult = {
   priority: number;
   probability: number;
   impact: number;
-  uniqueKey?: string; // เพิ่มสำหรับ debug
-  reason_for_new_risk_ranking?: string; // เหตุผลในการเปลี่ยนลำดับ
+  uniqueKey?: string;
+  reason_for_new_risk_ranking?: string;
 };
 
-export default function RiskAssessmentResultView({ detail }: Props) {
+export default function SubmittedRiskAssessmentView({ detail }: Props) {
   const [tab, setTab] = useState("results");
   const [reorderedAssessments, setReorderedAssessments] = useState<
     AssessmentResult[]
@@ -54,13 +57,11 @@ export default function RiskAssessmentResultView({ detail }: Props) {
     try {
       const assessmentData = JSON.parse(savedAssessments);
 
-      // แปลงข้อมูลการประเมินให้เป็นรูปแบบที่ตารางต้องการ
       const processedAssessments = assessmentData.map(
         (
           assessment: Record<string, unknown>,
           index: number
         ): AssessmentResult => {
-          // แปลง dimension code เป็น label
           const dimensionLabels: Record<string, string> = {
             strategy: "ด้านกลยุทธ์",
             finance: "ด้านการเงิน",
@@ -70,7 +71,6 @@ export default function RiskAssessmentResultView({ detail }: Props) {
             fraudrisk: "ด้านการเกิดทุจริต",
           };
 
-          // แปลง risk level code เป็น label
           const getRiskLevelLabel = (level: string) => {
             switch (level) {
               case "NEGLIGIBLE":
@@ -88,12 +88,10 @@ export default function RiskAssessmentResultView({ detail }: Props) {
             }
           };
 
-          // ฟังก์ชันค้นหา risk จาก factorId
           const findRiskByFactorId = (factorId: number) => {
             return detail.AuditActivityRisks.find((r) => r.id === factorId);
           };
 
-          // หากระบวนงานจาก factorId พร้อมการจัดการข้อมูลที่ครอบคลุมมากขึ้น
           const getProcessName = (factorId: number) => {
             const risk = findRiskByFactorId(factorId);
             if (risk) {
@@ -116,42 +114,6 @@ export default function RiskAssessmentResultView({ detail }: Props) {
             return `ไม่พบกระบวนงาน (ID: ${factorId})`;
           };
 
-          // ฟังก์ชันตรวจสอบว่า dimension ที่บันทึกตรงกับข้อมูลจริงหรือไม่
-          const validateDimension = (
-            factorId: number,
-            savedDimension: string
-          ) => {
-            const risk = findRiskByFactorId(factorId);
-            if (risk) {
-              const availableDimensions = risk.risk_factors
-                .split(",")
-                .map((d) => d.trim());
-              return availableDimensions.includes(savedDimension);
-            }
-            return false;
-          };
-
-          // ตรวจสอบความถูกต้องของข้อมูล
-          const isValidDimension = validateDimension(
-            assessment.factorId as number,
-            assessment.dimension as string
-          );
-          const risk = findRiskByFactorId(assessment.factorId as number);
-
-          // เพิ่ม debug information
-          console.log(`[RiskAssessmentResultView] Processing assessment:`, {
-            factorId: assessment.factorId,
-            subFactorIndex: assessment.subFactorIndex,
-            dimension: assessment.dimension,
-            isValidDimension,
-            riskFound: !!risk,
-            factorText: assessment.factorText,
-            probability: assessment.probability,
-            impact: assessment.impact,
-            riskScore: assessment.riskScore,
-          });
-
-          // สร้าง unique id ที่รวม factorId, dimension, และ subFactorIndex
           const uniqueId = `${assessment.factorId}-${assessment.dimension}-${
             assessment.subFactorIndex || 0
           }`;
@@ -161,13 +123,11 @@ export default function RiskAssessmentResultView({ detail }: Props) {
           }, 0);
 
           return {
-            id: Math.abs(hashCode), // ใช้ absolute value ของ hash เป็น id
+            id: Math.abs(hashCode),
             processName: getProcessName(assessment.factorId as number),
             dimension:
               dimensionLabels[assessment.dimension as string] ||
-              `${assessment.dimension} ${
-                !isValidDimension ? "(ไม่ตรงกับข้อมูลต้นทาง)" : ""
-              }`,
+              (assessment.dimension as string),
             riskFactor:
               (assessment.factorText as string) || "ไม่ระบุปัจจัยเสี่ยง",
             totalScore:
@@ -175,22 +135,15 @@ export default function RiskAssessmentResultView({ detail }: Props) {
               (assessment.probability as number) *
                 (assessment.impact as number),
             riskLevel: getRiskLevelLabel(assessment.riskLevel as string),
-            priority: index + 1, // จัดลำดับตามคะแนน (สูงไปต่ำ)
+            priority: index + 1,
             probability: assessment.probability as number,
             impact: assessment.impact as number,
-            uniqueKey: uniqueId, // เก็บ key เดิมไว้สำหรับ debug
-            reason_for_new_risk_ranking: undefined, // จะถูกโหลดจาก localStorage ทีหลัง
+            uniqueKey: uniqueId,
+            reason_for_new_risk_ranking: undefined,
           };
         }
       );
 
-      // Debug: แสดงข้อมูลก่อนเรียงลำดับ
-      console.log(
-        `[RiskAssessmentResultView] Processed ${processedAssessments.length} assessments before sorting:`,
-        processedAssessments
-      );
-
-      // จัดเรียงตามคะแนนจากสูงไปต่ำ และอัพเดทลำดับความสำคัญ
       const sortedAssessments = processedAssessments.sort(
         (a: AssessmentResult, b: AssessmentResult) =>
           b.totalScore - a.totalScore
@@ -203,7 +156,6 @@ export default function RiskAssessmentResultView({ detail }: Props) {
         })
       );
 
-      // Debug: แสดงข้อมูลหลังเรียงลำดับ
       // โหลดเหตุผลจาก localStorage
       const savedReasons = localStorage.getItem(`risk-reasons-${detail.id}`);
       let reasonsMap: Record<number, string> = {};
@@ -217,7 +169,6 @@ export default function RiskAssessmentResultView({ detail }: Props) {
         }
       }
 
-      // เพิ่มเหตุผลเข้าไปใน finalAssessments
       const assessmentsWithReasons = finalAssessments.map(
         (assessment: AssessmentResult) => ({
           ...assessment,
@@ -226,33 +177,6 @@ export default function RiskAssessmentResultView({ detail }: Props) {
         })
       );
 
-      console.log(
-        `[RiskAssessmentResultView] Final ${assessmentsWithReasons.length} sorted assessments with reasons:`,
-        assessmentsWithReasons
-      );
-
-      return assessmentsWithReasons;
-
-      // Debug: ตรวจสอบ unique keys
-      const uniqueKeys = finalAssessments.map(
-        (a: AssessmentResult) => a.uniqueKey
-      );
-      const duplicateKeys = uniqueKeys.filter(
-        (key: string | undefined, index: number) =>
-          uniqueKeys.indexOf(key) !== index
-      );
-      if (duplicateKeys.length > 0) {
-        console.warn(
-          `[RiskAssessmentResultView] Found duplicate keys:`,
-          duplicateKeys
-        );
-      } else {
-        console.log(
-          `[RiskAssessmentResultView] All keys are unique:`,
-          uniqueKeys
-        );
-      }
-
       return assessmentsWithReasons;
     } catch (error) {
       console.error("Error parsing assessment data:", error);
@@ -260,31 +184,32 @@ export default function RiskAssessmentResultView({ detail }: Props) {
     }
   }, [detail.id, detail.AuditActivityRisks]);
 
-  // ฟังก์ชันสำหรับบันทึกลำดับใหม่
-  const handleSaveReorder = (newAssessments: AssessmentResult[]) => {
-    setReorderedAssessments(newAssessments);
-
-    // บันทึกลำดับใหม่ลง localStorage
-    const reorderData = {
-      timestamp: new Date().toISOString(),
-      reorderedIds: newAssessments.map((a) => a.id),
-      assessments: newAssessments,
+  // คำนวณสถิติสำหรับ dashboard
+  const riskStatistics = useMemo(() => {
+    const riskCounts = {
+      สูงมาก: 0,
+      สูง: 0,
+      ปานกลาง: 0,
+      น้อย: 0,
+      น้อยที่สุด: 0,
     };
 
-    localStorage.setItem(
-      `risk-reorder-${detail.id}`,
-      JSON.stringify(reorderData)
-    );
+    assessments.forEach((assessment) => {
+      if (riskCounts.hasOwnProperty(assessment.riskLevel)) {
+        riskCounts[assessment.riskLevel as keyof typeof riskCounts]++;
+      }
+    });
 
-    // แสดงข้อความแจ้งเตือน
-    alert("บันทึกลำดับความเสี่ยงใหม่เรียบร้อยแล้ว");
-  };
+    const total = assessments.length;
 
-  // ฟังก์ชันสำหรับรีเซ็ตลำดับ
-  const handleResetReorder = () => {
-    setReorderedAssessments([]);
-    localStorage.removeItem(`risk-reorder-${detail.id}`);
-  };
+    return {
+      total,
+      riskCounts,
+      highRisk: riskCounts["สูงมาก"] + riskCounts["สูง"],
+      mediumRisk: riskCounts["ปานกลาง"],
+      lowRisk: riskCounts["น้อย"] + riskCounts["น้อยที่สุด"],
+    };
+  }, [assessments]);
 
   // โหลดข้อมูลลำดับและเหตุผลที่เคยบันทึกไว้
   const loadSavedReorderAndReasons = React.useCallback(() => {
@@ -367,7 +292,7 @@ export default function RiskAssessmentResultView({ detail }: Props) {
       {/* breadcrumb */}
       <div className="mb-3">
         <Link
-          href={`/audit-program-risk-evaluation/${detail.id}/assess`}
+          href={`/audit-program-risk-evaluation/${detail.id}/results`}
           className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900"
         >
           <ChevronLeft className="h-4 w-4" />
@@ -393,14 +318,17 @@ export default function RiskAssessmentResultView({ detail }: Props) {
               </div>
               <div className="text-sm">
                 สถานะ:{" "}
-                <span className="text-[#3E52B9]">
-                  ผู้ตรวจสอบภายในกำลังดำเนินการ
+                <span className="text-green-600 font-medium">
+                  เสนอหัวหน้ากลุ่มตรวจสอบภายในแล้ว
                 </span>
               </div>
-            </div>{" "}
-            <Button className="bg-[#3E52B9] hover:bg-[#2A3A8F] text-white flex items-center gap-2">
-              เสนอหัวหน้ากลุ่มตรวจสอบภายใน
-            </Button>
+            </div>
+            <div className="flex items-center gap-2">
+              <CheckCircle className="h-5 w-5 text-green-600" />
+              <span className="text-sm text-green-600 font-medium">
+                ส่งเรียบร้อย
+              </span>
+            </div>
           </div>
         </div>
 
@@ -411,8 +339,9 @@ export default function RiskAssessmentResultView({ detail }: Props) {
               { n: 1, t: "เลือกปัจจัยเสี่ยง" },
               { n: 2, t: "ประเมินความเสี่ยง" },
               { n: 3, t: "ผลการประเมิน" },
+              { n: 4, t: "เสนอหัวหน้ากลุ่ม" },
             ].map((s, i) => {
-              const currentStep = 3; // ขั้นตอนที่ active ตอนนี้
+              const currentStep = 4; // ขั้นตอนที่ active ตอนนี้
               const active = s.n === currentStep;
               const completed = s.n < currentStep;
 
@@ -422,7 +351,7 @@ export default function RiskAssessmentResultView({ detail }: Props) {
                   {i > 0 && (
                     <span
                       className={`mx-3 h-px flex-1 ${
-                        completed || active ? "bg-[#3E52B9]" : "bg-gray-200"
+                        completed || active ? "bg-green-500" : "bg-gray-200"
                       }`}
                     />
                   )}
@@ -433,17 +362,21 @@ export default function RiskAssessmentResultView({ detail }: Props) {
                       className={[
                         "flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold",
                         active || completed
-                          ? "bg-[#3E52B9] text-white"
+                          ? "bg-green-500 text-white"
                           : "bg-gray-200 text-gray-700",
                       ].join(" ")}
                     >
-                      {s.n}
+                      {completed && !active ? (
+                        <CheckCircle className="h-4 w-4" />
+                      ) : (
+                        s.n
+                      )}
                     </div>
 
                     {/* ข้อความ */}
                     <span
                       className={`text-sm ${
-                        active || completed ? "text-[#3E52B9]" : "text-gray-700"
+                        active || completed ? "text-green-600" : "text-gray-700"
                       }`}
                     >
                       {s.t}
@@ -455,42 +388,156 @@ export default function RiskAssessmentResultView({ detail }: Props) {
           </div>
         </div>
       </div>
-      <div className="px-1 text-lg font-semibold text-gray-800 mt-4">
-        ผลการประเมินความเสี่ยง
-      </div>
-      {/* วัตถุประสงค์ (หัวข้ออยู่นอก, รายการอยู่ในกล่องมีกรอบ) */}
-      <section className="mt-4">
-        {/* หัวข้อเล็ก ๆ ด้านบน */}
-        <div className="px-1 text-sm text-gray-500">วัตถุประสงค์</div>
 
-        {/* กล่องมีกรอบ + พื้นหลังอ่อน */}
-        <div className="mt-2 rounded-xl border border-[#E6EDFF] bg-[#F7FAFF] p-4">
-          <ul className="list-none space-y-1 text-sm leading-6 text-gray-800">
-            <li>
-              ๑.๑
-              ศึกษาวิเคราะห์ความเหมาะสมของโครงการที่เสนอขอรับการสนับสนุนเงินกองทุนตลอดจนการให้คำแนะนำการจัดทำโครงการที่ดี
-            </li>
-            <li>
-              ๑.๒ ติดตาม ควบคุม
-              กำกับดูแลการดำเนินงานโครงการที่สอดคล้องกับระเบียบหลักเกณฑ์อื่นๆ
-              ของทางราชการที่เกี่ยวข้องตลอดจนสอดคล้องตามมติคณะกรรมการ/คณะอนุกรรมการ/คณะทำงาน
-              และแผนปฏิบัติงานที่กำหนด
-            </li>
-            <li>
-              ๑.๓ ติดตามความก้าวหน้าผลการดำเนินงานโครงการต่าง ๆ
-              ที่ได้รับเงินจากกองทุน
-            </li>
-            <li>๑.๔ ประเมินผลความสำเร็จของการดำเนินงานโครงการ</li>
-            <li>
-              ๑.๕ ปฏิบัติงานเกี่ยวกับการซื้อ การจ้างทำของ การจ้างเหมาบริการ
-              การแลกเปลี่ยนการเช่า การควบคุม และการจำหน่ายซึ่งพัสดุ
-              ครุภัณฑ์ที่ดินและสิ่งก่อสร้างของกองทุน
-            </li>
-            <li>๑.๖ ปฏิบัติงานตามข้อตกลงการประเมินผลกองทุนของกระทรวงการคลัง</li>
-          </ul>
+      {/* Dashboard Section */}
+      <div className="mt-6">
+        <div className="px-1 text-lg font-semibold text-gray-800 mb-4">
+          ภาพรวมการประเมินความเสี่ยงครอบคลุมความเสี่ยงของโครงการ{" "}
+          {detail.auditTopics.auditTopic}
         </div>
-      </section>
 
+        {/* Statistics Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+          <Card className="border-2 border-red-200 bg-gradient-to-br from-red-50 to-red-100">
+            <CardContent className="p-4 text-center">
+              <div className="text-2xl font-bold text-red-700 mb-1">
+                {riskStatistics.riskCounts["สูงมาก"]}
+              </div>
+              <div className="text-sm text-red-600">สูงมาก</div>
+              <div className="text-xs text-red-500 mt-1">รายการ</div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-2 border-orange-200 bg-gradient-to-br from-orange-50 to-orange-100">
+            <CardContent className="p-4 text-center">
+              <div className="text-2xl font-bold text-orange-700 mb-1">
+                {riskStatistics.riskCounts["สูง"]}
+              </div>
+              <div className="text-sm text-orange-600">สูง</div>
+              <div className="text-xs text-orange-500 mt-1">รายการ</div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-2 border-yellow-200 bg-gradient-to-br from-yellow-50 to-yellow-100">
+            <CardContent className="p-4 text-center">
+              <div className="text-2xl font-bold text-yellow-700 mb-1">
+                {riskStatistics.riskCounts["ปานกลาง"]}
+              </div>
+              <div className="text-sm text-yellow-600">ปานกลาง</div>
+              <div className="text-xs text-yellow-500 mt-1">รายการ</div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-2 border-green-200 bg-gradient-to-br from-green-50 to-green-100">
+            <CardContent className="p-4 text-center">
+              <div className="text-2xl font-bold text-green-700 mb-1">
+                {riskStatistics.riskCounts["น้อย"]}
+              </div>
+              <div className="text-sm text-green-600">น้อย</div>
+              <div className="text-xs text-green-500 mt-1">รายการ</div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-2 border-gray-200 bg-gradient-to-br from-gray-50 to-gray-100">
+            <CardContent className="p-4 text-center">
+              <div className="text-2xl font-bold text-gray-700 mb-1">
+                {riskStatistics.riskCounts["น้อยที่สุด"]}
+              </div>
+              <div className="text-sm text-gray-600">น้อยที่สุด</div>
+              <div className="text-xs text-gray-500 mt-1">รายการ</div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Risk Distribution Chart Placeholder */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BarChart3 className="h-5 w-5" />
+              ภาพรวมการประเมินความเสี่ยงและจัดลำดับความเสี่ยงครอบคลุม
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-center h-48 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border-2 border-dashed border-blue-200">
+              <div className="text-center">
+                <BarChart3 className="h-12 w-12 text-blue-400 mx-auto mb-3" />
+                <div className="text-blue-600 font-medium">
+                  แผนภูมิแสดงการกระจายความเสี่ยง
+                </div>
+                <div className="text-sm text-blue-500 mt-1">
+                  รวม {riskStatistics.total} รายการ | ความเสี่ยงสูง{" "}
+                  {riskStatistics.highRisk} รายการ | ปานกลาง{" "}
+                  {riskStatistics.mediumRisk} รายการ | ต่ำ{" "}
+                  {riskStatistics.lowRisk} รายการ
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Summary Section */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>ผลการประเมินความเสี่ยง</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-sm text-gray-600">
+              รายการนี้มีความเสี่ยงทั้งหมด{" "}
+              <span className="font-semibold text-gray-800">
+                {riskStatistics.total}
+              </span>{" "}
+              รายการ โดย:
+            </div>
+            <ul className="mt-3 space-y-2 text-sm">
+              <li className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                <span>
+                  ความเสี่ยงระดับสูงมาก:{" "}
+                  <span className="font-semibold">
+                    {riskStatistics.riskCounts["สูงมาก"]} รายการ
+                  </span>
+                </span>
+              </li>
+              <li className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
+                <span>
+                  ความเสี่ยงระดับสูง:{" "}
+                  <span className="font-semibold">
+                    {riskStatistics.riskCounts["สูง"]} รายการ
+                  </span>
+                </span>
+              </li>
+              <li className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                <span>
+                  ความเสี่ยงระดับปานกลาง:{" "}
+                  <span className="font-semibold">
+                    {riskStatistics.riskCounts["ปานกลาง"]} รายการ
+                  </span>
+                </span>
+              </li>
+              <li className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                <span>
+                  ความเสี่ยงระดับน้อย:{" "}
+                  <span className="font-semibold">
+                    {riskStatistics.riskCounts["น้อย"]} รายการ
+                  </span>
+                </span>
+              </li>
+              <li className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-gray-500 rounded-full"></div>
+                <span>
+                  ความเสี่ยงระดับน้อยที่สุด:{" "}
+                  <span className="font-semibold">
+                    {riskStatistics.riskCounts["น้อยที่สุด"]} รายการ
+                  </span>
+                </span>
+              </li>
+            </ul>
+          </CardContent>
+        </Card>
+      </div>
       {/* Tabs */}
       <Tabs value={tab} onValueChange={setTab} className="mt-4">
         <div className="flex justify-between items-center">
@@ -498,75 +545,6 @@ export default function RiskAssessmentResultView({ detail }: Props) {
             <TabsTrigger value="results">ผลการประเมินความเสี่ยง</TabsTrigger>
             <TabsTrigger value="ranking">ผลการจัดลำดับความเสี่ยง</TabsTrigger>
           </TabsList>
-
-          {/* Action buttons */}
-          <div className="flex gap-2">
-            {/* Show different buttons based on active tab */}
-            {tab === "results" ? (
-              <>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    const confirmClear = confirm(
-                      "คุณต้องการล้างข้อมูลการประเมินทั้งหมดหรือไม่? การดำเนินการนี้ไม่สามารถย้อนกลับได้"
-                    );
-                    if (confirmClear) {
-                      localStorage.removeItem(`risk-assessments-${detail.id}`);
-                      window.location.reload();
-                    }
-                  }}
-                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                >
-                  ล้างข้อมูล
-                </Button>
-                <Link
-                  href={`/audit-program-risk-evaluation/${detail.id}/assess`}
-                  className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-medium text-white shadow hover:bg-blue-700"
-                >
-                  แก้ไขการประเมิน
-                </Link>
-                <Link
-                  href={`/audit-program-risk-evaluation/${detail.id}/submitted`}
-                  className="inline-flex items-center gap-2 rounded-lg bg-green-600 px-3 py-1.5 text-sm font-medium text-white shadow hover:bg-green-700"
-                >
-                  เสนอหัวหน้ากลุ่มตรวจสอบภายใน
-                </Link>
-              </>
-            ) : (
-              <>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    const confirmReset = confirm(
-                      "คุณต้องการล้างการจัดลำดับและกลับไปใช้ลำดับเดิมหรือไม่?"
-                    );
-                    if (confirmReset) {
-                      handleResetReorder();
-                    }
-                  }}
-                  className="text-orange-600 hover:text-orange-700 hover:bg-orange-50"
-                >
-                  ล้างการจัดลำดับ
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={() => setTab("results")}
-                  variant="outline"
-                  className="border-blue-600 text-blue-600 hover:bg-blue-50"
-                >
-                  ดูผลการประเมิน
-                </Button>
-                <Link
-                  href={`/audit-program-risk-evaluation/${detail.id}/submitted`}
-                  className="inline-flex items-center gap-2 rounded-lg bg-green-600 px-3 py-1.5 text-sm font-medium text-white shadow hover:bg-green-700"
-                >
-                  เสนอหัวหน้ากลุ่มตรวจสอบภายใน
-                </Link>
-              </>
-            )}
-          </div>
         </div>
 
         {/* Results Table */}
@@ -630,7 +608,6 @@ export default function RiskAssessmentResultView({ detail }: Props) {
                     >
                       <TableCell className="text-center">{i + 1}</TableCell>
 
-                      {/* กระบวนงาน: แคบลงจาก min-w-[200px] -> min-w-[160px] */}
                       <TableCell className="min-w-[160px]">
                         <div className="font-medium">{a.processName}</div>
                       </TableCell>
@@ -641,7 +618,6 @@ export default function RiskAssessmentResultView({ detail }: Props) {
                         </Badge>
                       </TableCell>
 
-                      {/* ความเสี่ยงและปัจจัยเสี่ยง: กว้างขึ้น + ตัด clamp ให้แสดงได้มากขึ้น + ตัดคำยาว */}
                       <TableCell className="w-[560px] align-top">
                         <div
                           className="text-sm text-gray-900 whitespace-pre-line break-words"
@@ -686,12 +662,6 @@ export default function RiskAssessmentResultView({ detail }: Props) {
                         <div className="text-sm">
                           กรุณาไปทำการประเมินความเสี่ยงก่อน
                         </div>
-                        <Link
-                          href={`/audit-program-risk-evaluation/${detail.id}/assess`}
-                          className="inline-flex items-center gap-2 mt-3 text-blue-600 hover:text-blue-700 text-sm"
-                        >
-                          ไปประเมินความเสี่ยง →
-                        </Link>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -701,17 +671,165 @@ export default function RiskAssessmentResultView({ detail }: Props) {
           </div>
         </TabsContent>
 
+        {/* Ranking Table */}
         <TabsContent value="ranking" className="mt-4">
-          <DragDropRiskTable
-            initialAssessments={
-              reorderedAssessments.length > 0
-                ? reorderedAssessments
-                : assessments
-            }
-            onSave={handleSaveReorder}
-            onReset={handleResetReorder}
-            auditId={detail.id}
-          />
+          <div className="space-y-4">
+            {/* Header info */}
+            <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-lg border border-green-100">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-semibold text-gray-800 flex items-center gap-2">
+                    <CheckCircle className="h-5 w-5 text-green-600" />
+                    ผลการจัดลำดับความเสี่ยงที่เสนอ
+                  </h3>
+                  <p className="text-sm text-gray-600 mt-1">
+                    ลำดับความเสี่ยงที่ได้รับการจัดเรียงและส่งเสนอแล้ว
+                    (ไม่สามารถแก้ไขได้)
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Ranking Table */}
+            <div className="overflow-x-auto rounded-lg border border-gray-200">
+              <Table>
+                <TableHeader>
+                  {/* แถวที่ 1 */}
+                  <TableRow className="bg-white">
+                    <TableHead
+                      className="text-center w-20 align-middle border-0"
+                      rowSpan={2}
+                    >
+                      ลำดับ
+                    </TableHead>
+
+                    <TableHead
+                      className="w-40 align-middle border-0"
+                      rowSpan={2}
+                    >
+                      กระบวนงาน
+                    </TableHead>
+
+                    <TableHead
+                      className="text-center w-40 align-middle border-0"
+                      rowSpan={2}
+                    >
+                      ด้าน
+                    </TableHead>
+
+                    <TableHead
+                      className="w-[560px] align-middle border-0"
+                      rowSpan={2}
+                    >
+                      ความเสี่ยงและปัจจัยเสี่ยง
+                    </TableHead>
+
+                    {/* หัวข้อรวม */}
+                    <TableHead
+                      className="text-center align-middle font-semibold border-0 !border-b-0 bg-white"
+                      colSpan={3}
+                    >
+                      การประเมินความเสี่ยงระดับกิจกรรม
+                    </TableHead>
+
+                    <TableHead
+                      className="text-center w-32 align-middle border-0"
+                      rowSpan={2}
+                    >
+                      เหตุผล
+                    </TableHead>
+                  </TableRow>
+
+                  {/* แถวที่ 2 */}
+                  <TableRow className="bg-gray-50/70">
+                    <TableHead className="text-center w-20">คะแนน</TableHead>
+                    <TableHead className="text-center w-28">
+                      ระดับความเสี่ยง
+                    </TableHead>
+                    <TableHead className="text-center w-24">
+                      ลำดับความเสี่ยง
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {(reorderedAssessments.length > 0
+                    ? reorderedAssessments
+                    : assessments
+                  ).map((assessment, index) => (
+                    <TableRow key={assessment.id} className="hover:bg-gray-50">
+                      {/* ลำดับ */}
+                      <TableCell className="text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          <span className="font-medium">{index + 1}</span>
+                        </div>
+                      </TableCell>
+
+                      {/* กระบวนงาน */}
+                      <TableCell className="min-w-[160px]">
+                        <div className="font-medium text-sm">
+                          {assessment.processName}
+                        </div>
+                      </TableCell>
+
+                      {/* ด้าน */}
+                      <TableCell className="text-center">
+                        <Badge variant="outline" className="text-xs">
+                          {assessment.dimension}
+                        </Badge>
+                      </TableCell>
+
+                      {/* ความเสี่ยงและปัจจัยเสี่ยง */}
+                      <TableCell className="w-[560px] align-top">
+                        <div
+                          className="text-sm text-gray-900 whitespace-pre-line break-words"
+                          title={assessment.riskFactor}
+                        >
+                          {assessment.riskFactor}
+                        </div>
+                      </TableCell>
+
+                      {/* คะแนน */}
+                      <TableCell className="text-center">
+                        <div className="font-bold text-lg">
+                          {assessment.totalScore}
+                        </div>
+                      </TableCell>
+
+                      {/* ระดับความเสี่ยง */}
+                      <TableCell className="text-center">
+                        <Badge
+                          className={`${riskLevelColor(
+                            assessment.riskLevel
+                          )} border font-medium`}
+                        >
+                          {assessment.riskLevel}
+                        </Badge>
+                      </TableCell>
+
+                      {/* ลำดับความเสี่ยง */}
+                      <TableCell className="text-center">
+                        <div className="flex items-center justify-center">
+                          <Badge
+                            variant="secondary"
+                            className="rounded-full w-8 h-8 flex items-center justify-center font-bold"
+                          >
+                            {index + 1}
+                          </Badge>
+                        </div>
+                      </TableCell>
+
+                      {/* เหตุผล */}
+                      <TableCell className="text-center">
+                        <div className="text-sm text-gray-600">
+                          {assessment.reason_for_new_risk_ranking || "-"}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
         </TabsContent>
       </Tabs>
     </div>
