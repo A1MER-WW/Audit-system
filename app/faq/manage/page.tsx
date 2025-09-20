@@ -141,7 +141,7 @@ const columns: ColumnDef<faqDocumentType>[] = [
       <div className="flex max-w-[200px] text-left font-medium">
         <li className={row.getValue("display") == "Active" ? "text-green-500":"text-red-500"}/>
         {row.getValue("display")}
-        </div>
+    </div>
     ),
   },
 ]
@@ -175,7 +175,7 @@ export default function FaqManagePage() {
     }
     }, [])
 
-      //-----------Handle-------------------------
+    //-----------Handle-------------------------
 
       const handleTabChange = (value: string) => {
             setActiveTab(value)
@@ -192,7 +192,7 @@ export default function FaqManagePage() {
         console.log(" ID:", id)
     }
 
-      //------------------------------------------
+    //------------------------------------------
 
       const tableView = useReactTable({
           data: documents,
@@ -239,7 +239,7 @@ export default function FaqManagePage() {
             </div>
           </div>
           <div>
-          <h1>จัดการข้อมูลดูแลงานให้บริการแลบะคำปรึกษา</h1>
+          <h1>จัดการฐานข้อมูลทางด้านกฏหมาย</h1>
             <p className="text-muted-foreground text-sm text-balance pt-1 ">
             ควบคุมและจัดการข้อมูลการให้บริการ
             </p>
@@ -469,6 +469,7 @@ export default function FaqManagePage() {
                 </div>
                 )}
                 <div className="flex items-center py-4">
+                    
                 <Input
                 placeholder="ค้นหาชื่อเอกสาร..."
                 value={searchValue}
