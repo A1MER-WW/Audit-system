@@ -180,33 +180,31 @@ export default function ConsultPage() {
   })
   
   return (
-      <div className="w-full">
-        <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-          <div className="flex justify-start">
-            <div className="w-24 flex-none ">
-              <Button className="w-16 cursor-pointer" onClick={goBack} variant="ghost" size="icon" >
-                <ChevronLeft /> 
-                กลับ
-              </Button>
-            </div>
-            <div className="w-64 flex-1 content-center">
-              <Breadcrumb>
-                <BreadcrumbList>
-                  <BreadcrumbItem >
-                    ทะเบียนคุมเกร็ดความรู้
-                  </BreadcrumbItem>
-                </BreadcrumbList>
-              </Breadcrumb>
-            </div>
+    <div className="w-full">
+      <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+        <div className="flex justify-start">
+          <div className="w-24 flex-none ">
+            <Button className="w-16 cursor-pointer" onClick={goBack} variant="ghost" size="icon" >
+              <ChevronLeft /> 
+              กลับ
+            </Button>
           </div>
-          <div>
-          <h1>จัดการข้อมูลดูแลเกร็ดความรู้</h1>
-            <p className="text-muted-foreground text-sm text-balance pt-1 ">
-            แสดงข้อมูลต่างๆและเกร็ดความรู้แก่ผู้ใช้
-            </p>
+          <div className="w-64 flex-1 content-center">
+            <Breadcrumb>
+              <BreadcrumbList>
+                <BreadcrumbItem >
+                  ทะเบียนคุมเกร็ดความรู้
+                </BreadcrumbItem>
+              </BreadcrumbList>
+            </Breadcrumb>
           </div>
         </div>
-
+        <div>
+        <h1>จัดการข้อมูลดูแลเกร็ดความรู้</h1>
+          <p className="text-muted-foreground text-sm text-balance pt-1 ">
+          แสดงข้อมูลต่างๆและเกร็ดความรู้แก่ผู้ใช้
+          </p>
+        </div>
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
             ข้อผิดพลาด: {error}
@@ -371,31 +369,32 @@ export default function ConsultPage() {
               )}
             </TableBody>
           </Table>
-         </div>
-         <div className="flex items-center justify-end space-x-2 py-4">
-                 <div className="text-muted-foreground flex-1 text-sm">
-                   เลือก {tableView.getFilteredSelectedRowModel().rows.length} จาก{" "}
-                   {tableView.getFilteredRowModel().rows.length} แถว
-                 </div>
-                 <div className="space-x-2">
-                   <Button
-                     variant="outline"
-                     size="sm"
-                     onClick={() => tableView.previousPage()}
-                     disabled={!tableView.getCanPreviousPage()}
-                   >
-                     ก่อนหน้า
-                   </Button>
-                   <Button
-                     variant="outline"
-                     size="sm"
-                     onClick={() => tableView.nextPage()}
-                     disabled={!tableView.getCanNextPage()}
-                   >
-                     ถัดไป
-                   </Button>
-                 </div>
+        </div>
+        <div className="flex items-center justify-end space-x-2 py-4">
+          <div className="text-muted-foreground flex-1 text-sm">
+            เลือก {tableView.getFilteredSelectedRowModel().rows.length} จาก{" "}
+            {tableView.getFilteredRowModel().rows.length} แถว
+          </div>
+          <div className="space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => tableView.previousPage()}
+              disabled={!tableView.getCanPreviousPage()}
+            >
+              ก่อนหน้า
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => tableView.nextPage()}
+              disabled={!tableView.getCanNextPage()}
+            >
+              ถัดไป
+            </Button>
+          </div>
         </div>
       </div> 
+    </div>
   );
 }

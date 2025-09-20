@@ -275,7 +275,7 @@ export default function FaqManageViewPage() {
                         <Button className="flex-1 bg-[#3E52B9]"
                         onClick={handleSignedConfirm}
                         >ยืนยัน</Button>
-                </div>
+                    </div>
             </DialogContent>
         </Dialog>
         {/* dialog for Complate */}
