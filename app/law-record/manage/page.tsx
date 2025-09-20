@@ -42,6 +42,9 @@ import { lawRecordDocumentType, useLawRecordDocuments } from "@/hooks/useLawReco
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { Dialog } from "@radix-ui/react-dialog";
+import { DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Card } from "@/components/ui/card";
 
 const columns: ColumnDef<lawRecordDocumentType>[] = [
     {
@@ -121,6 +124,7 @@ export default function LowRecordManagePage() {
     const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     []
     )
+    const [isFilterDialogOpen, setIsFilterDialogOpen] = React.useState(false);
     const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({})
     const [rowSelection, setRowSelection] = React.useState({})
@@ -148,12 +152,21 @@ export default function LowRecordManagePage() {
     const handleDelete = (id: number) => {
         console.log(" ID:", id)
     }
+    const handleFilterChange = () => {
+        setIsFilterDialogOpen(true)
+    };
 
     //------------------------------------------
 
     const tableView = useReactTable({
         data: documents,
         columns,
+        state: {
+        sorting,
+        columnFilters,
+        columnVisibility,
+        rowSelection,
+        },
         onSortingChange: setSorting,
         onColumnFiltersChange: setColumnFilters,
         getCoreRowModel: getCoreRowModel(),
@@ -165,13 +178,7 @@ export default function LowRecordManagePage() {
         initialState: {
         pagination: {
             pageSize: 15, 
-        },
-        },
-        state: {
-        sorting,
-        columnFilters,
-        columnVisibility,
-        rowSelection,
+            },
         },
     })
  
@@ -247,7 +254,10 @@ export default function LowRecordManagePage() {
                     {/* Filter Button */}
                     <div className="flex justify-end items-center ml-4">
 
-                        <Button variant="outline" className="text-[#3E52B9] border-[#3E52B9]">
+                        <Button variant="outline" 
+                        className="text-[#3E52B9] border-[#3E52B9]"
+                        onClick={handleFilterChange}
+                        >
                             กรอง
                         </Button>
                     </div>
@@ -420,6 +430,44 @@ export default function LowRecordManagePage() {
                 </Table>
             </div>
         </div>
+        {/* Dialog session */}
+        {/* filter Dialog */}
+        <Dialog open={isFilterDialogOpen} onOpenChange={setIsFilterDialogOpen}>
+            <DialogContent className="max-w-md">
+                <DialogHeader>
+                    <DialogTitle className="text-base text-gray-900">
+                        ตัวกรอง
+                    </DialogTitle>
+                </DialogHeader>
+                <div className="w-full">
+                    <h1>ข้อมูลทางด้านกฏหมาย</h1>
+                    <p className="text-muted-foreground text-sm text-balance pt-4 ">
+                    หมวดหมู่ 
+                    </p> 
+                    <Input 
+                        name="category"
+                        placeholder= "หมวดหมู่..."
+                        className="max-w-300"
+                    />    
+                </div>
+                <div className="w-full">
+                    <p className="text-muted-foreground text-sm text-balance pt-4 ">
+                    ประเภท 
+                    </p> 
+                    <Input 
+                        name="category"
+                        placeholder= "ประเภท..."
+                        className="max-w-300"
+                    />    
+                </div>
+                <div className="flex gap-4 mt-4">
+                    <Button variant="outline" className="flex-1">ยกเลิก</Button>
+                    <Button className="flex-1 bg-[#3E52B9]"
+                    // onClick={}
+                    >กรองข้อมูล</Button>
+                </div>
+            </DialogContent>
+        </Dialog>
     </div>
     )
 }
