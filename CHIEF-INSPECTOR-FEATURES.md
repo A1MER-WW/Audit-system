@@ -1,11 +1,11 @@
 # หน้าภาพรวมการประเมินความเสี่ยงสำหรับหัวหน้าผู้ตรวจสอบ
 
 ## ภาพรวม
-หน้าใหม่นี้ถูกสร้างขึ้นสำหรับหัวหน้าผู้ตรวจสอบโดยเฉพาะ พัฒนาต่อยอดจากหน้า `overview-of-the-assessment-results` แต่เพิ่มฟีเจอร์การเปรียบเทียบข้อมูลระหว่างปีงบประมาณ
+หน้าใหม่นี้ถูกสร้างขึ้นสำหรับหัวหน้าผู้ตรวจสอบโดยเฉพาะ พัฒนาต่อยอดจากหน้า `overview-of-the-evaluation-results` แต่เพิ่มฟีเจอร์การเปรียบเทียบข้อมูลระหว่างปีงบประมาณ
 
 ## เส้นทางการเข้าถึง
-- **URL**: `/chief-inspector-assessment-results`
-- **ไฟล์**: `app/chief-inspector-assessment-results/page.tsx`
+- **URL**: `/chief-inspector-evaluation-results`
+- **ไฟล์**: `app/chief-inspector-evaluation-results/page.tsx`
 
 ## ฟีเจอร์หลัก
 

@@ -139,7 +139,7 @@ export function NavProjects({
                   </SidebarMenuSub>
 
                   <SidebarMenuSub>
-                    <a href="/risk-assessment">
+                    <a href="/risk-evaluation">
                       <span className="text-sm">
                         การประเมินความเสี่ยงและการจัดลำดับความเสี่ยง
                         (ผู้ตรวจสอบ)
@@ -147,7 +147,7 @@ export function NavProjects({
                     </a>
                   </SidebarMenuSub>
                   <SidebarMenuSub>
-                    <a href="/chief-inspector-assessment-results">
+                    <a href="/chief-inspector-evaluation-results">
                       <span className="text-sm">
                         การประเมินความเสี่ยงและการจัดลำดับความเสี่ยง
                         (หัวหน้าผู้ตรวจสอบ)

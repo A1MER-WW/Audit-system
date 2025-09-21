@@ -534,7 +534,7 @@ export default function RiskAssessmentPlanningPage({
     try {
       // เพิ่ม delay เล็กน้อยเพื่อให้เห็น loading
       await new Promise(resolve => setTimeout(resolve, 500));
-      await router.push("/risk-assessment-results");
+      await router.push("/risk-evaluation-results");
     } catch (error) {
       console.error('Navigation error:', error);
       setIsNavigating(false);
@@ -764,7 +764,7 @@ export default function RiskAssessmentPlanningPage({
                 size="sm"
                 className="rounded-md bg-indigo-600 hover:bg-indigo-700 text-white"
               >
-                <Link href={"/risk-assessment-results"}>ผลการประเมิน</Link>
+                <Link href={"/risk-evaluation-results"}>ผลการประเมิน</Link>
               </Button>
               */}
 
@@ -960,7 +960,7 @@ export default function RiskAssessmentPlanningPage({
                                   aria-label="กรอก/ดูเอกสาร"
                                 >
                                   <Link
-                                    href={`/risk-assessment-form/${only.id}`}
+                                    href={`/risk-evaluation-form/${only.id}`}
                                   >
                                     <FileText className="h-4 w-4" />
                                   </Link>
@@ -1058,7 +1058,7 @@ export default function RiskAssessmentPlanningPage({
                                       aria-label="กรอก/ดูเอกสาร"
                                     >
                                       <Link
-                                        href={`/risk-assessment-form/${c.id}`}
+                                        href={`/risk-evaluation-form/${c.id}`}
                                       >
                                         <FileText className="h-4 w-4" />
                                       </Link>

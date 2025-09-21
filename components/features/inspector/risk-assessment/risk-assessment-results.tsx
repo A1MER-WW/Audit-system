@@ -652,9 +652,9 @@ export default function RiskAssessmentResultsPage({
       // ปิด dialog
       setOpenSubmitDialog(false);
       
-      // นำทางไปหน้า overview-of-the-assessment-results พร้อมระบุว่าข้อมูลมาจาก Inspector
+      // นำทางไปหน้า overview-of-the-evaluation-results พร้อมระบุว่าข้อมูลมาจาก Inspector
       const actionParam = outerTab === "reorder" ? "&action=reorder" : "";
-      router.push(`/overview-of-the-assessment-results?fromInspector=true${actionParam}`);
+      router.push(`/overview-of-the-evaluation-results?fromInspector=true${actionParam}`);
     } catch (error) {
       console.error("Error submitting to chief:", error);
       alert("เกิดข้อผิดพลาดในการส่งข้อมูล กรุณาลองใหม่อีกครั้ง");
@@ -1418,7 +1418,7 @@ function SummarySection(props: {
                               size="icon"
                               aria-label="กรอก/ดูเอกสาร"
                             >
-                              <Link href={`/risk-assessment-form/${r.id}`}>
+                              <Link href={`/risk-evaluation-form/${r.id}`}>
                                 <FileText className="h-4 w-4" />
                               </Link>
                             </Button>
@@ -1473,7 +1473,7 @@ function SummarySection(props: {
                                 size="icon"
                                 aria-label="กรอก/ดูเอกสาร"
                               >
-                                <Link href={`/risk-assessment-form/${c.id}`}>
+                                <Link href={`/risk-evaluation-form/${c.id}`}>
                                   <FileText className="h-4 w-4" />
                                 </Link>
                               </Button>

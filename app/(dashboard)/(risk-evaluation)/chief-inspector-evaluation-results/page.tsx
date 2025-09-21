@@ -1,13 +1,13 @@
-// app/(your-segment)/risk-assessment/results/page.tsx
+// app/chief-inspector-evaluation-results/page.tsx
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import DashboardSection from "@/components/features/inspector/risk-assessment/risk-assessment-dashboard-section";
 import SummaryToolbar from "@/components/summary-toolbar";
-import RiskAssessmentResultsSectionPage from "@/components/features/inspector/risk-assessment/risk-assessment-results-section";
+import RiskEvaluationResultsSectionPage from "@/components/features/inspector/risk-assessment/risk-assessment-results-section";
 import { ActiveFilters } from "@/components/features/inspector/risk-assessment/active-filters";
 
 export type FilterType = {
@@ -15,7 +15,7 @@ export type FilterType = {
   category?: string;
 };
 
-type InspectorDataType = {
+type ChiefInspectorDataType = {
   timestamp: string;
   source: string;
   action?: string;
@@ -32,15 +32,19 @@ type InspectorDataType = {
   error?: string;
 };
 
-export default function RiskAssessmentPage() {
+export default function ChiefInspectorEvaluationResultsPage() {
   const router = useRouter();
-  const searchParams = useSearchParams(); // 👈
   const [outerTab, setOuterTab] = useState<
     "summary" | "reorder" | "unitRanking"
   >("summary");
   const [sortBy, setSortBy] = useState<"index" | "score">("index");
   const [scoreSortDir, setScoreSortDir] = useState<"desc" | "asc">("asc");
   const [filter, setFilter] = useState<FilterType>({});
+  
+  // State สำหรับการเปรียบเทียบปี
+  const [selectedYear] = useState<number>(2568);
+  const [compareYear, setCompareYear] = useState<number>(2567);
+  const [showCompareView, setShowCompareView] = useState<boolean>(false);
 
   // State สำหรับเก็บข้อมูลจากตารางเพื่อส่งไปยัง Dashboard
   type RiskSlice = {
@@ -87,6 +91,11 @@ export default function RiskAssessmentPage() {
     }
   };
 
+  // ฟังก์ชันสำหรับ toggle การเปรียบเทียบ
+  const handleCompareToggle = (enabled: boolean) => {
+    setShowCompareView(enabled);
+  };
+
   // Auto-adjust sorting when outerTab changes
   useEffect(() => {
     if (outerTab === "summary") {
@@ -100,34 +109,22 @@ export default function RiskAssessmentPage() {
 
   // ตรวจสอบว่ามีข้อมูลส่งมาจาก Inspector หรือไม่
   const [dataFromInspector, setDataFromInspector] =
-    useState<InspectorDataType | null>(null);
+    useState<ChiefInspectorDataType | null>(null);
+
   useEffect(() => {
+    // ถ้ามี URL parameter หรือ localStorage ที่บ่งบอกว่ามีข้อมูลใหม่ส่งมา
+    const searchParams = new URLSearchParams(window.location.search);
     const fromInspector = searchParams.get("fromInspector");
     const action = searchParams.get("action");
 
     if (fromInspector === "true") {
-      console.log("🔄 Fetching updated data from Inspector...");
-      
-      // รีเซ็ตข้อมูลตารางก่อนโหลดใหม่
-      setTableData({});
-      
-      // ยิงใหม่ทุกครั้งที่ query เปลี่ยน พร้อม timestamp เพื่อ bypass cache
-      fetch(`/api/chief-risk-assessment-results?_t=${Date.now()}`, { 
-        cache: "no-store",
-        headers: {
-          'Cache-Control': 'no-cache',
-          'Pragma': 'no-cache'
-        }
-      })
+      console.log("📥 Data received from Inspector - refreshing...");
+
+      // โหลดข้อมูลจาก API เพื่อดูรายละเอียดที่ส่งมา
+      fetch("/api/chief-risk-assessment-results")
         .then((res) => res.json())
         .then((data) => {
-          console.log("✅ Received updated data:", {
-            hasRowsByTab: !!data.rowsByTab,
-            rowsByTabKeys: Object.keys(data.rowsByTab || {}),
-            hasReorderInfo: !!data.reorderInfo,
-            action: data.submissionInfo?.action
-          });
-
+          console.log("📊 Received data from Inspector:", data);
           setDataFromInspector({
             timestamp: new Date().toISOString(),
             source: "inspector_submission",
@@ -138,18 +135,13 @@ export default function RiskAssessmentPage() {
             rawData: data,
           });
 
+          // ถ้าเป็นการจัดลำดับให้เปิดแท็บ reorder
           if (
             action === "reorder" ||
             data.submissionInfo?.action === "submit_reorder"
           ) {
             setOuterTab("reorder");
           }
-
-          // ถ้าอยากเคลียร์ query หลังอ่านแล้ว (กัน reload ซ้ำ)
-          const sp = new URLSearchParams(searchParams.toString());
-          sp.delete("fromInspector");
-          sp.delete("action");
-          router.replace(`?${sp.toString()}`, { scroll: false });
         })
         .catch((error) => {
           console.error("Error loading inspector data:", error);
@@ -161,8 +153,7 @@ export default function RiskAssessmentPage() {
           });
         });
     }
-    // ✅ ให้ effect ทำงานเมื่อ query เปลี่ยน
-  }, [searchParams, router]);
+  }, [setOuterTab]);
 
   return (
     <div className="min-h-svh space-y-4 pt-4">
@@ -177,27 +168,36 @@ export default function RiskAssessmentPage() {
             if (typeof window !== "undefined" && window.history.length > 1) {
               window.history.back();
             } else {
-              router.push("/risk-assessment");
+              router.push("/dashboard");
             }
           }}
         >
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <span className="text-sm text-foreground font-medium">
-          การประเมินความเสี่ยงและการจัดลำดับความเสี่ยง
+          ภาพรวมผลการประเมินความเสี่ยงและจัดลำดับความเสี่ยงสำหรับหัวหน้าผู้ตรวจสอบ
         </span>
       </div>
 
-      {/* บล็อกกราฟ/สรุปด้านบน */}
+      {/* หัวข้อหลัก */}
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">
+          ผลการประเมินความเสี่ยงและจัดลำดับความเสี่ยง ปีงบประมาณ {selectedYear}
+        </h1>
+      </div>
+
+      {/* บล็อกกราฟ/สรุปด้านบน - แสดงเสมอ แต่ในโหมดเปรียบเทียบแสดงแค่ปีปัจจุบัน */}
       <div className="space-y-4">
         <DashboardSection
-          year={2568}
+          year={selectedYear}
           statusText={
             dataFromInspector
               ? dataFromInspector.action === "submit_reorder"
                 ? "ได้รับการจัดลำดับความเสี่ยงใหม่แล้ว - รอพิจารณา"
                 : "ได้รับผลการประเมินแล้ว - รอพิจารณา"
-              : "รอหัวหน้าหน่วยตรวจสอบพิจารณา"
+              : showCompareView 
+                ? `ข้อมูลผลการประเมินความเสี่ยงปี ${selectedYear} (เปรียบเทียบกับปี ${compareYear})`
+                : "ข้อมูลผลการประเมินความเสี่ยงปัจจุบัน"
           }
           donut={tableData.donut}
           stacked={tableData.stacked}
@@ -207,6 +207,7 @@ export default function RiskAssessmentPage() {
             setFilter((prev) => ({ ...prev, category }))
           }
           activeFilter={filter}
+          showCompare={false}
         />
 
         <ActiveFilters
@@ -222,33 +223,31 @@ export default function RiskAssessmentPage() {
         onChange={setOuterTab}
         sortBy={sortBy}
         sortDir={scoreSortDir}
-        onSortByChange={setSortBy}
+        onSortByChange={(by) => setSortBy(by)}
         onSortDirChange={(dir) => setScoreSortDir(dir)}
         onClearSort={clearSort}
         hideSortOnReorder={true}
+        showCompareToggle={true} // แสดง switch เปรียบเทียบสำหรับ Chief Inspector
+        showCompareView={showCompareView}
+        onCompareToggle={handleCompareToggle}
+        compareYear={compareYear}
+        onCompareYearChange={setCompareYear}
+        availableYears={[2567, 2566, 2565]}
       />
 
       {/* ตาราง/แท็บด้านล่าง คุมด้วย state เดียวกัน */}
-      <RiskAssessmentResultsSectionPage
+      <RiskEvaluationResultsSectionPage
         outerTab={outerTab}
         onOuterTabChange={setOuterTab}
         filter={filter}
         sortBy={sortBy}
         sortDir={scoreSortDir}
+        onSortByChange={(by: any) => setSortBy(by as "index" | "score")}
         onSortDirChange={setScoreSortDir}
-        onDataChange={(data) => setTableData(data as { donut?: RiskSlice[]; stacked?: StackedRow[]; matrix?: MatrixRow[] })}
-        overrideData={dataFromInspector?.rawData as {
-          submissionInfo?: { action?: string };
-          reorderInfo?: {
-            hasChanges?: boolean;
-            newOrder?: string[];
-            originalOrder?: string[];
-            changedItem?: string;
-            reason?: string;
-            reasonById?: Record<string, string>;
-          };
-          [key: string]: unknown;
-        }}
+        onDataChange={(data: any) => setTableData(data as { donut?: RiskSlice[]; stacked?: StackedRow[]; matrix?: MatrixRow[] })}
+        showCompare={showCompareView}
+        compareYear={showCompareView ? compareYear : undefined}
+        currentYear={selectedYear}
         hideDocumentIcon={true}
         hideEditButton={true}
         hideStatusColumn={true}

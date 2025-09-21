@@ -1363,7 +1363,7 @@ function SummarySection(props: {
                             size="icon"
                             aria-label="กรอก/ดูเอกสาร"
                           >
-                            <Link href={`/risk-assessment-form/${r.id}`}>
+                            <Link href={`/risk-evaluation-form/${r.id}`}>
                               <FileText className="h-4 w-4" />
                             </Link>
                           </Button>
@@ -1422,7 +1422,7 @@ function SummarySection(props: {
                                 size="icon"
                                 aria-label="กรอก/ดูเอกสาร"
                               >
-                                <Link href={`/risk-assessment-form/${c.id}`}>
+                                <Link href={`/risk-evaluation-form/${c.id}`}>
                                   <FileText className="h-4 w-4" />
                                 </Link>
                               </Button>

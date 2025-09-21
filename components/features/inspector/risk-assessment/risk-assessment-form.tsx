@@ -867,7 +867,7 @@ export default function RiskAssessmentFormPage({ id }: { id: string }) {
           className="relative h-12 w-full rounded-xl"
           disabled={!prevId}
           onClick={() =>
-            prevId && handleNavigateWithSave(`/risk-assessment-form/${prevId}`)
+            prevId && handleNavigateWithSave(`/risk-evaluation-form/${prevId}`)
           }
         >
           <ChevronRight className="absolute left-4 h-5 w-5 rotate-180" />
@@ -879,7 +879,7 @@ export default function RiskAssessmentFormPage({ id }: { id: string }) {
           className="relative h-12 w-full rounded-xl"
           disabled={!nextId}
           onClick={() =>
-            nextId && handleNavigateWithSave(`/risk-assessment-form/${nextId}`)
+            nextId && handleNavigateWithSave(`/risk-evaluation-form/${nextId}`)
           }
         >
           <span className="mx-auto">หัวข้อถัดไป</span>
