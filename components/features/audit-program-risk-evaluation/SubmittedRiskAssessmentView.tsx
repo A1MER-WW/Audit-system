@@ -14,6 +14,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
+import RiskMatrix from "./RiskMatrix";
 import type { AuditProgramRiskEvaluation } from "@/hooks/useAuditProgramRiskEvaluation";
 
 type Props = {
@@ -39,6 +41,7 @@ export default function SubmittedRiskAssessmentView({ detail }: Props) {
   const [reorderedAssessments, setReorderedAssessments] = useState<
     AssessmentResult[]
   >([]);
+  const [showRiskMatrix, setShowRiskMatrix] = useState(false);
 
   // ดึงข้อมูลการประเมินจาก localStorage และประมวลผลให้แสดงในตาราง
   const assessments = useMemo((): AssessmentResult[] => {
@@ -387,8 +390,17 @@ export default function SubmittedRiskAssessmentView({ detail }: Props) {
 
       {/* Dashboard Section */}
       <div className="mt-6">
-        <div className="px-1 text-lg font-semibold text-gray-800 mb-4">
-          สรุปจำนวนผลการประเมินและจัดลำดับความเสี่ยงแต่ละด้าน
+        <div className="flex items-center justify-between mb-4">
+          <div className="px-1 text-lg font-semibold text-gray-800">
+            สรุปจำนวนผลการประเมินและจัดลำดับความเสี่ยงแต่ละด้าน
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-gray-600">รายงานเมทริกซ์ความเสี่ยง</span>
+            <Switch
+              checked={showRiskMatrix}
+              onCheckedChange={setShowRiskMatrix}
+            />
+          </div>
         </div>
 
         {/* Statistics Cards */}
@@ -444,14 +456,18 @@ export default function SubmittedRiskAssessmentView({ detail }: Props) {
           </Card>
         </div>
 
-        {/* Risk Distribution Chart */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              สรุปจำนวนผลการประเมินและจัดลำดับความเสี่ยงแต่ละด้าน
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+        {/* Conditional display based on switch */}
+        {showRiskMatrix ? (
+          <RiskMatrix assessments={assessments} />
+        ) : (
+          /* Risk Distribution Chart */
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                สรุปจำนวนผลการประเมินและจัดลำดับความเสี่ยงแต่ละด้าน
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
             <div className="space-y-6">
               {/* Chart Container */}
               <div className="bg-white p-6 rounded-lg border">
@@ -719,6 +735,7 @@ export default function SubmittedRiskAssessmentView({ detail }: Props) {
             </div>
           </CardContent>
         </Card>
+        )}
 
         {/* Summary Section */}
         {/* <Card className="mb-6">

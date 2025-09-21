@@ -236,7 +236,7 @@ export default function RiskEvaluationPage() {
         sortBy={sortBy}
         sortDir={scoreSortDir}
         onSortDirChange={setScoreSortDir}
-        onDataChange={(data: any) => setTableData(data as { donut?: RiskSlice[]; stacked?: StackedRow[]; matrix?: MatrixRow[] })}
+        onDataChange={(data: unknown) => setTableData(data as { donut?: RiskSlice[]; stacked?: StackedRow[]; matrix?: MatrixRow[] })}
         overrideData={dataFromInspector?.rawData as {
           submissionInfo?: { action?: string };
           reorderInfo?: {

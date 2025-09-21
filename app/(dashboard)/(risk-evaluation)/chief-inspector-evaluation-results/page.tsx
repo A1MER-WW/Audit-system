@@ -242,9 +242,9 @@ export default function ChiefInspectorEvaluationResultsPage() {
         filter={filter}
         sortBy={sortBy}
         sortDir={scoreSortDir}
-        onSortByChange={(by: any) => setSortBy(by as "index" | "score")}
+        onSortByChange={(by: "index" | "score" | "unit") => setSortBy(by as "index" | "score")}
         onSortDirChange={setScoreSortDir}
-        onDataChange={(data: any) => setTableData(data as { donut?: RiskSlice[]; stacked?: StackedRow[]; matrix?: MatrixRow[] })}
+        onDataChange={(data: unknown) => setTableData(data as { donut?: RiskSlice[]; stacked?: StackedRow[]; matrix?: MatrixRow[] })}
         showCompare={showCompareView}
         compareYear={showCompareView ? compareYear : undefined}
         currentYear={selectedYear}
