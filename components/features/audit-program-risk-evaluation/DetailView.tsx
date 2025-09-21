@@ -38,13 +38,27 @@ type Props = {
   onSave?: () => void;
 };
 
-const statusClass = (s: string) =>
-  s === "AUDITOR_ASSESSING" ? "text-blue-600" : "text-gray-600";
+const statusClass = (s: string) => {
+  switch (s) {
+    case "AUDITOR_ASSESSING":
+      return "text-blue-600";
+    case "COMPLETED":
+      return "text-green-600";
+    case "SUBMITTED":
+      return "text-orange-600";
+    case "APPROVED":
+      return "text-emerald-600";
+    case "PENDING":
+    default:
+      return "text-gray-600";
+  }
+};
 
 export default function DetailView({
   detail,
   onAddFactor,
   onDeleteFactor,
+  onSave,
 }: Props) {
   const router = useRouter();
   const deptText = detail.auditTopics.departments
@@ -225,9 +239,21 @@ export default function DetailView({
               <div className="text-sm">
                 สถานะ:{" "}
                 <span className={statusClass(detail.status)}>
-                  {detail.status === "AUDITOR_ASSESSING"
-                    ? "ผู้ตรวจสอบภายในกำลังดำเนินการประเมินความเสี่ยง"
-                    : "ผู้ตรวจสอบภายในยังไม่ได้ดำเนินการประเมินความเสี่ยง"}
+                  {(() => {
+                    switch (detail.status) {
+                      case "AUDITOR_ASSESSING":
+                        return "ผู้ตรวจสอบภายในกำลังดำเนินการประเมินความเสี่ยง";
+                      case "COMPLETED":
+                        return "เสร็จสิ้นการประเมินความเสี่ยงแล้ว";
+                      case "SUBMITTED":
+                        return "ส่งผลการประเมินแล้ว - รอการอนุมัติ";
+                      case "APPROVED":
+                        return "ได้รับการอนุมัติแล้ว";
+                      case "PENDING":
+                      default:
+                        return "ผู้ตรวจสอบภายในยังไม่ได้ดำเนินการประเมินความเสี่ยง";
+                    }
+                  })()}
                 </span>
               </div>
             </div>
@@ -469,46 +495,94 @@ export default function DetailView({
       </div>
 
       {/* Action buttons */}
-      <div className="mt-6 flex justify-between">
-        <div>
-          {/* ตรวจสอบว่ามีการประเมินแล้วหรือไม่ */}
-          {detail.AuditActivityRisks.some(risk => 
-            risk.risks_assessment && risk.risks_assessment.length > 0
-          ) && (
-            <Link
-              href={`/audit-program-risk-evaluation/${detail.id}/results`}
-              className="inline-flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-4 py-2 text-sm font-medium text-green-700 shadow hover:bg-green-100 active:bg-green-200"
-            >
-              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
-              ดูผลการประเมิน
-            </Link>
-          )}
+      <div className="mt-6 space-y-4">
+        {/* Status-based buttons row */}
+        <div className="flex justify-between items-center">
+          <div className="flex gap-2">
+            {/* ตรวจสอบว่ามีการประเมินแล้วหรือไม่ */}
+            {detail.AuditActivityRisks.some(risk => 
+              risk.risks_assessment && risk.risks_assessment.length > 0
+            ) && (
+              <Link
+                href={`/audit-program-risk-evaluation/${detail.id}/results`}
+                className="inline-flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-4 py-2 text-sm font-medium text-green-700 shadow hover:bg-green-100 active:bg-green-200"
+              >
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+                ดูผลการประเมิน
+              </Link>
+            )}
+
+            {/* ปุ่มทำเครื่องหมายเสร็จสิ้น - แสดงเมื่อ status เป็น AUDITOR_ASSESSING และมีการประเมิน */}
+            {detail.status === "AUDITOR_ASSESSING" && 
+             detail.AuditActivityRisks.some(risk => 
+               risk.risks_assessment && risk.risks_assessment.length > 0
+             ) && onSave && (
+              <Button
+                onClick={onSave}
+                className="inline-flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white shadow hover:bg-green-700 active:bg-green-800"
+              >
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                เสร็จสิ้นการประเมิน
+              </Button>
+            )}
+          </div>
+
+          <div>
+            {detail.AuditActivityRisks.length > 0 && detail.status !== "COMPLETED" && detail.status !== "SUBMITTED" && detail.status !== "APPROVED" && (
+              <Button
+                onClick={handleNavigateToAssess}
+                disabled={isNavigating}
+                className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow hover:bg-blue-700 active:bg-blue-800 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isNavigating ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    กำลังโหลด...
+                  </>
+                ) : (
+                  <>
+                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    ไปประเมินความเสี่ยง
+                  </>
+                )}
+              </Button>
+            )}
+          </div>
         </div>
-        <div>
-          {detail.AuditActivityRisks.length > 0 && (
-            <Button
-              onClick={handleNavigateToAssess}
-              disabled={isNavigating}
-              className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow hover:bg-blue-700 active:bg-blue-800 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isNavigating ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  กำลังโหลด...
-                </>
-              ) : (
-                <>
-                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  ไปประเมินความเสี่ยง
-                </>
-              )}
-            </Button>
-          )}
-        </div>
+
+        {/* Status message */}
+        {detail.status === "COMPLETED" && (
+          <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            การประเมินความเสี่ยงเสร็จสิ้นแล้ว
+          </div>
+        )}
+        
+        {detail.status === "SUBMITTED" && (
+          <div className="flex items-center gap-2 p-3 bg-orange-50 border border-orange-200 rounded-lg text-orange-700 text-sm">
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            ส่งผลการประเมินแล้ว - รอการอนุมัติ
+          </div>
+        )}
+
+        {detail.status === "APPROVED" && (
+          <div className="flex items-center gap-2 p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-700 text-sm">
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-1.382l.764.764a1 1 0 000 1.414l-.764.764M15 3l.764.764a1 1 0 000 1.414L15 6" />
+            </svg>
+            ได้รับการอนุมัติแล้ว
+          </div>
+        )}
       </div>
 
       {/* floating button */}

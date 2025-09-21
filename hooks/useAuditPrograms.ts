@@ -72,6 +72,30 @@ export async function createAuditProgram(
   return (await res.json()) as ListResponse;
 }
 
+// PATCH: อัปเดตข้อมูลบางส่วน (เช่น สถานะ)
+export async function updateAuditProgram(
+  id: number,
+  updates: Partial<Omit<AuditProgram, "id">>
+): Promise<ListResponse> {
+  const res = await fetch(api(`/api/audit-programs/${id}`), {
+    method: "PATCH",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(updates),
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return (await res.json()) as ListResponse;
+}
+
+// Helper function สำหรับอัปเดตสถานะ
+export async function updateProgramStatus(
+  id: number,
+  status: string
+): Promise<ListResponse> {
+  return updateAuditProgram(id, { status });
+}
+
 // DELETE: ลบตาม id
 export async function deleteAuditProgram(id: number): Promise<ListResponse> {
   const res = await fetch(api(`/api/audit-programs/${id}`), {

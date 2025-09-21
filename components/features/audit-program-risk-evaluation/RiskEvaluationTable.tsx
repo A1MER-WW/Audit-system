@@ -38,6 +38,12 @@ export default function RiskEvaluationTable({
         return "ผู้ตรวจสอบภายในกำลังดำเนินการประเมินความเสี่ยง";
       case "PENDING":
         return "ผู้ตรวจสอบภายในยังไม่ได้ดำเนินการประเมินความเสี่ยง";
+      case "COMPLETED":
+        return "เสร็จสิ้นการประเมินความเสี่ยงแล้ว";
+      case "SUBMITTED":
+        return "ส่งผลการประเมินแล้ว - รอการอนุมัติ";
+      case "APPROVED":
+        return "ได้รับการอนุมัติแล้ว";
       default:
         return status;
     }
@@ -47,6 +53,12 @@ export default function RiskEvaluationTable({
     switch (status) {
       case "AUDITOR_ASSESSING":
         return "text-blue-600";
+      case "COMPLETED":
+        return "text-green-600";
+      case "SUBMITTED":
+        return "text-orange-600";
+      case "APPROVED":
+        return "text-emerald-600";
       case "PENDING":
       default:
         return "text-gray-600";

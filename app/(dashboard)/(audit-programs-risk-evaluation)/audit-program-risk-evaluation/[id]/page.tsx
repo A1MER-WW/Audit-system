@@ -2,7 +2,7 @@
 
 import { useParams } from "next/navigation";
 import { useMemo, useState, useEffect } from "react";
-import { useAuditPrograms } from "@/hooks/useAuditPrograms";
+import { useAuditPrograms, updateProgramStatus } from "@/hooks/useAuditPrograms";
 import DetailView from "@/components/features/audit-program-risk-evaluation/DetailView";
 import type { AuditProgramRiskEvaluation, AuditActivityRisk } from "@/hooks/useAuditProgramRiskEvaluation";
 import type { RiskFactorPickerValues } from "@/components/features/audit-program-risk-evaluation/popup/RiskFactorPickerModal";
@@ -11,10 +11,11 @@ export default function AuditProgramRiskEvaluationDetailPage() {
   const params = useParams<{ id: string }>();
   const id = Number(params.id);
   
-  const { programs, isLoading } = useAuditPrograms();
+  const { programs, isLoading, refetch } = useAuditPrograms();
   
   // State สำหรับเก็บปัจจัยเสี่ยงที่เพิ่มเข้ามา
   const [activityRisks, setActivityRisks] = useState<AuditActivityRisk[]>([]);
+  const [hasStatusUpdated, setHasStatusUpdated] = useState(false);
 
   // โหลดข้อมูลจาก localStorage เมื่อ component mount
   useEffect(() => {
@@ -28,6 +29,37 @@ export default function AuditProgramRiskEvaluationDetailPage() {
       }
     }
   }, [id]);
+
+  // อัปเดตสถานะเมื่อเข้าหน้าครั้งแรก (จาก PENDING เป็น AUDITOR_ASSESSING)
+  useEffect(() => {
+    const updateStatusOnEntry = async () => {
+      if (!programs || isLoading || hasStatusUpdated) return;
+      
+      const currentProgram = programs.find(p => p.id === id);
+      if (currentProgram && currentProgram.status === "PENDING") {
+        try {
+          console.log(`🔄 Updating status for program ${id} from PENDING to AUDITOR_ASSESSING`);
+          await updateProgramStatus(id, "AUDITOR_ASSESSING");
+          await refetch(); // รีเฟรชข้อมูล
+          setHasStatusUpdated(true);
+          
+          // แสดง toast notification
+          import('@/hooks/useToast').then(({ showToast }) => {
+            showToast({
+              title: "เริ่มดำเนินการประเมินความเสี่ยง",
+              description: "สถานะได้ถูกอัปเดตเป็น 'กำลังดำเนินการประเมินความเสี่ยง'",
+              variant: "success",
+              duration: 3000
+            });
+          });
+        } catch (error) {
+          console.error('Error updating program status:', error);
+        }
+      }
+    };
+
+    updateStatusOnEntry();
+  }, [programs, isLoading, id, hasStatusUpdated, refetch]);
   
   const detail = useMemo((): AuditProgramRiskEvaluation | null => {
     if (!programs || isLoading) return null;
@@ -104,19 +136,51 @@ export default function AuditProgramRiskEvaluationDetailPage() {
     });
   };
 
-  // ฟังก์ชันบันทึกข้อมูล
-  const handleSave = () => {
-    // ในอนาคตสามารถเชื่อมต่อ API เพื่อบันทึกข้อมูลได้
+  // ฟังก์ชันบันทึกข้อมูลและอัปเดตสถานะ
+  const handleSave = async () => {
+    // บันทึกข้อมูลปัจจัยเสี่ยง
     console.log('บันทึกข้อมูลปัจจัยเสี่ยง:', activityRisks);
     
-    import('@/hooks/useToast').then(({ showToast }) => {
-      showToast({
-        title: "บันทึกข้อมูลเรียบร้อย",
-        description: `บันทึกปัจจัยเสี่ยง ${activityRisks.length} รายการแล้ว`,
-        variant: "success",
-        duration: 3000
+    try {
+      // อัปเดตสถานะเป็น COMPLETED หากมีการประเมินความเสี่ยงแล้ว
+      const hasAssessments = activityRisks.some(risk => 
+        risk.risks_assessment && risk.risks_assessment.length > 0
+      );
+      
+      if (hasAssessments) {
+        console.log(`🔄 Updating status for program ${id} to COMPLETED`);
+        await updateProgramStatus(id, "COMPLETED");
+        await refetch(); // รีเฟรชข้อมูล
+        
+        import('@/hooks/useToast').then(({ showToast }) => {
+          showToast({
+            title: "เสร็จสิ้นการประเมินความเสี่ยง",
+            description: "สถานะได้ถูกอัปเดตเป็น 'เสร็จสิ้นการประเมิน'",
+            variant: "success",
+            duration: 4000
+          });
+        });
+      } else {
+        import('@/hooks/useToast').then(({ showToast }) => {
+          showToast({
+            title: "บันทึกข้อมูลเรียบร้อย",
+            description: `บันทึกปัจจัยเสี่ยง ${activityRisks.length} รายการแล้ว`,
+            variant: "success",
+            duration: 3000
+          });
+        });
+      }
+    } catch (error) {
+      console.error('Error saving or updating status:', error);
+      import('@/hooks/useToast').then(({ showToast }) => {
+        showToast({
+          title: "เกิดข้อผิดพลาด",
+          description: "ไม่สามารถบันทึกข้อมูลได้ กรุณาลองใหม่อีกครั้ง",
+          variant: "error",
+          duration: 4000
+        });
       });
-    });
+    }
   };
 
   if (Number.isNaN(id)) {
