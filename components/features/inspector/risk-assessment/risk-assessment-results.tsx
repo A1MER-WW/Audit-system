@@ -38,6 +38,7 @@ import {
   GripVertical,
   Info,
   FileText,
+  Loader2,
 } from "lucide-react";
 import {
   DndContext,
@@ -537,6 +538,7 @@ export default function RiskAssessmentResultsPage({
 
   // เดิมมี handleConfirm อยู่แล้ว แก้นิดหน่อยให้ปิด SubmitDialog
   const handleConfirm = async () => {
+    setIsSubmitting(true);
     try {
       // รวบรวมข้อมูลทั้งหมดจากทุก tab สำหรับส่งไปยัง Chief Inspector
       const allTabsData = {
@@ -655,7 +657,9 @@ export default function RiskAssessmentResultsPage({
       router.push(`/overview-of-the-assessment-results?fromInspector=true${actionParam}`);
     } catch (error) {
       console.error("Error submitting to chief:", error);
-      // ยังคงปิด dialog แม้เกิดข้อผิดพลาด
+      alert("เกิดข้อผิดพลาดในการส่งข้อมูล กรุณาลองใหม่อีกครั้ง");
+    } finally {
+      setIsSubmitting(false);
       setOpenSubmitDialog(false);
     }
   };
@@ -715,6 +719,7 @@ export default function RiskAssessmentResultsPage({
   const PAGE_SIZE = 200;
   const [openSubmitDialog, setOpenSubmitDialog] = useState(false); // สำหรับ RiskSubmitConfirmDialog
   const [openReasonDialog, setOpenReasonDialog] = useState(false); // สำหรับ ChangeOrderReasonDialog
+  const [isSubmitting, setIsSubmitting] = useState(false); // สำหรับ loading state
   const [pendingOrderIds, setPendingOrderIds] = useState<string[] | null>(null);
   const [pendingMovedId, setPendingMovedId] = useState<string | null>(null);
   const [reasonById, setReasonById] = useState<Record<string, string>>({});
@@ -1008,10 +1013,18 @@ export default function RiskAssessmentResultsPage({
               {/* ปุ่มเปิด Dialog */}
               <Button
                 size="sm"
-                className="rounded-md bg-indigo-600 hover:bg-indigo-700 text-white"
+                className="rounded-md bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-50"
                 onClick={onClickSubmit}
+                disabled={isSubmitting}
               >
-                เสนอหัวหน้ากลุ่มตรวจสอบภายใน
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    กำลังส่ง...
+                  </>
+                ) : (
+                  "เสนอหัวหน้ากลุ่มตรวจสอบภายใน"
+                )}
               </Button>
 
               {/* Dialog */}
@@ -1020,6 +1033,7 @@ export default function RiskAssessmentResultsPage({
                 open={openSubmitDialog}
                 onOpenChange={setOpenSubmitDialog}
                 onConfirm={handleConfirm}
+                loading={isSubmitting}
                 assessmentTitle={`ผลการประเมินและจัดลำดับความเสี่ยงแผนการตรวจสอบประจำปี ${year}`}
               />
 

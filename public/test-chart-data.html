@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Chart Data</title>
+</head>
+<body>
+    <h1>Chart Data Test</h1>
+    <p>Open browser console to see results</p>
+    
+    <script>
+        // Create test data for audit program risk evaluation ID = 1
+        const testAssessments = [
+            {
+                id: 1,
+                processName: "การจัดทำข้อเสนอโครงการ",
+                dimension: "ด้านกลยุทธ์",
+                riskFactor: "การกำหนดเป้าหมายไม่ชัดเจน",
+                totalScore: 12,
+                riskLevel: "สูง",
+                priority: 1,
+                probability: 3,
+                impact: 4
+            },
+            {
+                id: 2,
+                processName: "การจัดทำคำขอตั้งงบประมาณ",
+                dimension: "ด้านการเงิน",
+                riskFactor: "การประมาณการงบประมาณไม่ถูกต้อง",
+                totalScore: 16,
+                riskLevel: "สูงมาก",
+                priority: 2,
+                probability: 4,
+                impact: 4
+            },
+            {
+                id: 3,
+                processName: "การจัดทำแผนการปฏิบัติงาน",
+                dimension: "ด้านการดำเนินงาน",
+                riskFactor: "การจัดลำดับความสำคัญไม่เหมาะสม",
+                totalScore: 9,
+                riskLevel: "ปานกลาง",
+                priority: 3,
+                probability: 3,
+                impact: 3
+            },
+            {
+                id: 4,
+                processName: "การติดตามและประเมินผล",
+                dimension: "ด้านเทคโนโลยีสารสนเทศ",
+                riskFactor: "ระบบสารสนเทศไม่เพียงพอ",
+                totalScore: 6,
+                riskLevel: "น้อย",
+                priority: 4,
+                probability: 2,
+                impact: 3
+            },
+            {
+                id: 5,
+                processName: "การปฏิบัติตามกฎหมาย",
+                dimension: "ด้านการปฏิบัติตามกฎระเบียบ",
+                riskFactor: "ไม่ทราบกฎหมายที่เปลี่ยนแปลง",
+                totalScore: 4,
+                riskLevel: "น้อยที่สุด",
+                priority: 5,
+                probability: 2,
+                impact: 2
+            },
+            {
+                id: 6,
+                processName: "การจัดการทรัพยากร",
+                dimension: "ด้านการเกิดทุจริต",
+                riskFactor: "การใช้อำนาจในทางที่ผิด",
+                totalScore: 15,
+                riskLevel: "สูงมาก",
+                priority: 6,
+                probability: 3,
+                impact: 5
+            },
+            {
+                id: 7,
+                processName: "การบริหารโครงการ",
+                dimension: "ด้านกลยุทธ์",
+                riskFactor: "การประสานงานไม่เพียงพอ",
+                totalScore: 8,
+                riskLevel: "ปานกลาง",
+                priority: 7,
+                probability: 2,
+                impact: 4
+            },
+            {
+                id: 8,
+                processName: "การควบคุมคุณภาพ",
+                dimension: "ด้านการดำเนินงาน",
+                riskFactor: "ขาดมาตรฐานในการตรวจสอบ",
+                totalScore: 10,
+                riskLevel: "สูง",
+                priority: 8,
+                probability: 2,
+                impact: 5
+            }
+        ];
+
+        // Save to localStorage
+        localStorage.setItem('risk-assessments-1', JSON.stringify(testAssessments));
+        
+        console.log('📊 Test data added to localStorage:', testAssessments);
+        console.log('✅ Navigate to http://localhost:3000/audit-program-risk-evaluation/1/submitted to test chart');
+        
+        // Display summary
+        const riskLevelCounts = testAssessments.reduce((acc, item) => {
+            acc[item.riskLevel] = (acc[item.riskLevel] || 0) + 1;
+            return acc;
+        }, {});
+        
+        const dimensionCounts = testAssessments.reduce((acc, item) => {
+            acc[item.dimension] = (acc[item.dimension] || 0) + 1;
+            return acc;
+        }, {});
+        
+        console.log('📈 Risk Level Distribution:', riskLevelCounts);
+        console.log('📊 Dimension Distribution:', dimensionCounts);
+        
+        // Expected chart data by dimension
+        const expectedChartData = {};
+        testAssessments.forEach(item => {
+            if (!expectedChartData[item.dimension]) {
+                expectedChartData[item.dimension] = {
+                    สูงมาก: 0,
+                    สูง: 0,
+                    ปานกลาง: 0,
+                    น้อย: 0,
+                    น้อยที่สุด: 0
+                };
+            }
+            expectedChartData[item.dimension][item.riskLevel]++;
+        });
+        
+        console.log('🎯 Expected Chart Data by Dimension:', expectedChartData);
+        
+        document.body.innerHTML += '<h2>Test Data Created Successfully!</h2>';
+        document.body.innerHTML += '<p>Check browser console for details</p>';
+        document.body.innerHTML += '<p><a href="http://localhost:3000/audit-program-risk-evaluation/1/submitted" target="_blank">Test Chart →</a></p>';
+        
+        document.body.innerHTML += '<h3>Expected Chart Data:</h3>';
+        document.body.innerHTML += '<pre>' + JSON.stringify(expectedChartData, null, 2) + '</pre>';
+    </script>
+</body>
+</html>

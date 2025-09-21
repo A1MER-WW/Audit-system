@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
-import { ChevronLeft, Save, AlertTriangle } from "lucide-react";
+import { ChevronLeft, Save, AlertTriangle, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -534,6 +534,7 @@ const RiskAssessmentForm: React.FC<{
 
 export default function RiskAssessmentView({ detail, onSave }: Props) {
   const router = useRouter();
+  const [isNavigating, setIsNavigating] = useState(false);
   const {
     assessments,
     updateAssessment,
@@ -637,6 +638,30 @@ export default function RiskAssessmentView({ detail, onSave }: Props) {
     );
   };
 
+  // จัดการการนำทางไปหน้าผลการประเมิน
+  const handleNavigateToResults = async () => {
+    setIsNavigating(true);
+    try {
+      if (!hasAssessments()) {
+        alert(
+          "กรุณาทำการประเมินความเสี่ยงอย่างน้อย 1 รายการก่อนดูผลการประเมิน"
+        );
+        setIsNavigating(false);
+        return;
+      }
+      
+      // บังคับบันทึกข้อมูลก่อนไปหน้า results
+      forceSave();
+      
+      // เพิ่ม delay เล็กน้อยเพื่อให้เห็น loading
+      await new Promise(resolve => setTimeout(resolve, 500));
+      await router.push(`/audit-program-risk-evaluation/${detail.id}/results`);
+    } catch (error) {
+      console.error('Navigation error:', error);
+      setIsNavigating(false);
+    }
+  };
+
   const handleSave = () => {
     if (onSave) {
       onSave(assessments);
@@ -664,7 +689,18 @@ export default function RiskAssessmentView({ detail, onSave }: Props) {
     .join(" / ");
 
   return (
-    <div className="px-6 py-4">
+    <div className="px-6 py-4 relative">
+      {/* Loading Overlay */}
+      {isNavigating && (
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-50 flex items-center justify-center">
+          <div className="bg-white rounded-lg p-6 shadow-xl border border-gray-200 min-w-[200px] text-center">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-3 text-blue-600" />
+            <p className="text-sm font-medium text-gray-900 mb-1">กำลังโหลด</p>
+            <p className="text-xs text-gray-500">กำลังเตรียมผลการประเมิน...</p>
+          </div>
+        </div>
+      )}
+
       {/* breadcrumb */}
       <div className="mb-3">
         <Link
@@ -956,22 +992,18 @@ export default function RiskAssessmentView({ detail, onSave }: Props) {
               บันทึกและดูผลการประเมิน
             </Button>
             <Button
-              onClick={() => {
-                if (!hasAssessments()) {
-                  alert(
-                    "กรุณาทำการประเมินความเสี่ยงอย่างน้อย 1 รายการก่อนดูผลการประเมิน"
-                  );
-                  return;
-                }
-                // บังคับบันทึกข้อมูลก่อนไปหน้า results
-                forceSave();
-                router.push(
-                  `/audit-program-risk-evaluation/${detail.id}/results`
-                );
-              }}
-              className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow hover:bg-blue-700 active:bg-blue-800"
+              onClick={handleNavigateToResults}
+              disabled={isNavigating}
+              className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow hover:bg-blue-700 active:bg-blue-800 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              ดูผลการประเมิน
+              {isNavigating ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  กำลังโหลด...
+                </>
+              ) : (
+                "ดูผลการประเมิน"
+              )}
             </Button>
           </div>
         </div>

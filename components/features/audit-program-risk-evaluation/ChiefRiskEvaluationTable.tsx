@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FileText, Plus, ChevronLeft, Loader2 } from "lucide-react";
+import { FileText, ChevronLeft, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { AuditProgram } from "@/lib/mock-audit-programs";
@@ -12,8 +12,6 @@ type Props = {
   rows: AuditProgram[];
   isLoading: boolean;
   onFiscalYearChange: (year: number) => void;
-  onCreate: () => void;
-  onDelete: (id: number) => void;
 };
 
 // รองรับ basePath (ถ้ามี)
@@ -21,21 +19,27 @@ const RAW_BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 const BASE = RAW_BASE.endsWith("/") ? RAW_BASE.slice(0, -1) : RAW_BASE;
 const href = (p: string) => `${BASE}${p}`;
 
-export default function RiskEvaluationTable({
+export default function ChiefRiskEvaluationTable({
   fiscalYear,
   yearOptions,
   rows,
   isLoading,
   onFiscalYearChange,
-  onCreate,
 }: Props) {
   const router = useRouter();
   const [isNavigating, setIsNavigating] = useState(false);
   const [navigatingId, setNavigatingId] = useState<number | null>(null);
+
   const statusLabel = (status: string) => {
     switch (status) {
       case "AUDITOR_ASSESSING":
-        return "ผู้ตรวจสอบภายในกำลังดำเนินการประเมินความเสี่ยง";
+        return "รอการพิจารณาจากหัวหน้ากลุ่มตรวจสอบภายใน";
+      case "SUBMITTED":
+        return "รอการพิจารณาจากหัวหน้ากลุ่มตรวจสอบภายใน";
+      case "APPROVED":
+        return "หัวหน้ากลุ่มตรวจสอบภายในอนุมัติแล้ว";
+      case "REJECTED":
+        return "หัวหน้ากลุ่มตรวจสอบภายในไม่อนุมัติ";
       case "PENDING":
         return "ผู้ตรวจสอบภายในยังไม่ได้ดำเนินการประเมินความเสี่ยง";
       default:
@@ -46,21 +50,26 @@ export default function RiskEvaluationTable({
   const statusClass = (status: string) => {
     switch (status) {
       case "AUDITOR_ASSESSING":
-        return "text-blue-600";
+      case "SUBMITTED":
+        return "text-orange-600";
+      case "APPROVED":
+        return "text-green-600";
+      case "REJECTED":
+        return "text-red-600";
       case "PENDING":
       default:
         return "text-gray-600";
     }
   };
 
-  // จัดการการนำทางไปหน้ารายละเอียด
-  const handleNavigateToDetail = async (id: number) => {
+  // จัดการการนำทางไปหน้า submitted สำหรับพิจารณา
+  const handleNavigateToSubmitted = async (id: number) => {
     setIsNavigating(true);
     setNavigatingId(id);
     try {
       // เพิ่ม delay เล็กน้อยเพื่อให้เห็น loading
       await new Promise(resolve => setTimeout(resolve, 500));
-      await router.push(href(`/audit-program-risk-evaluation/${id}`));
+      await router.push(href(`/audit-program-risk-evaluation/${id}/submitted?from=chief`));
     } catch (error) {
       console.error('Navigation error:', error);
       setIsNavigating(false);
@@ -76,7 +85,7 @@ export default function RiskEvaluationTable({
           <div className="bg-white rounded-lg p-6 shadow-xl border border-gray-200 min-w-[200px] text-center">
             <Loader2 className="h-8 w-8 animate-spin mx-auto mb-3 text-blue-600" />
             <p className="text-sm font-medium text-gray-900 mb-1">กำลังโหลด</p>
-            <p className="text-xs text-gray-500">กำลังเปิดรายละเอียดการประเมิน...</p>
+            <p className="text-xs text-gray-500">กำลังเปิดรายการเพื่อพิจารณา...</p>
           </div>
         </div>
       )}
@@ -95,10 +104,10 @@ export default function RiskEvaluationTable({
       {/* title + subtitle */}
       <div className="mb-6">
         <h1 className="text-xl font-semibold text-gray-900">
-          วางแผนงานตรวจสอบภายใน
+          ประเมินความเสี่ยงและการจัดลำดับความเสี่ยง
         </h1>
         <p className="mt-1 text-sm text-gray-500">
-          ประเมินความเสี่ยงและการจัดทำแผนการจัดการความเสี่ยง
+          พิจารณาอนุมัติผลการประเมินความเสี่ยงจากผู้ตรวจสอบภายใน
         </p>
       </div>
 
@@ -129,21 +138,13 @@ export default function RiskEvaluationTable({
             </span>
           </div>
         </div>
-
-        <button
-          onClick={onCreate}
-          className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white shadow hover:bg-blue-700 active:bg-blue-800"
-        >
-          <Plus className="h-4 w-4" />
-          เพิ่มแผนการปฏิบัติการตรวจสอบ
-        </button>
       </div>
 
       {/* card/table */}
       <div className="rounded-2xl border border-gray-200 bg-white shadow-sm">
         <div className="border-b border-gray-100 px-4 py-3">
           <h2 className="text-sm font-medium text-gray-800">
-            การประเมินและจัดลำดับความเสี่ยง
+            รายการรอการพิจารณา
           </h2>
         </div>
 
@@ -157,7 +158,7 @@ export default function RiskEvaluationTable({
                 </th>
                 <th className="w-72 px-4 py-3 text-left">หน่วยงาน</th>
                 <th className="w-80 px-4 py-3 text-left">สถานะ</th>
-                <th className="w-16 px-4 py-3 text-right">เอกสาร</th>
+                <th className="w-16 px-4 py-3 text-right">พิจารณา</th>
               </tr>
             </thead>
 
@@ -177,7 +178,7 @@ export default function RiskEvaluationTable({
                     className="px-4 py-6 text-center text-gray-500"
                     colSpan={5}
                   >
-                    ไม่พบข้อมูล
+                    ไม่มีรายการรอการพิจารณา
                   </td>
                 </tr>
               ) : (
@@ -208,11 +209,11 @@ export default function RiskEvaluationTable({
 
                     <td className="px-4 py-2">
                       <div className="flex items-center justify-end gap-2">
-                        {/* 🔗 ไปหน้า Detail ของแต่ละรายการ */}
+                        {/* 🔗 ไปหน้า submitted สำหรับพิจารณา */}
                         <button
-                          onClick={() => handleNavigateToDetail(r.id)}
+                          onClick={() => handleNavigateToSubmitted(r.id)}
                           disabled={isNavigating}
-                          aria-label="เปิดรายละเอียดการประเมิน"
+                          aria-label="พิจารณารายการ"
                           className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                         >
                           {isNavigating && navigatingId === r.id ? (

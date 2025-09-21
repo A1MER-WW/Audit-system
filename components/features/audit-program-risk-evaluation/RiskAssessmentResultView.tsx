@@ -2,7 +2,8 @@
 
 import React, { useState, useMemo } from "react";
 import Link from "next/link";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, Loader2 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -36,7 +37,9 @@ type AssessmentResult = {
 };
 
 export default function RiskAssessmentResultView({ detail }: Props) {
+  const router = useRouter();
   const [tab, setTab] = useState("results");
+  const [isNavigating, setIsNavigating] = useState(false);
   const [reorderedAssessments, setReorderedAssessments] = useState<
     AssessmentResult[]
   >([]);
@@ -347,6 +350,19 @@ export default function RiskAssessmentResultView({ detail }: Props) {
     loadSavedReorderAndReasons();
   }, [loadSavedReorderAndReasons]);
 
+  // จัดการการนำทางไปหน้า submitted
+  const handleNavigateToSubmitted = async () => {
+    setIsNavigating(true);
+    try {
+      // เพิ่ม delay เล็กน้อยเพื่อให้เห็น loading
+      await new Promise(resolve => setTimeout(resolve, 500));
+      await router.push(`/audit-program-risk-evaluation/${detail.id}/submitted`);
+    } catch (error) {
+      console.error('Navigation error:', error);
+      setIsNavigating(false);
+    }
+  };
+
   const riskLevelColor = (level: string) => {
     switch (level) {
       case "สูงมาก":
@@ -363,7 +379,18 @@ export default function RiskAssessmentResultView({ detail }: Props) {
   };
 
   return (
-    <div className="px-6 py-4">
+    <div className="px-6 py-4 relative">
+      {/* Loading Overlay */}
+      {isNavigating && (
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-50 flex items-center justify-center">
+          <div className="bg-white rounded-lg p-6 shadow-xl border border-gray-200 min-w-[200px] text-center">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-3 text-blue-600" />
+            <p className="text-sm font-medium text-gray-900 mb-1">กำลังโหลด</p>
+            <p className="text-xs text-gray-500">กำลังเสนอหัวหน้ากลุ่มตรวจสอบภายใน...</p>
+          </div>
+        </div>
+      )}
+
       {/* breadcrumb */}
       <div className="mb-3">
         <Link
@@ -398,11 +425,20 @@ export default function RiskAssessmentResultView({ detail }: Props) {
                 </span>
               </div>
             </div>{" "}
-            <a href={`/audit-program-risk-evaluation/${detail.id}/submitted`}>
-              <Button className="bg-[#3E52B9] hover:bg-[#2A3A8F] text-white flex items-center gap-2">
-                เสนอหัวหน้ากลุ่มตรวจสอบภายใน
-              </Button>
-            </a>
+            <Button 
+              onClick={handleNavigateToSubmitted}
+              disabled={isNavigating}
+              className="bg-[#3E52B9] hover:bg-[#2A3A8F] text-white flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isNavigating ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  กำลังโหลด...
+                </>
+              ) : (
+                "เสนอหัวหน้ากลุ่มตรวจสอบภายใน"
+              )}
+            </Button>
           </div>
         </div>
 
@@ -554,12 +590,20 @@ export default function RiskAssessmentResultView({ detail }: Props) {
                 >
                   ดูผลการประเมิน
                 </Button>
-                <Link
-                  href={`/audit-program-risk-evaluation/${detail.id}/submitted`}
-                  className="inline-flex items-center gap-2 rounded-lg bg-green-600 px-3 py-1.5 text-sm font-medium text-white shadow hover:bg-green-700"
+                <Button
+                  onClick={handleNavigateToSubmitted}
+                  disabled={isNavigating}
+                  className="inline-flex items-center gap-2 rounded-lg bg-green-600 px-3 py-1.5 text-sm font-medium text-white shadow hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  เสนอหัวหน้ากลุ่มตรวจสอบภายใน
-                </Link>
+                  {isNavigating ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      กำลังโหลด...
+                    </>
+                  ) : (
+                    "เสนอหัวหน้ากลุ่มตรวจสอบภายใน"
+                  )}
+                </Button>
               </>
             )}
           </div>

@@ -1,16 +1,21 @@
 "use client";
 
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { useMemo } from "react";
 import Link from "next/link";
 import { useAuditPrograms } from "@/hooks/useAuditPrograms";
 import { useRiskAssessmentData } from "@/hooks/useRiskAssessmentData";
 import SubmittedRiskAssessmentView from "@/components/features/audit-program-risk-evaluation/SubmittedRiskAssessmentView";
+import ChiefSubmittedRiskAssessmentView from "@/components/features/chief-Inspector/ChiefSubmittedRiskAssessmentView";
 import type { AuditProgramRiskEvaluation, AuditActivityRisk } from "@/hooks/useAuditProgramRiskEvaluation";
 
 export default function SubmittedRiskAssessmentPage() {
   const params = useParams<{ id: string }>();
+  const searchParams = useSearchParams();
   const id = Number(params.id);
+  
+  // Check if this is accessed from Chief Inspector interface
+  const isChiefView = searchParams.get('from') === 'chief';
   
   const { programs, isLoading } = useAuditPrograms();
   useRiskAssessmentData(id);
@@ -170,7 +175,9 @@ export default function SubmittedRiskAssessmentPage() {
     );
   }
 
-  return (
+  return isChiefView ? (
+    <ChiefSubmittedRiskAssessmentView detail={detail} />
+  ) : (
     <SubmittedRiskAssessmentView detail={detail} />
   );
 }

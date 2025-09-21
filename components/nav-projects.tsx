@@ -206,11 +206,12 @@ export function NavProjects({
                     </Link>
                   </SidebarMenuSub>
                   <SidebarMenuSub>
-                    <a href="">
-                      <span className="text-sm">
-                        ประเมินความเสี่ยงและการจัดลำดับความเสี่ยง(หัวหน้ากลุ่มตรวจสอบภายใน)
-                      </span>
-                    </a>
+                    <Link
+                      href="/chief-audit-program-risk-evaluation"
+                      className="text-sm block"
+                    >
+                      ประเมินความเสี่ยงและการจัดลำดับความเสี่ยง(หัวหน้ากลุ่มตรวจสอบภายใน)
+                    </Link>
                   </SidebarMenuSub>
                 </Collapsible>
 

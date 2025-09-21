@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from "react";
 import Link from "next/link";
-import { ChevronLeft, BarChart3, CheckCircle } from "lucide-react";
+import { ChevronLeft, BarChart3, CheckCircle, UserCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -14,6 +14,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
 import type { AuditProgramRiskEvaluation } from "@/hooks/useAuditProgramRiskEvaluation";
 
 type Props = {
@@ -34,11 +35,12 @@ type AssessmentResult = {
   reason_for_new_risk_ranking?: string;
 };
 
-export default function SubmittedRiskAssessmentView({ detail }: Props) {
+export default function ChiefSubmittedRiskAssessmentView({ detail }: Props) {
   const [tab, setTab] = useState("results");
   const [reorderedAssessments, setReorderedAssessments] = useState<
     AssessmentResult[]
   >([]);
+  const [approving, setApproving] = useState(false);
 
   // ดึงข้อมูลการประเมินจาก localStorage และประมวลผลให้แสดงในตาราง
   const assessments = useMemo((): AssessmentResult[] => {
@@ -268,6 +270,27 @@ export default function SubmittedRiskAssessmentView({ detail }: Props) {
     loadSavedReorderAndReasons();
   }, [loadSavedReorderAndReasons]);
 
+  const handleApprove = async () => {
+    setApproving(true);
+    
+    try {
+      // Simulate API call for approval
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // TODO: Add actual API call here
+      console.log("Approved assessment for program:", detail.id);
+      
+      // You might want to redirect or show success message
+      alert("อนุมัติผลการประเมินความเสี่ยงเรียบร้อยแล้ว");
+      
+    } catch (error) {
+      console.error("Error approving assessment:", error);
+      alert("เกิดข้อผิดพลาดในการอนุมัติ กรุณาลองใหม่อีกครั้ง");
+    } finally {
+      setApproving(false);
+    }
+  };
+
   const riskLevelColor = (level: string) => {
     switch (level) {
       case "สูงมาก":
@@ -288,15 +311,15 @@ export default function SubmittedRiskAssessmentView({ detail }: Props) {
       {/* breadcrumb */}
       <div className="mb-3">
         <Link
-          href={`/audit-program-risk-evaluation/${detail.id}/results`}
+          href="/chief-audit-program-risk-evaluation"
           className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900"
         >
           <ChevronLeft className="h-4 w-4" />
-          กลับ
+          กลับไปรายการ
         </Link>
       </div>
 
-      {/* Header card with stepper */}
+      {/* Header card - WITHOUT stepper */}
       <div className="rounded-2xl border border-gray-200 bg-white shadow-sm">
         <div className="p-5">
           <div className="flex items-start justify-between">
@@ -314,73 +337,36 @@ export default function SubmittedRiskAssessmentView({ detail }: Props) {
               </div>
               <div className="text-sm">
                 สถานะ:{" "}
-                <span className="text-yellow-600 font-medium">
-                  รอหัวหน้ากลุ่มตรวจสอบภายในพิจารณาอนุมัติ
+                <span className="text-orange-600 font-medium">
+                  รอการพิจารณาอนุมัติ
                 </span>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <CheckCircle className="h-5 w-5 text-green-600" />
-              <span className="text-sm text-green-600 font-medium">
-                ส่งเรียบร้อย
-              </span>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <UserCheck className="h-5 w-5 text-blue-600" />
+                <span className="text-sm text-blue-600 font-medium">
+                  หัวหน้ากลุ่มตรวจสอบภายใน
+                </span>
+              </div>
+              <Button
+                onClick={handleApprove}
+                disabled={approving}
+                className="bg-green-600 hover:bg-green-700 text-white"
+              >
+                {approving ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
+                    กำลังอนุมัติ...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    อนุมัติ
+                  </>
+                )}
+              </Button>
             </div>
-          </div>
-        </div>
-
-        {/* steps tabs */}
-        <div className="border-t border-gray-100">
-          <div className="flex items-center px-5 py-3">
-            {[
-              { n: 1, t: "เลือกปัจจัยเสี่ยง" },
-              { n: 2, t: "ประเมินความเสี่ยง" },
-              { n: 3, t: "ผลการประเมิน" },
-              { n: 4, t: "เสนอหัวหน้ากลุ่ม" },
-            ].map((s, i) => {
-              const currentStep = 4; // ขั้นตอนที่ active ตอนนี้
-              const active = s.n === currentStep;
-              const completed = s.n < currentStep;
-
-              return (
-                <React.Fragment key={s.n}>
-                  {/* เส้นคั่นระหว่างสเต็ป */}
-                  {i > 0 && (
-                    <span
-                      className={`mx-3 h-px flex-1 ${
-                        completed || active ? "bg-green-500" : "bg-gray-200"
-                      }`}
-                    />
-                  )}
-
-                  <div className="flex items-center gap-2">
-                    {/* วงกลมตัวเลข */}
-                    <div
-                      className={[
-                        "flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold",
-                        active || completed
-                          ? "bg-green-500 text-white"
-                          : "bg-gray-200 text-gray-700",
-                      ].join(" ")}
-                    >
-                      {completed && !active ? (
-                        <CheckCircle className="h-4 w-4" />
-                      ) : (
-                        s.n
-                      )}
-                    </div>
-
-                    {/* ข้อความ */}
-                    <span
-                      className={`text-sm ${
-                        active || completed ? "text-green-600" : "text-gray-700"
-                      }`}
-                    >
-                      {s.t}
-                    </span>
-                  </div>
-                </React.Fragment>
-              );
-            })}
           </div>
         </div>
       </div>
@@ -720,71 +706,6 @@ export default function SubmittedRiskAssessmentView({ detail }: Props) {
           </CardContent>
         </Card>
 
-        {/* Summary Section */}
-        {/* <Card className="mb-6">
-          <CardHeader>
-            <CardTitle>ผลการประเมินความเสี่ยง</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-sm text-gray-600">
-              รายการนี้มีความเสี่ยงทั้งหมด{" "}
-              <span className="font-semibold text-gray-800">
-                {riskStatistics.total}
-              </span>{" "}
-              รายการ โดย:
-            </div>
-            <ul className="mt-3 space-y-2 text-sm">
-              <li className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-                <span>
-                  ความเสี่ยงระดับสูงมาก:{" "}
-                  <span className="font-semibold">
-                    {riskStatistics.riskCounts["สูงมาก"]} รายการ
-                  </span>
-                </span>
-              </li>
-              <li className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
-                <span>
-                  ความเสี่ยงระดับสูง:{" "}
-                  <span className="font-semibold">
-                    {riskStatistics.riskCounts["สูง"]} รายการ
-                  </span>
-                </span>
-              </li>
-              <li className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-                <span>
-                  ความเสี่ยงระดับปานกลาง:{" "}
-                  <span className="font-semibold">
-                    {riskStatistics.riskCounts["ปานกลาง"]} รายการ
-                  </span>
-                </span>
-              </li>
-              <li className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                <span>
-                  ความเสี่ยงระดับน้อย:{" "}
-                  <span className="font-semibold">
-                    {riskStatistics.riskCounts["น้อย"]} รายการ
-                  </span>
-                </span>
-              </li>
-              <li className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-gray-500 rounded-full"></div>
-                <span>
-                  ความเสี่ยงระดับน้อยที่สุด:{" "}
-                  <span className="font-semibold">
-                    {riskStatistics.riskCounts["น้อยที่สุด"]} รายการ
-                  </span>
-                </span>
-              </li>
-            </ul>
-          </CardContent>
-        </Card> */}
-        <div className="px-1 text-lg font-semibold text-gray-800 mt-4">
-          ผลการประเมินความเสี่ยง
-        </div>
         {/* วัตถุประสงค์ (หัวข้ออยู่นอก, รายการอยู่ในกล่องมีกรอบ) */}
         <section className="mt-4">
           {/* หัวข้อเล็ก ๆ ด้านบน */}
@@ -820,6 +741,7 @@ export default function SubmittedRiskAssessmentView({ detail }: Props) {
           </div>
         </section>
       </div>
+      
       {/* Tabs */}
       <Tabs value={tab} onValueChange={setTab} className="mt-4">
         <div className="flex justify-between items-center">
@@ -957,16 +879,15 @@ export default function SubmittedRiskAssessmentView({ detail }: Props) {
         <TabsContent value="ranking" className="mt-4">
           <div className="space-y-4">
             {/* Header info */}
-            <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-lg border border-green-100">
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-100">
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="font-semibold text-gray-800 flex items-center gap-2">
-                    <CheckCircle className="h-5 w-5 text-green-600" />
-                    ผลการจัดลำดับความเสี่ยงที่เสนอ
+                    <UserCheck className="h-5 w-5 text-blue-600" />
+                    ผลการจัดลำดับความเสี่ยงที่ส่งมาให้พิจารณา
                   </h3>
                   <p className="text-sm text-gray-600 mt-1">
-                    ลำดับความเสี่ยงที่ได้รับการจัดเรียงและส่งเสนอแล้ว
-                    (ไม่สามารถแก้ไขได้)
+                    รายการความเสี่ยงที่ผ้าตรวจสอบได้จัดลำดับและส่งมาให้อนุมัติ
                   </p>
                 </div>
               </div>
