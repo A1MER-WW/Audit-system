@@ -58,6 +58,7 @@ export function NavProjects({
                 </SidebarMenuButton>
               </DropdownMenuTrigger>
 
+
               <DropdownMenuContent
                 className="w-full p-5 rounded-lg"
                 side={isMobile ? "bottom" : "right"}
@@ -76,39 +77,46 @@ export function NavProjects({
                   </CollapsibleTrigger>
 
                   <SidebarMenuSub>
-                    <Link href="/planaudit">
-                      <span className="text-sm">ทบทวนหัวข้อของงานตรวจสอบทั้งหมด (Audit Universe) (ผู้ตรวจสอบ)</span>
+                    <Link href="/planaudit" className="relative overflow-hidden group">
+                      <span className="text-sm relative z-10">ทบทวนหัวข้อของงานตรวจสอบทั้งหมด (Audit Universe) (ผู้ตรวจสอบ)</span>
+                      <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-[#3E52B9] group-hover:w-full transition-all duration-300 ease-out"></span>
                     </Link>
                   </SidebarMenuSub>
                   <SidebarMenuSub>
-                    <Link href="/planaudit/thetopics-manager">
-                      <span className="text-sm">ทบทวนหัวข้อของงานตรวจสอบทั้งหมด (Audit Universe) (หัวหน้ากลุ่มตรวจสอบภายใน)</span>
+                    <Link href="/planaudit/thetopics-manager" className="relative overflow-hidden group">
+                      <span className="text-sm relative z-10">ทบทวนหัวข้อของงานตรวจสอบทั้งหมด (Audit Universe) (หัวหน้ากลุ่มตรวจสอบภายใน)</span>
+                      <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-[#3E52B9] group-hover:w-full transition-all duration-300 ease-out"></span>
                     </Link>
                   </SidebarMenuSub>
                   <SidebarMenuSub>
-                    <Link href="/planaudit/theaudittopics">
-                      <span className="text-sm">จัดการหัวข้อของงานตรวจสอบ (ผู้ตรวจสอบ)</span>
+                    <Link href="/planaudit/theaudittopics" className="relative overflow-hidden group">
+                      <span className="text-sm relative z-10">จัดการหัวข้อของงานตรวจสอบ (ผู้ตรวจสอบ)</span>
+                      <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-[#3E52B9] group-hover:w-full transition-all duration-300 ease-out"></span>
                     </Link>
                   </SidebarMenuSub>
                   <SidebarMenuSub>
-                    <Link href="/summary">
-                      <span className="text-sm">สรุปความเห็นหัวข้อของงานตรวจสอบทั้งหมด (ผู้ตรวจสอบภายใน)</span>
+                    <Link href="/reports/summary" className="relative overflow-hidden group">
+                      <span className="text-sm relative z-10">สรุปความเห็นหัวข้อของงานตรวจสอบทั้งหมด (ผู้ตรวจสอบภายใน)</span>
+                      <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-[#3E52B9] group-hover:w-full transition-all duration-300 ease-out"></span>
                     </Link>
                   </SidebarMenuSub>
                   <SidebarMenuSub>
-                    <Link href="/summary-manager">
-                      <span className="text-sm">สรุปความเห็นหัวข้อของงานตรวจสอบทั้งหมด (หัวหน้าหน่วยตรวจสอบ)</span>
+                    <Link href="/reports/summary-manager" className="relative overflow-hidden group">
+                      <span className="text-sm relative z-10">สรุปความเห็นหัวข้อของงานตรวจสอบทั้งหมด (หัวหน้าหน่วยตรวจสอบ)</span>
+                      <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-[#3E52B9] group-hover:w-full transition-all duration-300 ease-out"></span>
                     </Link>
                   </SidebarMenuSub>
 
                   <SidebarMenuSub>
-                    <Link href="/comment">
-                      <span className="text-sm">แสดงความคิดเห็นหัวข้อของงานตรวจสอบ (หน่วยงานในสังกัด)</span>
+                    <Link href="/comment" className="relative overflow-hidden group">
+                      <span className="text-sm relative z-10">แสดงความคิดเห็นหัวข้อของงานตรวจสอบ (หน่วยงานในสังกัด)</span>
+                      <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-[#3E52B9] group-hover:w-full transition-all duration-300 ease-out"></span>
                     </Link>
                   </SidebarMenuSub>
                   <SidebarMenuSub>
-                    <Link href="/planaudit/alltopics">
-                      <span className="text-sm">จัดการหัวข้องานตรวจสอบทั้งหมด (ผู้ตรวจสอบ)</span>
+                    <Link href="/planaudit/alltopics" className="relative overflow-hidden group">
+                      <span className="text-sm relative z-10">จัดการหัวข้องานตรวจสอบทั้งหมด (ผู้ตรวจสอบ)</span>
+                      <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-[#3E52B9] group-hover:w-full transition-all duration-300 ease-out"></span>
                     </Link>
                   </SidebarMenuSub>
 
@@ -124,23 +132,24 @@ export function NavProjects({
 
 
                   <SidebarMenuSub>
-                    <a href="">
-                      <span className="text-sm">กำหนดปัจจัยเสี่ยงและเกณฑ์การพิจารณาความเสี่ยง</span>
-                    </a>
+                    <Link href="/audit/risk-factors" className="relative overflow-hidden group">
+                      <span className="text-sm relative z-10">กำหนดปัจจัยเสี่ยงและเกณฑ์การพิจารณาความเสี่ยง</span>
+                      <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-[#3E52B9] group-hover:w-full transition-all duration-300 ease-out"></span>
+                    </Link>
                   </SidebarMenuSub>
 
 
                   <SidebarMenuSub>
-                    <a href="">
-                      <span className="text-sm">การประเมินความเสี่ยงและการจัดลำดับความเสี่ยง</span>
+                    <Link href="/audit/risk-assessment" className="relative overflow-hidden group">
+                      <span className="text-sm relative z-10">การประเมินความเสี่ยงและการจัดลำดับความเสี่ยง</span>
                       <Badge
                         className="h-5 w-5 rounded-full px-1 font-mono tabular-nums"
                         variant="destructive"
                       >
                         8
                       </Badge>
-                    </a>
-
+                      <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-[#3E52B9] group-hover:w-full transition-all duration-300 ease-out"></span>
+                    </Link>
                   </SidebarMenuSub>
 
                 </Collapsible>
@@ -155,16 +164,32 @@ export function NavProjects({
 
 
                   <SidebarMenuSub>
-                    <a href="">
-                      <span className="text-sm">จัดทำแผนการตรวจสอบประจำปี</span>
-                    </a>
+                    <Link href="/audit/annual-plan" className="relative overflow-hidden group">
+                      <span className="text-sm relative z-10">จัดทำแผนการตรวจสอบประจำปี (ผู้ตรวจสอบภายใน)</span>
+                      <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-[#3E52B9] group-hover:w-full transition-all duration-300 ease-out"></span>
+                    </Link>
+                  </SidebarMenuSub>
+
+                  <SidebarMenuSub>
+                    <Link href="/audit/annual-manager" className="relative overflow-hidden group">
+                      <span className="text-sm relative z-10">จัดทำแผนการตรวจสอบประจำปี (หัวหน้ากลุ่มตรวจสอบภายใน)</span>
+                      <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-[#3E52B9] group-hover:w-full transition-all duration-300 ease-out"></span>
+                    </Link>
                   </SidebarMenuSub>
 
 
                   <SidebarMenuSub>
-                    <a href="">
-                      <span className="text-sm">จัดทำแผนการตรวจสอบระยะยาว</span>
-                    </a>
+                    <Link href="/audit/inspection-plan" className="relative overflow-hidden group">
+                      <span className="text-sm relative z-10">จัดทำแผนการตรวจสอบระยะยาว (หัวหน้ากลุ่มตรวจสอบภายใน)</span>
+                      <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-[#3E52B9] group-hover:w-full transition-all duration-300 ease-out"></span>
+                    </Link>
+                  </SidebarMenuSub>
+
+                  <SidebarMenuSub>
+                    <Link href="/audit/inspection-plan-agencies" className="relative overflow-hidden group">
+                      <span className="text-sm relative z-10">จัดทำแผนการตรวจสอบระยะยาว (หน่วยงานในสังกัด)</span>
+                      <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-[#3E52B9] group-hover:w-full transition-all duration-300 ease-out"></span>
+                    </Link>
                   </SidebarMenuSub>
 
                 </Collapsible>
@@ -179,23 +204,26 @@ export function NavProjects({
 
 
                   <SidebarMenuSub>
-                    <a href="">
-                      <span className="text-sm">กำหนดปัจจัยเสี่ยงและเกณฑ์การพิจารณาความเสี่ยง</span>
-                    </a>
+                    <Link href="/audit/operational-risk-factors" className="relative overflow-hidden group">
+                      <span className="text-sm relative z-10">กำหนดปัจจัยเสี่ยงและเกณฑ์การพิจารณาความเสี่ยง</span>
+                      <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-[#3E52B9] group-hover:w-full transition-all duration-300 ease-out"></span>
+                    </Link>
                   </SidebarMenuSub>
 
 
                   <SidebarMenuSub>
-                    <a href="">
-                      <span className="text-sm">กำหนดเกณฑ์โอกาส</span>
-                    </a>
+                    <Link href="/audit/opportunity-criteria" className="relative overflow-hidden group">
+                      <span className="text-sm relative z-10">กำหนดเกณฑ์โอกาส</span>
+                      <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-[#3E52B9] group-hover:w-full transition-all duration-300 ease-out"></span>
+                    </Link>
                   </SidebarMenuSub>
 
 
                   <SidebarMenuSub>
-                    <a href="">
-                      <span className="text-sm">ประเมินความเสี่ยงและการจัดลำดับความเสี่ยง</span>
-                    </a>
+                    <Link href="/audit/operational-risk-assessment" className="relative overflow-hidden group">
+                      <span className="text-sm relative z-10">ประเมินความเสี่ยงและการจัดลำดับความเสี่ยง</span>
+                      <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-[#3E52B9] group-hover:w-full transition-all duration-300 ease-out"></span>
+                    </Link>
                   </SidebarMenuSub>
 
                 </Collapsible>

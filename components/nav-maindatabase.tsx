@@ -68,15 +68,17 @@ export function NavMainDatabase({
                   </SidebarMenuButton>
 
                   <SidebarMenuSub>
-                    <a href="">
-                      <span className="text-sm">รายการด้านของปัจจัยเสี่ยง</span>
-                    </a>
+                    <Link href="/maindatabase/risk-factors" className="relative overflow-hidden group">
+                      <span className="text-sm relative z-10">รายการด้านของปัจจัยเสี่ยง</span>
+                      <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-[#3E52B9] group-hover:w-full transition-all duration-300 ease-out"></span>
+                    </Link>
                   </SidebarMenuSub>
 
                   <SidebarMenuSub>
-                    <a href="">
-                      <span className="text-sm">รายการเกณฑ์พิจารณาความเสี่ยง</span>
-                    </a>
+                    <Link href="/maindatabase/risk-criteria" className="relative overflow-hidden group">
+                      <span className="text-sm relative z-10">รายการเกณฑ์พิจารณาความเสี่ยง</span>
+                      <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-[#3E52B9] group-hover:w-full transition-all duration-300 ease-out"></span>
+                    </Link>
                   </SidebarMenuSub>
                 </Collapsible>
 
@@ -84,8 +86,9 @@ export function NavMainDatabase({
                 <Collapsible>
                   <SidebarMenuButton>
                     <Folder className="text-muted-foreground" />
-                    <Link href="/maindatabase/plan">
-                      <span>แผนการใช้จ่ายงบประมาณที่ได้รับจัดสรร (หัวหน้ากลุ่มตรวจสอบภายใน)</span>
+                    <Link href="/maindatabase/plan" className="relative overflow-hidden group">
+                      <span className="relative z-10">แผนการใช้จ่ายงบประมาณที่ได้รับจัดสรร (หัวหน้ากลุ่มตรวจสอบภายใน)</span>
+                      <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-[#3E52B9] group-hover:w-full transition-all duration-300 ease-out"></span>
                     </Link>
                   </SidebarMenuButton>
                 </Collapsible>
@@ -173,17 +176,18 @@ export function NavMainDatabase({
 
 
                   <SidebarMenuSub>
-                    <a href="">
-                      <span className="text-sm">รายการด้านของปัจจัยเสี่ยง</span>
-                    </a>
+                    <Link href="/maindatabase/risk-factors" className="relative overflow-hidden group">
+                      <span className="text-sm relative z-10">รายการด้านของปัจจัยเสี่ยง</span>
+                      <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-[#3E52B9] group-hover:w-full transition-all duration-300 ease-out"></span>
+                    </Link>
                   </SidebarMenuSub>
 
 
                   <SidebarMenuSub>
-                    <a href="">
-                      <span className="text-sm">รายการเกณฑ์พิจารณาความเสี่ยง</span>
-                      
-                    </a>
+                    <Link href="/maindatabase/risk-criteria" className="relative overflow-hidden group">
+                      <span className="text-sm relative z-10">รายการเกณฑ์พิจารณาความเสี่ยง</span>
+                      <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-[#3E52B9] group-hover:w-full transition-all duration-300 ease-out"></span>
+                    </Link>
 
                   </SidebarMenuSub>
 
@@ -195,8 +199,9 @@ export function NavMainDatabase({
               
                   <SidebarMenuButton>
                     <Folder className="text-muted-foreground" />
-                    <Link href="/maindatabase/plan">
-                    <span>แผนการใช้จ่ายงบประมาณที่ได้รับจัดสรร</span>
+                    <Link href="/maindatabase/plan" className="relative overflow-hidden group">
+                      <span className="relative z-10">แผนการใช้จ่ายงบประมาณที่ได้รับจัดสรร</span>
+                      <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-[#3E52B9] group-hover:w-full transition-all duration-300 ease-out"></span>
                     </Link>
                   </SidebarMenuButton>
 
@@ -220,16 +225,18 @@ export function NavMainDatabase({
 
 
                   <SidebarMenuSub>
-                    <a href="">
-                      <span className="text-sm">รายการด้านของปัจจัยเสี่ยง</span>
-                    </a>
+                    <Link href="/maindatabase/operational-risk-factors" className="relative overflow-hidden group">
+                      <span className="text-sm relative z-10">รายการด้านของปัจจัยเสี่ยง</span>
+                      <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-[#3E52B9] group-hover:w-full transition-all duration-300 ease-out"></span>
+                    </Link>
                   </SidebarMenuSub>
 
 
                   <SidebarMenuSub>
-                    <a href="">
-                      <span className="text-sm">รายการเกณฑ์พิจารณาความเสี่ยง</span>
-                    </a>
+                    <Link href="/maindatabase/operational-risk-criteria" className="relative overflow-hidden group">
+                      <span className="text-sm relative z-10">รายการเกณฑ์พิจารณาความเสี่ยง</span>
+                      <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-[#3E52B9] group-hover:w-full transition-all duration-300 ease-out"></span>
+                    </Link>
                   </SidebarMenuSub>
 
 

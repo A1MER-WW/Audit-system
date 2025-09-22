@@ -9,8 +9,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Input } from '@/components/ui/input';
 import { Dropzone, DropzoneContent, DropzoneEmptyState } from '@/components/ui/shadcn-io/dropzone';
 import { FileText, Download, Settings} from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 export default function SummaryPage() {
+  const router = useRouter();
   const [selectedYear, setSelectedYear] = React.useState<string>("2568");
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
   const [editingItem, setEditingItem] = React.useState<{
@@ -22,6 +24,10 @@ export default function SummaryPage() {
     hasIssue: boolean;
   } | null>(null);
   const [files, setFiles] = React.useState<File[] | undefined>();
+
+  const handleRowClick = (id: number) => {
+    router.push(`/reports/summary/${id}`);
+  };
 
   // Summary data
   const summaryData = {
@@ -181,7 +187,11 @@ export default function SummaryPage() {
               </TableHeader>
               <TableBody>
                 {auditItems.map((item) => (
-                  <TableRow key={item.id} className="hover:bg-gray-50">
+                  <TableRow 
+                    key={item.id} 
+                    className="hover:bg-gray-50 cursor-pointer"
+                    onClick={() => handleRowClick(item.id)}
+                  >
                     <TableCell className={`text-xs sm:text-sm font-medium ${item.hasIssue ? 'text-red-600' : ''}`}>
                       {item.code}
                     </TableCell>

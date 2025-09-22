@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { TabNavigation } from '@/components/tab-navigation';
 
 import { Edit } from 'lucide-react';
 
@@ -204,20 +205,11 @@ export default function SummaryManagerPage() {
             </div>
 
             {/* Category Tabs */}
-            <div className="flex gap-0 border-b overflow-x-auto">
-                {tabs.map((tab) => (
-                    <button
-                        key={tab.id}
-                        onClick={() => setActiveTab(tab.id)}
-                        className={`px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium whitespace-nowrap border-b-2 ${activeTab === tab.id
-                                ? 'text-[#6366F1] border-[#6366F1] bg-blue-50'
-                                : 'text-gray-600 hover:text-gray-900 border-transparent'
-                            }`}
-                    >
-                        {tab.label}
-                    </button>
-                ))}
-            </div>
+            <TabNavigation 
+                tabs={tabs}
+                activeTab={activeTab}
+                onTabChange={setActiveTab}
+            />
 
             {/* Data Table */}
             <Card>
