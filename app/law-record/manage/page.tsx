@@ -143,11 +143,11 @@ export default function LowRecordManagePage() {
             localStorage.setItem("faq-active-tab", value)
         }
     const handleView = (id: number , name:string) => {
-        router.push(`/faq/manage/view?id=${id}&name=${encodeURIComponent(name)}`)
+        router.push(`/law-record/manage/view?id=${id}&name=${encodeURIComponent(name)}`)
     }
     const handleEdit = (id: number, name:string) => {
         console.log(" ID:", id)
-        router.push(`/faq/manage/view?id=${id}&name=${encodeURIComponent(name)}`)
+        router.push(`/law-record/manage/view?id=${id}&name=${encodeURIComponent(name)}`)
     }
     const handleDelete = (id: number) => {
         console.log(" ID:", id)
@@ -393,7 +393,7 @@ export default function LowRecordManagePage() {
                                         className="h-8 w-8 p-0"
                                         onClick={(e) => {
                                             e.stopPropagation()
-                                            handleEdit(row.index+1,row.original.category)
+                                            handleEdit(row.index+1,row.original.type)
                                         }}
                                         title="แก้ไข"
                                     >
