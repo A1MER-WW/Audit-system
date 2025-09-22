@@ -165,7 +165,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <TeamSwitcher teams={data.teams} />
       </SidebarHeader>
       <SidebarContent>
-
         <nav className="p-2 mt-7">
           <SidebarMenuButton asChild>
             <Link href="/dashboard">

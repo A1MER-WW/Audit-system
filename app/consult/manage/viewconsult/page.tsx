@@ -101,7 +101,7 @@ export default function ViewConsult() {
           </div>
         </div>
         <Card className="shadow-lg ">
-            <div className='content-left ml-4'>
+          <div className='content-left ml-4'>
             <h1 className='text-lg'>เพิ่มเกร็ดความรู้</h1>
             <p className="text-muted-foreground text-sm text-balance pt-1 ">
             นำเสนอเกร็ดความรู้ให้แก่ผู้ใช้งาน
