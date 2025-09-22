@@ -14,6 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { getProgram } from "@/lib/mock-engagement-plan-programs";
 import {
   Table,
   TableBody,
@@ -95,7 +96,6 @@ export default function Step1ActivityRiskPage() {
   });
 
   // ดึงข้อมูลจาก engagement plan จริง
-  const { getProgram } = require("@/lib/mock-engagement-plan-programs");
   const engagementPlan = getProgram(parseInt(id));
 
   const mockEngagementPlan = engagementPlan
