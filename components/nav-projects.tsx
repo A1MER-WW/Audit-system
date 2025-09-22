@@ -216,10 +216,12 @@ export function NavProjects({
                 </Collapsible>
 
                 {/* 5. Final Item */}
-                <DropdownMenuItem>
-                  <Forward className="text-muted-foreground" />
-                  <span>Audit Program / Engagement plan</span>
-                </DropdownMenuItem>
+                <Link href="/audit-engagement-plan">
+                  <DropdownMenuItem>
+                    <Forward className="text-muted-foreground" />
+                    <span>Audit Program / Engagement plan</span>
+                  </DropdownMenuItem>
+                </Link>
               </DropdownMenuContent>
             </DropdownMenu>
           </SidebarMenuItem>

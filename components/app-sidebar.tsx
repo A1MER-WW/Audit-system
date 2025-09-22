@@ -1,6 +1,6 @@
-"use client"
+"use client";
 
-import * as React from "react"
+import * as React from "react";
 import {
   AudioWaveform,
   BellDot,
@@ -18,23 +18,21 @@ import {
   Settings2,
   SquareTerminal,
   UserPen,
-} from "lucide-react"
+} from "lucide-react";
 
-import { NavProjects } from "@/components/nav-projects"
-import { NavUser } from "@/components/nav-user"
-import { TeamSwitcher } from "@/components/team-switcher"
+import { NavProjects } from "@/components/nav-projects";
+import { NavUser } from "@/components/nav-user";
+import { TeamSwitcher } from "@/components/team-switcher";
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
-
   SidebarHeader,
   SidebarMenuButton,
-
   SidebarRail,
-} from "@/components/ui/sidebar"
-import Link from "next/link"
-import { NavMainDatabase } from "./nav-maindatabase"
+} from "@/components/ui/sidebar";
+import Link from "next/link";
+import { NavMainDatabase } from "./nav-maindatabase";
 
 const data = {
   user: {
@@ -148,14 +146,13 @@ const data = {
     },
   ],
   projects: [
-
     {
       name: "วางแผนงานตรวจสอบภายใน",
       url: "#",
       icon: PieChart,
     },
   ],
-}
+};
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
@@ -164,15 +161,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <TeamSwitcher teams={data.teams} />
       </SidebarHeader>
       <SidebarContent>
-
         <nav className="p-2 mt-7">
           <SidebarMenuButton asChild>
             <Link href="/dashboard">
               <CircleGauge />
 
-              <span className="p-1 text-sm">
-                หน้าหลัก</span>
-
+              <span className="p-1 text-sm">หน้าหลัก</span>
             </Link>
           </SidebarMenuButton>
         </nav>
@@ -182,10 +176,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             <Link href="/">
               <FileMinus />
 
-              <span className="p-1 text-sm">
-                ปฏิบัติงานตรวจสอบ
-              </span>
-
+              <span className="p-1 text-sm">ปฏิบัติงานตรวจสอบ</span>
             </Link>
           </SidebarMenuButton>
 
@@ -193,10 +184,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             <Link href="/">
               <FileUp />
 
-              <span className="p-1 text-sm">
-                รายงานผลการตรวจสอบ
-              </span>
-
+              <span className="p-1 text-sm">รายงานผลการตรวจสอบ</span>
             </Link>
           </SidebarMenuButton>
 
@@ -204,10 +192,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             <Link href="/">
               <ChartGantt />
 
-              <span className="p-1 text-sm">
-                ติดตามผลการตรวจสอบ
-              </span>
-
+              <span className="p-1 text-sm">ติดตามผลการตรวจสอบ</span>
             </Link>
           </SidebarMenuButton>
 
@@ -215,9 +200,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             <Link href="/support">
               <MessageCircleQuestionMark />
 
-              <span className="p-1 text-sm">
-                ให้คำปรึกษา
-              </span>
+              <span className="p-1 text-sm">ให้คำปรึกษา</span>
             </Link>
           </SidebarMenuButton>
 
@@ -225,10 +208,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             <Link href="/">
               <BellDot />
 
-              <span className="p-1 text-sm">
-                แจ้งเตือน
-              </span>
-
+              <span className="p-1 text-sm">แจ้งเตือน</span>
             </Link>
           </SidebarMenuButton>
 
@@ -236,20 +216,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             <Link href="/archive">
               <FileStack />
 
-              <span className="p-1 text-sm">
-                คลังเอกสาร
-              </span>
-
+              <span className="p-1 text-sm">คลังเอกสาร</span>
             </Link>
           </SidebarMenuButton>
           <SidebarMenuButton asChild>
             <Link href="/">
               <UserPen />
 
-              <span className="p-1 text-sm">
-                จัดการผู้ใช้งาน
-              </span>
-
+              <span className="p-1 text-sm">จัดการผู้ใช้งาน</span>
             </Link>
           </SidebarMenuButton>
         </nav>
@@ -263,5 +237,5 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>
-  )
+  );
 }
