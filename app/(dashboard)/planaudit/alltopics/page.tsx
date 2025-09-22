@@ -22,11 +22,11 @@ interface AuditData {
 export default function AudittopicsPage() {
   const [selectedYear, ] = React.useState<string>("2568");
   const [isSubmitDialogOpen, setIsSubmitDialogOpen] = React.useState(false);
-  const [isApprovalDialogOpen, setIsApprovalDialogOpen] = React.useState(false);
-  const [approvalStep, setApprovalStep] = React.useState(1);
-  const [signatureData, setSignatureData] = React.useState<{name: string; signature: string | null}>({name: "", signature: null});
-  const [isOtpValid, setIsOtpValid] = React.useState<boolean>(false);
-  const [files, setFiles] = React.useState<File[] | undefined>();
+  // const [isApprovalDialogOpen, setIsApprovalDialogOpen] = React.useState(false);
+  // const [approvalStep, setApprovalStep] = React.useState(1);
+  // const [signatureData, setSignatureData] = React.useState<{name: string; signature: string | null}>({name: "", signature: null});
+  // const [isOtpValid, setIsOtpValid] = React.useState<boolean>(false);
+  const [files, ] = React.useState<File[] | undefined>();
   const [auditData2567, setAuditData2567] = React.useState<AuditData[]>([]);
   const [auditData2568, setAuditData2568] = React.useState<AuditData[]>([]);
   const [hasData, setHasData] = React.useState(false);
@@ -44,21 +44,21 @@ export default function AudittopicsPage() {
   });
 
   // Sample data for demonstration (will be populated from Excel file)
-  const sampleData2567 = [
+  const sampleData2567 = React.useMemo(() => [
     { id: 1, department: "สกท.", topic: "งานหรการคณะกรรมการการคำนวณคะแนนราง งเบี้ยยังชีพผู้สูงอายุ", link: "รายการข้อมูลงานจากแอปพลิเคชันการประเมินและติดตาม" },
     { id: 2, department: "สกท.", topic: "ปฏิบัติงานตรวจสอบสำนักงาน", link: "" },
     { id: 3, department: "สกท.", topic: "ปฏิบัติงานตรวจสอบสำนักงาน", link: "" },
     { id: 4, department: "สกท.", topic: "ปฏิบัติงานตรวจสอบสำนักงาน", link: "" },
     { id: 5, department: "สกท.", topic: "ด้านริหารการเก็บรักษาเงินกำไรสะสมการพัฒนากิจการพลังงานนอกจากไฟฟ้า", link: "" },
-  ];
+  ], []);
 
-  const sampleData2568 = [
+  const sampleData2568 = React.useMemo(() => [
     { id: 1, department: "สกท.", topic: "งานหรการคณะกรรมการการคำนวณคะแนนราง งเบี้ยยังชีพผู้สูงอายุ", score: "3/45", note: "ทำเสียบการหวยจับฉลากรางฮคุ้ม" },
     { id: 2, department: "สกท.", topic: "บการทำให้เป็นจนการตรวจรับเคลื่อนลำเคร วาารประกอบ ", score: "3/45", note: "ทำเสียบการหวยจับฉลากรางฮคุ้ม" },
     { id: 3, department: "สกท.", topic: "ปฏิบัติงานตรวจสอบสำนักงาน", score: "3/45", note: "" },
     { id: 4, department: "สกท.", topic: "ปฏิบัติงานตรวจสอบสำนักงาน", score: "", note: "" },
     { id: 5, department: "สกท.", topic: "ด้านริหารการเก็บรักษาเงินกำไรสะสมการพัฒนากิจการพลังงานนอกจากไฟฟ้า", score: "3/45", note: "" },
-  ];
+  ], []);
 
   // Simulate loading data from Excel file when files are uploaded
   React.useEffect(() => {
@@ -67,7 +67,7 @@ export default function AudittopicsPage() {
       setAuditData2568(sampleData2568);
       setHasData(true);
     }
-  }, [files]);
+  }, [files, sampleData2567, sampleData2568]);
 
   const handleFileUpload = (acceptedFiles: File[]) => {
     if (acceptedFiles.length > 0) {
