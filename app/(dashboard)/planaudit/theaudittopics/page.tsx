@@ -163,7 +163,7 @@ export default function TheAuditTopicsPage() {
 
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
           <Button className="bg-[#3E52B9] hover:bg-[#2A3A8F] text-white flex items-center gap-2">
-            เสนอหัวหน้าหน่วยตรวจสอบ
+            เสนอหัวหน้ากลุ่มตรวจสอบภายใน
           </Button>
         </div>
       </div>

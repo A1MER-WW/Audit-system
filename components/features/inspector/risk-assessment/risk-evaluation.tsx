@@ -26,8 +26,9 @@ import {
 } from "@/components/ui/popover";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
-import { ChevronDown, ChevronUp, Info, FileText } from "lucide-react";
+import { ChevronDown, ChevronUp, Info, FileText, Loader2 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   useAnnualEvaluations,
   ApiAnnualEvaluation,
@@ -387,6 +388,8 @@ export default function RiskAssessmentPlanningPage({
   fullWidth?: boolean;
   className?: string;
 }) {
+  const router = useRouter();
+  const [isNavigating, setIsNavigating] = useState(false);
   const [tab, setTab] = useState<TabKey>("all");
   const [year, setYear] = useState<number>(2568);
   const [query] = useState("");
@@ -517,6 +520,26 @@ export default function RiskAssessmentPlanningPage({
       group.children.every((child) => child.score > 0)
     );
   }, [allGroups]);
+
+  // จัดการการนำทางไปหน้าผลการประเมิน
+  const handleNavigateToResults = async () => {
+    if (!allAssessmentCompleted) {
+      const unassessedCount = allGroups.flatMap((g) => g.children).length -
+        allGroups.flatMap((g) => g.children).filter((c) => c.score > 0).length;
+      alert(`กรุณาประเมินให้ครบทุกรายการก่อน (เหลือ ${unassessedCount} รายการ)`);
+      return;
+    }
+
+    setIsNavigating(true);
+    try {
+      // เพิ่ม delay เล็กน้อยเพื่อให้เห็น loading
+      await new Promise(resolve => setTimeout(resolve, 500));
+      await router.push("/risk-evaluation-results");
+    } catch (error) {
+      console.error('Navigation error:', error);
+      setIsNavigating(false);
+    }
+  };
 
   // ฟังก์ชันเคลียร์ข้อมูลทั้งหมด (localStorage + database)
   const handleClearLocalStorage = async () => {
@@ -664,6 +687,16 @@ export default function RiskAssessmentPlanningPage({
         className
       )}
     >
+      {/* Loading Overlay */}
+      {isNavigating && (
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-50 flex items-center justify-center">
+          <div className="bg-white rounded-lg p-6 shadow-xl border border-gray-200 min-w-[200px] text-center">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-3 text-blue-600" />
+            <p className="text-sm font-medium text-gray-900 mb-1">กำลังโหลด</p>
+            <p className="text-xs text-gray-500">กำลังเตรียมผลการประเมิน...</p>
+          </div>
+        </div>
+      )}
       <div className="text-sm text-muted-foreground">
         วางแผนงานตรวจสอบภายใน /{" "}
         <span className="text-sm text-foreground font-medium">{subtitle}</span>
@@ -731,33 +764,40 @@ export default function RiskAssessmentPlanningPage({
                 size="sm"
                 className="rounded-md bg-indigo-600 hover:bg-indigo-700 text-white"
               >
-                <Link href={"/risk-assessment-results"}>ผลการประเมิน</Link>
+                <Link href={"/risk-evaluation-results"}>ผลการประเมิน</Link>
               </Button>
               */}
 
-              {allAssessmentCompleted ? (
-                <Button
-                  asChild
-                  size="sm"
-                  className="rounded-md bg-indigo-600 hover:bg-indigo-700 text-white"
-                >
-                  <Link href="/risk-assessment-results">ผลการประเมิน</Link>
-                </Button>
-              ) : (
-                <Button
-                  size="sm"
-                  className="rounded-md bg-gray-300 text-gray-500 cursor-not-allowed"
-                  disabled
-                  title={`กรุณาประเมินให้ครบทุกรายการก่อน (เหลือ ${
-                    allGroups.flatMap((g) => g.children).length -
-                    allGroups
-                      .flatMap((g) => g.children)
-                      .filter((c) => c.score > 0).length
-                  } รายการ)`}
-                >
-                  ผลการประเมิน
-                </Button>
-              )}
+              <Button
+                onClick={handleNavigateToResults}
+                disabled={isNavigating}
+                size="sm"
+                className={cn(
+                  "rounded-md text-white",
+                  allAssessmentCompleted
+                    ? "bg-indigo-600 hover:bg-indigo-700"
+                    : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                )}
+                title={
+                  !allAssessmentCompleted
+                    ? `กรุณาประเมินให้ครบทุกรายการก่อน (เหลือ ${
+                        allGroups.flatMap((g) => g.children).length -
+                        allGroups
+                          .flatMap((g) => g.children)
+                          .filter((c) => c.score > 0).length
+                      } รายการ)`
+                    : undefined
+                }
+              >
+                {isNavigating ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    กำลังโหลด...
+                  </>
+                ) : (
+                  "ผลการประเมิน"
+                )}
+              </Button>
             </div>
           </div>
           <div className="space-y-2">
@@ -920,7 +960,7 @@ export default function RiskAssessmentPlanningPage({
                                   aria-label="กรอก/ดูเอกสาร"
                                 >
                                   <Link
-                                    href={`/risk-assessment-form/${only.id}`}
+                                    href={`/risk-evaluation-form/${only.id}`}
                                   >
                                     <FileText className="h-4 w-4" />
                                   </Link>
@@ -1018,7 +1058,7 @@ export default function RiskAssessmentPlanningPage({
                                       aria-label="กรอก/ดูเอกสาร"
                                     >
                                       <Link
-                                        href={`/risk-assessment-form/${c.id}`}
+                                        href={`/risk-evaluation-form/${c.id}`}
                                       >
                                         <FileText className="h-4 w-4" />
                                       </Link>

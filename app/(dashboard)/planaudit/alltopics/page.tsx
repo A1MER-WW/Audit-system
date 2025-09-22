@@ -158,13 +158,13 @@ export default function AudittopicsPage() {
           <Dialog open={isSubmitDialogOpen} onOpenChange={setIsSubmitDialogOpen}>
             <DialogTrigger asChild>
               <Button className="bg-[#3E52B9] hover:bg-[#2A3A8F] text-white flex items-center gap-2">
-                เสนอหัวหน้าหน่วยตรวจสอบ
+                เสนอหัวหน้ากลุ่มตรวจสอบภายใน
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-md">
               <DialogHeader>
                 <DialogTitle className="text-base text-[#3E52B9] border-b border-[#3E52B9] pb-2">
-                  ยืนยันข้อมูลเสนอหัวหน้าหน่วยตรวจสอบ 
+                  ยืนยันข้อมูลเสนอหัวหน้ากลุ่มตรวจสอบภายใน 
                 </DialogTitle>
               </DialogHeader>
               

@@ -1,13 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, formsMap, getReorderData } from "@/lib/mock-risk-db";
+import { ApiAnnualEvaluation, EvaluationStatus, MaybeGrade } from "@/hooks/useAnnualEvaluations";
+import { mockAnnualEvaluations } from "../annual-evaluations/route";
 
 // Import types from annual evaluations
-import {
-  mockAnnualEvaluations,
-  type ApiAnnualEvaluation,
-  type MaybeGrade,
-  type EvaluationStatus,
-} from "../annual-evaluations/route";
 
 // Types สำหรับ Risk Assessment Results
 export type ResultsApiResponse = {

@@ -38,7 +38,27 @@ import {
   GripVertical,
   Info,
   FileText,
+  Loader2,
 } from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import {
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import RiskSubmitConfirmDialog from "../../popup/submitted-to-the-head-audit";
@@ -518,6 +538,7 @@ export default function RiskAssessmentResultsPage({
 
   // เดิมมี handleConfirm อยู่แล้ว แก้นิดหน่อยให้ปิด SubmitDialog
   const handleConfirm = async () => {
+    setIsSubmitting(true);
     try {
       // รวบรวมข้อมูลทั้งหมดจากทุก tab สำหรับส่งไปยัง Chief Inspector
       const allTabsData = {
@@ -631,12 +652,14 @@ export default function RiskAssessmentResultsPage({
       // ปิด dialog
       setOpenSubmitDialog(false);
       
-      // นำทางไปหน้า overview-of-the-assessment-results พร้อมระบุว่าข้อมูลมาจาก Inspector
+      // นำทางไปหน้า overview-of-the-evaluation-results พร้อมระบุว่าข้อมูลมาจาก Inspector
       const actionParam = outerTab === "reorder" ? "&action=reorder" : "";
-      router.push(`/overview-of-the-assessment-results?fromInspector=true${actionParam}`);
+      router.push(`/overview-of-the-evaluation-results?fromInspector=true${actionParam}`);
     } catch (error) {
       console.error("Error submitting to chief:", error);
-      // ยังคงปิด dialog แม้เกิดข้อผิดพลาด
+      alert("เกิดข้อผิดพลาดในการส่งข้อมูล กรุณาลองใหม่อีกครั้ง");
+    } finally {
+      setIsSubmitting(false);
       setOpenSubmitDialog(false);
     }
   };
@@ -696,6 +719,7 @@ export default function RiskAssessmentResultsPage({
   const PAGE_SIZE = 200;
   const [openSubmitDialog, setOpenSubmitDialog] = useState(false); // สำหรับ RiskSubmitConfirmDialog
   const [openReasonDialog, setOpenReasonDialog] = useState(false); // สำหรับ ChangeOrderReasonDialog
+  const [isSubmitting, setIsSubmitting] = useState(false); // สำหรับ loading state
   const [pendingOrderIds, setPendingOrderIds] = useState<string[] | null>(null);
   const [pendingMovedId, setPendingMovedId] = useState<string | null>(null);
   const [reasonById, setReasonById] = useState<Record<string, string>>({});
@@ -989,10 +1013,18 @@ export default function RiskAssessmentResultsPage({
               {/* ปุ่มเปิด Dialog */}
               <Button
                 size="sm"
-                className="rounded-md bg-indigo-600 hover:bg-indigo-700 text-white"
+                className="rounded-md bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-50"
                 onClick={onClickSubmit}
+                disabled={isSubmitting}
               >
-                เสนอหัวหน้าหน่วยตรวจสอบ
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    กำลังส่ง...
+                  </>
+                ) : (
+                  "เสนอหัวหน้ากลุ่มตรวจสอบภายใน"
+                )}
               </Button>
 
               {/* Dialog */}
@@ -1001,6 +1033,7 @@ export default function RiskAssessmentResultsPage({
                 open={openSubmitDialog}
                 onOpenChange={setOpenSubmitDialog}
                 onConfirm={handleConfirm}
+                loading={isSubmitting}
                 assessmentTitle={`ผลการประเมินและจัดลำดับความเสี่ยงแผนการตรวจสอบประจำปี ${year}`}
               />
 
@@ -1200,6 +1233,89 @@ export default function RiskAssessmentResultsPage({
   );
 }
 
+/* ======================== Sortable Row Component ======================== */
+
+// Component สำหรับแถวที่สามารถ drag ได้
+function SortableRow({ 
+  row, 
+  tab, 
+  reasonById, 
+  onEditReason 
+}: { 
+  row: Row; 
+  tab: TabKey; 
+  reasonById: Record<string, string>; 
+  onEditReason: (id: string) => void; 
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: row.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.8 : 1,
+    zIndex: isDragging ? 999 : 1,
+  };
+
+  return (
+    <TableRow
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        "cursor-default select-none hover:bg-gray-50",
+        isDragging && "bg-blue-50 shadow-xl border-blue-200 relative"
+      )}
+    >
+      <TableCell className="text-center">
+        <div className="flex items-center justify-center gap-2">
+          <button
+            {...attributes}
+            {...listeners}
+            aria-label="ลากเพื่อจัดลำดับ"
+            className="p-1 text-gray-400 hover:text-gray-600 cursor-grab active:cursor-grabbing"
+            title="ลากเพื่อจัดลำดับ"
+          >
+            <GripVertical className="h-4 w-4" />
+          </button>
+          <span className="font-mono text-xs md:text-sm font-medium">{row.index}</span>
+        </div>
+      </TableCell>
+      
+      <TableCell className="whitespace-nowrap">{row.unit}</TableCell>
+      <TableCell className="text-muted-foreground align-top !whitespace-normal break-words">
+        {topicByTab(row, tab)}
+      </TableCell>
+      <TableCell className="font-medium">{row.score ?? "-"}</TableCell>
+      <TableCell>
+        <GradeBadge grade={row.grade} />
+      </TableCell>
+
+      {/* คอลัมน์เหตุผล: ถ้าไม่มีให้แสดง "-" */}
+      <TableCell className="text-muted-foreground align-top !whitespace-normal break-words">
+        {reasonById[row.id]?.trim() ? reasonById[row.id] : "-"}
+      </TableCell>
+
+      {/* คอลัมน์แก้ไข */}
+      <TableCell className="text-center">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => onEditReason(row.id)}
+          className="h-8 px-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50"
+        >
+          แก้ไข
+        </Button>
+      </TableCell>
+    </TableRow>
+  );
+}
+
 /* ======================== Sections ======================== */
 
 function SummarySection(props: {
@@ -1302,7 +1418,7 @@ function SummarySection(props: {
                               size="icon"
                               aria-label="กรอก/ดูเอกสาร"
                             >
-                              <Link href={`/risk-assessment-form/${r.id}`}>
+                              <Link href={`/risk-evaluation-form/${r.id}`}>
                                 <FileText className="h-4 w-4" />
                               </Link>
                             </Button>
@@ -1357,7 +1473,7 @@ function SummarySection(props: {
                                 size="icon"
                                 aria-label="กรอก/ดูเอกสาร"
                               >
-                                <Link href={`/risk-assessment-form/${c.id}`}>
+                                <Link href={`/risk-evaluation-form/${c.id}`}>
                                   <FileText className="h-4 w-4" />
                                 </Link>
                               </Button>
@@ -1379,49 +1495,40 @@ function SummarySection(props: {
 function ReorderSection(props: {
   tab: TabKey;
   parents: Row[];
-  onReorderByDrag: (newIds: string[], movedId: string) => void; // <-- เพิ่ม movedId
+  onReorderByDrag: (newIds: string[], movedId: string) => void;
   reasonById: Record<string, string>;
-  onUpdateReason?: (id: string, reason: string) => void; // <-- เพิ่ม callback สำหรับอัพเดตเหตุผล
+  onUpdateReason?: (id: string, reason: string) => void;
   isLoading: boolean;
   error: boolean;
 }) {
   const { tab, parents, onReorderByDrag, isLoading, error, reasonById, onUpdateReason } = props;
 
-  const arrayMove = (arr: string[], from: number, to: number) => {
-    const a = [...arr];
-    const [m] = a.splice(from, 1);
-    a.splice(to, 0, m);
-    return a;
-  };
-
-  const [draggingId, setDraggingId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [openEditDialog, setOpenEditDialog] = useState(false);
-  const ids = useMemo(() => parents.map((r) => r.id), [parents]);
-  const indexOf = (id: string) => ids.indexOf(id);
 
-  const handleDragStart = (e: React.DragEvent, id: string) => {
-    e.dataTransfer.setData("text/plain", id);
-    e.dataTransfer.effectAllowed = "move";
-    setDraggingId(id);
-  };
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
-  };
-  const handleDropOnRow = (e: React.DragEvent, overId: string) => {
-    e.preventDefault();
-    const fromId = e.dataTransfer.getData("text/plain") || draggingId;
-    if (!fromId || fromId === overId) return;
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
-    const from = indexOf(fromId);
-    const to = indexOf(overId);
-    if (from < 0 || to < 0 || from === to) return;
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
 
-    const newIds = arrayMove(ids, from, to);
-    onReorderByDrag(newIds, fromId); // <-- ส่ง movedId ขึ้นไป
-    setDraggingId(null);
-  };
+    if (active.id !== over?.id) {
+      const activeId = String(active.id);
+      const overId = String(over?.id);
+      
+      const oldIndex = parents.findIndex((item) => item.id === activeId);
+      const newIndex = parents.findIndex((item) => item.id === overId);
+
+      if (oldIndex !== -1 && newIndex !== -1) {
+        const newIds = arrayMove(parents.map(p => p.id), oldIndex, newIndex);
+        onReorderByDrag(newIds, activeId);
+      }
+    }
+  }
 
   const handleEditReason = (id: string) => {
     setEditingId(id);
@@ -1437,89 +1544,68 @@ function ReorderSection(props: {
   };
 
   return (
-    <div className="rounded-xl border overflow-hidden">
-      <Table>
-        <TableHeader className="sticky top-0 z-10 bg-muted/50">
-          <TableRow>
-            <TableHead className="w-[44px]"></TableHead>
-            <TableHead className="w-[90px]">ลำดับ</TableHead>
-            <TableHead>หน่วยงาน</TableHead>
-            <TableHead className="align-middle !whitespace-normal break-words leading-snug">
-              <span className="block max-w-[18rem] md:max-w-[32rem]">
-                {DYNAMIC_HEAD[tab]}
-              </span>
-            </TableHead>
-            <TableHead className="w-[120px]">คะแนนประเมิน</TableHead>
-            <TableHead className="w-[120px]">เกรด</TableHead>
-            {/* เปลี่ยนจาก "สถานะการประเมินผล" เป็น "เหตุผล" */}
-            <TableHead className="w-[220px]">เหตุผล</TableHead>
-            <TableHead className="w-[100px]">แก้ไข</TableHead>
-          </TableRow>
-        </TableHeader>
+    <div className="space-y-4">
+      {/* Header with instructions */}
+      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-100">
+        <div className="flex items-center gap-2 mb-2">
+          <GripVertical className="h-5 w-5 text-blue-600" />
+          <h3 className="font-semibold text-gray-800">จัดลำดับความเสี่ยง</h3>
+        </div>
+        <p className="text-sm text-gray-600">
+          ลากไอคอน <GripVertical className="h-4 w-4 inline mx-1" /> และวางเพื่อเปลี่ยนลำดับความสำคัญของความเสี่ยง
+        </p>
+      </div>
 
-        <TableBody>
-          {isLoading ? (
-            <RowLoading colSpan={8} />
-          ) : error ? (
-            <RowError colSpan={8} />
-          ) : parents.length === 0 ? (
-            <RowEmpty colSpan={8} />
-          ) : (
-            parents.map((r) => (
-              <TableRow
-                key={r.id}
-                onDragOver={handleDragOver}
-                onDrop={(e) => handleDropOnRow(e, r.id)}
-                className={cn(
-                  draggingId === r.id && "opacity-60",
-                  "cursor-default select-none"
-                )}
+      <div className="rounded-xl border overflow-hidden">
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+        <Table>
+          <TableHeader className="sticky top-0 z-10 bg-muted/50">
+            <TableRow>
+              <TableHead className="w-[120px] text-center">ลำดับ</TableHead>
+              <TableHead>หน่วยงาน</TableHead>
+              <TableHead className="align-middle !whitespace-normal break-words leading-snug">
+                <span className="block max-w-[18rem] md:max-w-[32rem]">
+                  {DYNAMIC_HEAD[tab]}
+                </span>
+              </TableHead>
+              <TableHead className="w-[120px]">คะแนนประเมิน</TableHead>
+              <TableHead className="w-[120px]">เกรด</TableHead>
+              <TableHead className="w-[220px]">เหตุผล</TableHead>
+              <TableHead className="w-[100px]">แก้ไข</TableHead>
+            </TableRow>
+          </TableHeader>
+
+          <TableBody>
+            {isLoading ? (
+              <RowLoading colSpan={8} />
+            ) : error ? (
+              <RowError colSpan={8} />
+            ) : parents.length === 0 ? (
+              <RowEmpty colSpan={8} />
+            ) : (
+              <SortableContext
+                items={parents.map((item) => item.id)}
+                strategy={verticalListSortingStrategy}
               >
-                <TableCell className="text-center">
-                  <button
-                    aria-label="ลากเพื่อจัดลำดับ"
-                    draggable
-                    onDragStart={(e) => handleDragStart(e, r.id)}
-                    className="h-7 w-7 inline-flex items-center justify-center rounded hover:bg-muted cursor-grab active:cursor-grabbing"
-                    title="ลากเพื่อจัดลำดับ"
-                  >
-                    <GripVertical className="h-4 w-4 text-muted-foreground" />
-                  </button>
-                </TableCell>
-
-                <TableCell className="font-mono text-xs md:text-sm">
-                  {r.index}
-                </TableCell>
-                <TableCell className="whitespace-nowrap">{r.unit}</TableCell>
-                <TableCell className="text-muted-foreground align-top !whitespace-normal break-words">
-                  {topicByTab(r, tab)}
-                </TableCell>
-                <TableCell className="font-medium">{r.score ?? "-"}</TableCell>
-                <TableCell>
-                  <GradeBadge grade={r.grade} />
-                </TableCell>
-
-                {/* คอลัมน์เหตุผล: ถ้าไม่มีให้แสดง "-" */}
-                <TableCell className="text-muted-foreground align-top !whitespace-normal break-words">
-                  {reasonById[r.id]?.trim() ? reasonById[r.id] : "-"}
-                </TableCell>
-
-                {/* คอลัมน์แก้ไข */}
-                <TableCell className="text-center">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleEditReason(r.id)}
-                    className="h-8 px-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50"
-                  >
-                    แก้ไข
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))
-          )}
-        </TableBody>
-      </Table>
+                {parents.map((row) => (
+                  <SortableRow
+                    key={row.id}
+                    row={row}
+                    tab={tab}
+                    reasonById={reasonById}
+                    onEditReason={handleEditReason}
+                  />
+                ))}
+              </SortableContext>
+            )}
+          </TableBody>
+        </Table>
+        </DndContext>
+      </div>
 
       {/* Dialog สำหรับแก้ไขเหตุผล */}
       <ChangeOrderReasonDialog

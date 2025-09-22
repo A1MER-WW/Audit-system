@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -81,11 +82,18 @@ export default function RiskSubmitConfirmDialog({
               </Button>
               <Button
                 type="button"
-                className="h-12 w-full rounded-xl bg-indigo-600 text-[15px] hover:bg-indigo-700"
+                className="h-12 w-full rounded-xl bg-indigo-600 text-[15px] hover:bg-indigo-700 disabled:opacity-50"
                 onClick={onConfirm}
                 disabled={loading}
               >
-                ยืนยัน
+                {loading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    กำลังส่ง...
+                  </>
+                ) : (
+                  "ยืนยัน"
+                )}
               </Button>
             </div>
           </DialogFooter>
