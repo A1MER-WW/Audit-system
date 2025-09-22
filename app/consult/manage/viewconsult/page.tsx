@@ -194,7 +194,7 @@ export default function ViewConsult() {
             <div className='content-left ml-4'>
             <h1 className='text-lg'>อัปโหลดวีดิโอเนื้อหาหรือสื่อรูปภาพที่ต้องการแสดง</h1>
                 <Label className="pt-4" htmlFor="username-1">ประเภทเอกสาร</Label>
-                    <Select>
+                  <Select>
                     <SelectTrigger className="w-[200px]">
                         <SelectValue placeholder="เลือกประเภทเอกสาร" />
                     </SelectTrigger>
