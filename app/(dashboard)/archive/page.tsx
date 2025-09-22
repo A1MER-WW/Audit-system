@@ -2,12 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs"
+import { TabNavigation } from "@/components/tab-navigation"
 import { DataTableDemo } from "@/components/table"
 
 import {
@@ -45,21 +40,19 @@ export default function Archive() {
     localStorage.setItem("archive-active-tab", value)
   }
 
-  return (
-    <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+  const tabs = [
+    { id: "item01", label: "ระบบการวางแผนงานตรวจสอบภายใน" },
+    { id: "item02", label: "ระบบการปฏิบัติงานตรวจสอบ" },
+    { id: "item03", label: "ระบบรายงานผลการตรวจสอบ" },
+    { id: "item04", label: "ระบบการติดตามผลการตรวจสอบ" },
+    { id: "item05", label: "ระบบการให้คำปรึกษา" },
+  ]
 
-      <div className="w-full mt-4 mb-4">
-        <span className="text-lg font-semibold">หมวดหมู่เอกสาร</span>
-        <span className="text-lg font-semibold">(ผู้ตรวจสอบ)</span>
-        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-          <TabsList>
-            <TabsTrigger value="item01">ระบบการวางแผนงานตรวจสอบภายใน</TabsTrigger>
-            <TabsTrigger value="item02">ระบบการปฏิบัติงานตรวจสอบ</TabsTrigger>
-            <TabsTrigger value="item03">ระบบรายงานผลการตรวจสอบ</TabsTrigger>
-            <TabsTrigger value="item04">ระบบการติดตามผลการตรวจสอบ</TabsTrigger>
-            <TabsTrigger value="item05">ระบบการให้คำปรึกษา</TabsTrigger>
-          </TabsList>
-          <TabsContent value="item01" >
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case "item01":
+        return (
+          <div>
             <span className="flex justify-between w-full">
               ระบบการวางแผนงานตรวจสอบภายใน
 
@@ -126,12 +119,38 @@ export default function Archive() {
             </span>
 
             <DataTableDemo />
-          </TabsContent>
-          <TabsContent value="item02">ระบบการปฏิบัติงานตรวจสอบ</TabsContent>
-          <TabsContent value="item03">ระบบรายงานผลการตรวจสอบ</TabsContent>
-          <TabsContent value="item04">ระบบการติดตามผลการตรวจสอบ</TabsContent>
-          <TabsContent value="item05">ระบบการให้คำปรึกษา</TabsContent>
-        </Tabs>
+          </div>
+        )
+      case "item02":
+        return <div>ระบบการปฏิบัติงานตรวจสอบ</div>
+      case "item03":
+        return <div>ระบบรายงานผลการตรวจสอบ</div>
+      case "item04":
+        return <div>ระบบการติดตามผลการตรวจสอบ</div>
+      case "item05":
+        return <div>ระบบการให้คำปรึกษา</div>
+      default:
+        return null
+    }
+  }
+
+  return (
+    <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+      <div className="w-full mt-4 mb-4">
+        <span className="text-lg font-semibold">หมวดหมู่เอกสาร</span>
+        <span className="text-lg font-semibold">(ผู้ตรวจสอบ)</span>
+        
+        <div className="w-full">
+          <TabNavigation 
+            tabs={tabs}
+            activeTab={activeTab}
+            onTabChange={handleTabChange}
+          />
+          
+          <div className="mt-4">
+            {renderTabContent()}
+          </div>
+        </div>
       </div>
     </div>
   )

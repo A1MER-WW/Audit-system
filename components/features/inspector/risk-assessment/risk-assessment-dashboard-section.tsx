@@ -162,7 +162,7 @@ export default function DashboardSection({
     }
 
     // ตรวจสอบว่ามีข้อมูลจริงจาก API หรือไม่
-    if (!data || !data.rowsByTab || Object.values(data.rowsByTab).every(v => !v || v.length === 0)) {
+    if (!data || !data.rowsByTab || Object.values(data.rowsByTab).every((v: any) => !v || (Array.isArray(v) && v.length === 0))) {
       return {
         donut: [],
         stacked: [],
@@ -368,8 +368,8 @@ export default function DashboardSection({
                             outerRadius={110}
                             stroke="#fff"
                             strokeWidth={2}
-                            label={(entry: { value?: string | number }) => {
-                              const value = Number(entry.value) || 0;
+                            label={(props: any) => {
+                              const value = Number(props.value) || 0;
                               const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : "0.0";
                               return `${percentage}%`;
                             }}
@@ -505,8 +505,8 @@ export default function DashboardSection({
                                     outerRadius={110}
                                     stroke="#fff"
                                     strokeWidth={2}
-                                    label={(entry: { value?: string | number }) => {
-                                      const value = Number(entry.value) || 0;
+                                    label={(props: any) => {
+                                      const value = Number(props.value) || 0;
                                       const percentage = compareTotal > 0 ? ((value / compareTotal) * 100).toFixed(1) : "0.0";
                                       return `${percentage}%`;
                                     }}
