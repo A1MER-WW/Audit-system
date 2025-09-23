@@ -9,6 +9,7 @@ export type Document = {
   fileType: string
 }
 
+
 const mockDocuments: Document[] = [
   {
     id: "1",
