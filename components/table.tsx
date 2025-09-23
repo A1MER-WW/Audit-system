@@ -42,6 +42,7 @@ import {
  } from '@ant-design/icons'
 
 import { useDocuments, type Document as DocumentType } from "@/hooks/useDocuments"
+import { useRouter } from "next/navigation"
 
 export const columns: ColumnDef<DocumentType>[] = [
   {
@@ -84,7 +85,9 @@ export const columns: ColumnDef<DocumentType>[] = [
     accessorKey: "documentName",
     header: "ชื่อไฟล์",
     cell: ({ row }) => (
-      <div className="max-w-[300px] truncate">{row.getValue("documentName")}</div>
+      <div className="max-w-[300px] truncate cursor-pointer hover:text-[#3E52B9] hover:underline">
+        {row.getValue("documentName")}
+      </div>
     ),
   },
   {
@@ -141,6 +144,7 @@ export const columns: ColumnDef<DocumentType>[] = [
 ]
 
 export function DataTableDemo() {
+  const router = useRouter();
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     []
@@ -152,6 +156,10 @@ export function DataTableDemo() {
   const [isFilterDialogOpen, setIsFilterDialogOpen] = React.useState<boolean>(false)
   const [selectedYear, setSelectedYear] = React.useState<string>("2568")
   const [filterSelections, setFilterSelections] = React.useState<Record<string, boolean>>({})
+
+  const handleRowClick = (documentId: string) => {
+    router.push(`/documents/${documentId}`);
+  };
 
   // Filter options
   const filterOptions = {
@@ -446,6 +454,8 @@ export function DataTableDemo() {
                 <TableRow
                   key={row.id}
                   data-state={row.getIsSelected() && "selected"}
+                  className="cursor-pointer hover:bg-gray-50"
+                  onClick={() => handleRowClick(row.original.id)}
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>

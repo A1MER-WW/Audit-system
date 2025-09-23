@@ -120,3 +120,17 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Prevent hydration mismatches from browser extensions */
+@layer utilities {
+  .prevent-hydration-mismatch {
+    /* Hide browser extension attributes */
+    [fdprocessedid],
+    [data-lastpass-icon-root],
+    [data-dashlane-rid],
+    [data-1p-ignore],
+    [data-onepassword-ignore] {
+      position: relative !important;
+    }
+  }
+}
