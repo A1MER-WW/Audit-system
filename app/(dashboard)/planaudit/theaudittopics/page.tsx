@@ -207,9 +207,9 @@ export default function TheAuditTopicsPage() {
       </div>
 
       {/* Comparison Tables with Transfer Buttons */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 sm:gap-6 items-start">
+      <div className="flex flex-wrap gap-2 items-start w-full">
         {/* Year 2568 Table */}
-        <Card className="lg:col-span-2">
+        <Card className="flex-1 min-w-[400px] w-full">
           <CardHeader>
             <CardTitle className="text-base sm:text-lg flex items-center gap-2">
               ปีงบประมาณ 2568
@@ -247,32 +247,32 @@ export default function TheAuditTopicsPage() {
         </Card>
 
         {/* Transfer Buttons */}
-        <div className="lg:col-span-1 flex flex-col items-center justify-center gap-1  border">
+        <div className="flex flex-col items-center justify-center gap-3 p-4 bg-gray-50 rounded-lg border border-gray-200 min-h-[200px] min-w-[80px]">
           <Button
             onClick={moveToRight}
             disabled={Object.keys(checkedItems2568).length === 0}
-            className="bg-[#3E52B9] hover:bg-[#2A3A8F] text-white p-1 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+            className="bg-[#3E52B9] hover:bg-[#2A3A8F] text-white p-3 rounded disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg transition-all"
             size="sm"
           >
-            <ChevronRight className="w-4 h-4" />
+            <ChevronRight className="w-5 h-5" />
           </Button>
           
-          <div className="text-xs text-gray-500 text-center">
-            ย้าย
+          <div className="text-xs text-gray-600 text-center font-medium px-2 py-1 bg-white rounded-md border">
+            ย้ายข้อมูล
           </div>
           
           <Button
             onClick={moveToLeft}
             disabled={Object.keys(checkedItems2569).length === 0}
-            className="bg-[#3E52B9] hover:bg-[#2A3A8F] text-white p-1 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+            className="bg-[#3E52B9] hover:bg-[#2A3A8F] text-white p-3 rounded disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg transition-all"
             size="sm"
           >
-            <ChevronLeft className="w-4 h-4" />
+            <ChevronLeft className="w-5 h-5" />
           </Button>
         </div>
 
         {/* Year 2569 Table */}
-        <Card className="lg:col-span-2">
+        <Card className="flex-1 min-w-[400px] w-full">
           <CardHeader>
             <CardTitle className="text-base sm:text-lg flex items-center gap-2">
               ปีงบประมาณ 2569
