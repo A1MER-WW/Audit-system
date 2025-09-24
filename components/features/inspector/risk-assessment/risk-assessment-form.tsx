@@ -806,7 +806,7 @@ export default function RiskAssessmentFormPage({ id }: { id: string }) {
           size="icon"
           className="rounded-full"
           aria-label="ย้อนกลับ"
-          onClick={() => handleNavigateWithSave("/risk-assessment")}
+          onClick={() => handleNavigateWithSave("/risk-evaluation")}
         >
           <ArrowLeft className="h-5 w-5" />
         </Button>

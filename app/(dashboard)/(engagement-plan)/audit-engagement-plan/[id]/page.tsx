@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 ;
 import { Progress } from "@/components/ui/progress";
 import { 
@@ -46,22 +47,29 @@ const steps = [
     id: 2,
     title: "แผนการปฏิบัติงานตรวจสอบ (Engagement Plan)",
     description: "จัดทำแผนการปฏิบัติงานตรวจสอบที่ครอบคลุมวัตถุประสงค์ ขอบเขต และวิธีการตรวจสอบ",
-    status: "in-progress",
+    status: "completed",
     url: "/step-2-engagement-plan"
   },
   {
     id: 3,
     title: "Audit Program",
     description: "กำหนดขั้นตอนการตรวจสอบโดยละเอียด วิธีการเก็บรวบรวมหลักฐาน และแผนการทดสอบ",
-    status: "pending",
+    status: "completed",
     url: "/step-3-audit-program"
   },
   {
     id: 4,
     title: "วิธีการสรุปผลการตรวจสอบ",
     description: "กำหนดรูปแบบและวิธีการในการสรุปผลการตรวจสอบ การรายงาน และข้อเสนอแนะ",
-    status: "pending",
+    status: "completed",
     url: "/step-4-audit-reporting"
+  },
+  {
+    id: 5,
+    title: "สรุปผลการดำเนินงาน",
+    description: "แสดงสรุปผลรวมจากทุกขั้นตอนของการจัดทำแผนการปฏิบัติงานตรวจสอบ",
+    status: "completed",
+    url: "/summary"
   }
 ];
 
@@ -148,7 +156,7 @@ export default function AuditEngagementPlanDetailPage() {
                   <span className="text-sm text-gray-600">{completedSteps}/{steps.length} ขั้นตอน</span>
                 </div>
                 <Progress value={progressPercentage} className="w-full" />
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                   {steps.map((step) => (
                     <div key={step.id} className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
                       {getStepIcon(step.status)}
@@ -159,6 +167,24 @@ export default function AuditEngagementPlanDetailPage() {
                     </div>
                   ))}
                 </div>
+                
+                {/* แสดงปุ่มสรุปผลเมื่อทุก step เสร็จสิ้น */}
+                {completedSteps === steps.length && (
+                  <div className="mt-6 pt-4 border-t">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle className="h-5 w-5 text-green-600" />
+                        <span className="text-sm font-medium text-green-600">แผนการปฏิบัติงานเสร็จสมบูรณ์</span>
+                      </div>
+                      <Link href={`/audit-engagement-plan/${id}/summary`}>
+                        <Button className="bg-green-600 hover:bg-green-700 text-white">
+                          <FileText className="h-4 w-4 mr-2" />
+                          ดูสรุปผลการดำเนินงาน
+                        </Button>
+                      </Link>
+                    </div>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>

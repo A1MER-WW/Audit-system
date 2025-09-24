@@ -1,218 +1,125 @@
 "use client";
 
 import React, { useState } from "react";
-import { useParams } from "next/navigation";
+import { Dialog, DialogTrigger } from "@/components/ui/dialog";
+import { PersonSelectionDialog } from "@/components/features/engagement-plan/popup";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { 
-  ArrowLeft,
-  ArrowRight,
-  FileText,
-  CheckSquare,
-  Clock,
-  User,
-  Save,
-  Eye,
-  Plus,
-  Edit,
-  Trash2
-} from "lucide-react";
+import { ArrowRight } from "lucide-react";
+import { getProgram } from "@/lib/mock-engagement-plan-programs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader,
-  TableRow
-} from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-
-// Mock data for audit program
-const mockAuditProgram = [
-  {
-    id: 1,
-    objective: "ตรวจสอบกระบวนการวางแผนโครงการ",
-    procedures: [
-      "ทบทวนเอกสารแผนโครงการและเปรียบเทียบกับมาตรฐาน",
-      "สัมภาษณ์ผู้รับผิดชอบการวางแผน",
-      "ตรวจสอบการอนุมัติแผนโครงการ"
-    ],
-    evidence: "เอกสารแผนโครงการ, รายงานการประชุม, หนังสืออนุมัติ",
-    sampleSize: "100% ของโครงการที่มีมูลค่าเกิน 10 ล้านบาท",
-    responsible: "นักตรวจสอบอาวุโส",
-    estimatedHours: 16,
-    priority: "สูง",
-    status: "กำลังดำเนินการ"
-  },
-  {
-    id: 2,
-    objective: "ตรวจสอบการจัดหาพัสดุและการจ้างงาน",
-    procedures: [
-      "ตรวจสอบการปฏิบัติตามระเบียบการจัดซื้อจัดจ้าง",
-      "ทดสอบการควบคุมการอนุมัติการซื้อ",
-      "ตรวจสอบเอกสารประกวดราคา"
-    ],
-    evidence: "เอกสารการจัดซื้อจัดจ้าง, ใบเสนอราคา, สัญญา",
-    sampleSize: "ตัวอย่าง 30 รายการจากทั้งหมด 150 รายการ",
-    responsible: "นักตรวจสอบ",
-    estimatedHours: 24,
-    priority: "สูง",
-    status: "รอดำเนินการ"
-  },
-  {
-    id: 3,
-    objective: "ประเมินการบริหารงบประมาณ",
-    procedures: [
-      "วิเคราะห์การใช้งบประมาณเปรียบเทียบกับแผน",
-      "ตรวจสอบการโอนงบประมาณ",
-      "ทดสอบการควบคุมการเบิกจ่าย"
-    ],
-    evidence: "รายงานการใช้งบประมาณ, เอกสารการโอนงบ, ใบเบิกจ่าย",
-    sampleSize: "ทุกรายการที่มีการโอนงบเกิน 5%",
-    responsible: "นักตรวจสอบการเงิน",
-    estimatedHours: 20,
-    priority: "ปานกลาง",
-    status: "รอดำเนินการ"
-  }
-];
-
-const priorityColors = {
-  "สูง": "bg-red-100 text-red-700",
-  "ปานกลาง": "bg-yellow-100 text-yellow-700",
-  "ต่ำ": "bg-green-100 text-green-700"
-};
-
-const statusColors = {
-  "เสร็จสิ้น": "bg-green-100 text-green-700",
-  "กำลังดำเนินการ": "bg-blue-100 text-blue-700",
-  "รอดำเนินการ": "bg-gray-100 text-gray-700",
-  "ล่าช้า": "bg-red-100 text-red-700"
-};
+import { useEngagementPlan } from "@/hooks/useEngagementPlan";
 
 export default function Step3AuditProgramPage() {
   const params = useParams();
   const id = params?.id as string;
-  
-  const [auditPrograms, setAuditPrograms] = useState(mockAuditProgram);
-  const [selectedProgram, setSelectedProgram] = useState<typeof mockAuditProgram[0] | null>(null);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
+  const router = useRouter();
+  const { state, dispatch } = useEngagementPlan();
 
-  const [formData, setFormData] = useState({
-    objective: "",
-    procedures: [""],
-    evidence: "",
-    sampleSize: "",
-    responsible: "",
-    estimatedHours: 0,
-    priority: "ปานกลาง",
-    status: "รอดำเนินการ"
-  });
+  // ดึงข้อมูลจาก engagement plan จริง
+  const engagementPlan = getProgram(parseInt(id));
 
-  const resetForm = () => {
-    setFormData({
-      objective: "",
-      procedures: [""],
-      evidence: "",
-      sampleSize: "",
-      responsible: "",
-      estimatedHours: 0,
-      priority: "ปานกลาง",
-      status: "รอดำเนินการ"
-    });
-  };
-
-  const handleEdit = (program: typeof mockAuditProgram[0]) => {
-    setFormData({
-      objective: program.objective,
-      procedures: program.procedures,
-      evidence: program.evidence,
-      sampleSize: program.sampleSize,
-      responsible: program.responsible,
-      estimatedHours: program.estimatedHours,
-      priority: program.priority,
-      status: program.status
-    });
-    setSelectedProgram(program);
-    setIsEditing(true);
-    setIsDialogOpen(true);
-  };
-
-  const handleAddNew = () => {
-    resetForm();
-    setSelectedProgram(null);
-    setIsEditing(false);
-    setIsDialogOpen(true);
-  };
-
-  const handleSave = () => {
-    if (isEditing && selectedProgram) {
-      setAuditPrograms(auditPrograms.map(program => 
-        program.id === selectedProgram.id 
-          ? { ...program, ...formData }
-          : program
-      ));
-    } else {
-      const newProgram = {
-        id: Math.max(...auditPrograms.map(p => p.id)) + 1,
-        ...formData
+  const mockEngagementPlan = engagementPlan
+    ? {
+        title: engagementPlan.auditTopics.auditTopic,
+        fiscalYear: engagementPlan.fiscalYear.toString(),
+        department: engagementPlan.auditTopics.departments
+          .map((d: any) => d.departmentName)
+          .join(", "),
+        status:
+          engagementPlan.status === "AUDITOR_ASSESSING"
+            ? "กำลังดำเนินการประเมิน"
+            : engagementPlan.status === "PENDING"
+            ? "รอดำเนินการ"
+            : engagementPlan.status === "COMPLETED"
+            ? "เสร็จสิ้น"
+            : engagementPlan.status,
+      }
+    : {
+        title: "ไม่พบข้อมูลแผนการปฏิบัติงาน",
+        fiscalYear: "2568",
+        department: "ไม่ระบุ",
+        status: "ไม่ระบุ",
       };
-      setAuditPrograms([...auditPrograms, newProgram]);
-    }
-    setIsDialogOpen(false);
-    resetForm();
+
+  // ดึงวัตถุประสงค์จาก step 2
+  const objectives = state.step2?.objectives || [];
+  const [expanded, setExpanded] = useState<number | null>(null);
+  const [auditData, setAuditData] = useState(
+    objectives.map(() => ({
+      method: "",
+      analysis: "",
+      storage: "",
+      source: "",
+      responsible: "",
+    }))
+  );
+
+  // State สำหรับผู้รับผิดชอบแต่ละ field
+  const [preparer, setPreparer] = useState<string>(
+    "นางสาวกุสุมา สุขสอน (ผู้ตรวจสอบภายใน)"
+  );
+  const [reviewer, setReviewer] = useState<string>(
+    "นางสาวจิรวรรณ สมัคร (หัวหน้ากลุ่มตรวจสอบภายใน)"
+  );
+  const [approver, setApprover] = useState<string>(
+    "นางสาวจิรวรรณ สมัคร (หัวหน้ากลุ่มตรวจสอบภายใน)"
+  );
+
+  // State สำหรับ popup dialog
+  const [isPersonDialogOpen, setIsPersonDialogOpen] = useState<boolean>(false);
+  const [currentField, setCurrentField] = useState<string | null>(null);
+  const [selectedPerson, setSelectedPerson] = useState<string>("");
+  const [searchTerm, setSearchTerm] = useState<string>("");
+
+  // Function to handle next step - save data to context
+  const handleNextStep = () => {
+    // Save Step 3 data to context - map auditData to include objectives
+    const auditPrograms = auditData.map((data, index) => ({
+      objective: objectives[index] || `วัตถุประสงค์ที่ ${index + 1}`,
+      method: data.method,
+      analysis: data.analysis,
+      storage: data.storage,
+      source: data.source,
+      responsible: data.responsible,
+    }));
+
+    dispatch({
+      type: "UPDATE_STEP3",
+      payload: {
+        auditPrograms,
+      }
+    });
+    
+    // Navigate to Step 4
+    router.push(`/audit-engagement-plan/${id}/step-4-audit-reporting`);
   };
 
-  const handleDelete = (programId: number) => {
-    setAuditPrograms(auditPrograms.filter(p => p.id !== programId));
+  const handleOpenPersonDialog = (field: string) => {
+    setCurrentField(field);
+    setIsPersonDialogOpen(true);
+    setSearchTerm("");
+    if (field === "preparer") setSelectedPerson(preparer);
+    if (field === "reviewer") setSelectedPerson(reviewer);
+    if (field === "approver") setSelectedPerson(approver);
   };
 
-  const addProcedure = () => {
-    setFormData({
-      ...formData,
-      procedures: [...formData.procedures, ""]
+
+
+  const handleExpand = (idx: number) => {
+    setExpanded(expanded === idx ? null : idx);
+  };
+
+  const handleChange = (idx: number, field: string, value: string) => {
+    setAuditData((prev) => {
+      const next = [...prev];
+      next[idx] = { ...next[idx], [field]: value };
+      return next;
     });
   };
-
-  const updateProcedure = (index: number, value: string) => {
-    const newProcedures = [...formData.procedures];
-    newProcedures[index] = value;
-    setFormData({
-      ...formData,
-      procedures: newProcedures
-    });
-  };
-
-  const removeProcedure = (index: number) => {
-    setFormData({
-      ...formData,
-      procedures: formData.procedures.filter((_, i) => i !== index)
-    });
-  };
-
-  const totalHours = auditPrograms.reduce((sum, program) => sum + program.estimatedHours, 0);
-  const completedPrograms = auditPrograms.filter(p => p.status === "เสร็จสิ้น").length;
-  const inProgressPrograms = auditPrograms.filter(p => p.status === "กำลังดำเนินการ").length;
 
   return (
     <div className="px-6 py-4">
@@ -220,433 +127,369 @@ export default function Step3AuditProgramPage() {
       <div className="mb-6">
         <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
           <Link href="/audit-engagement-plan" className="hover:text-blue-600">
-            การจัดทำ Audit Program / แผนการปฏิบัติงาน
+            การจัดทำ Audit Program / แผนการปฏิบัติงาน (Engagement plan)
           </Link>
           <ArrowRight className="h-4 w-4" />
-          <Link href={`/audit-engagement-plan/${id}`} className="hover:text-blue-600">
-            รายละเอียดแผน #{id}
-          </Link>
-          <ArrowRight className="h-4 w-4" />
-          <span>ขั้นตอนที่ 3</span>
+          <span>แผนการปฏิบัติงานตรวจสอบ</span>
         </div>
-        <div className="flex items-center justify-between">
+
+        <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold text-gray-900 mb-2">
-              ขั้นตอนที่ 3: Audit Program
+              แผนการปฏิบัติงานตรวจสอบ (Audit Program)
             </h1>
-            <p className="text-gray-600">
-              กำหนดขั้นตอนการตรวจสอบโดยละเอียด วิธีการเก็บรวบรวมหลักฐาน และแผนการทดสอบ
-            </p>
+            <div className="text-gray-600">
+              ปีงบประมาณ พ.ศ. {mockEngagementPlan.fiscalYear}
+              <span className="mx-2">•</span>
+              {mockEngagementPlan.department}
+            </div>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline">
-              <Eye className="h-4 w-4 mr-2" />
-              ดูตัวอย่าง
+            <Button variant="outline" size="sm">
+              ปริ้นท์
             </Button>
-            <Button>
-              <Save className="h-4 w-4 mr-2" />
-              บันทึก
+            <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
+              บันทึกแผนการปฏิบัติงานตรวจสอบ
             </Button>
+          </div>
+        </div>
+
+        {/* แผนการปฏิบัติงาน Card */}
+        <Card className="mb-6">
+          <CardHeader className="pb-4">
+            <CardTitle className="text-lg">
+              {mockEngagementPlan.title}
+            </CardTitle>
+          </CardHeader>
+
+          <CardContent className="space-y-5">
+            {/* หน่วยรับตรวจ */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                หน่วยรับตรวจ
+              </label>
+              <Input placeholder="-" className="w-full" />
+            </div>
+
+            {/* ประเภทของการตรวจ */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                ประเภทของการตรวจ
+              </label>
+              <Input placeholder="-" className="w-full" />
+            </div>
+
+            {/* ผู้จัดทำ */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                ผู้จัดทำ
+              </label>
+              <div className="flex items-center gap-3">
+                <Input
+                  value={preparer}
+                  onChange={(e) => setPreparer(e.target.value)}
+                  placeholder="-"
+                  className="w-full"
+                />
+                <Dialog
+                  open={isPersonDialogOpen && currentField === "preparer"}
+                  onOpenChange={setIsPersonDialogOpen}
+                >
+                  <DialogTrigger asChild>
+                    <Button
+                      type="button"
+                      className="bg-[#3E52B9] hover:bg-[#3346a6]"
+                      onClick={() => handleOpenPersonDialog("preparer")}
+                    >
+                      เลือกผู้รับผิดชอบ
+                    </Button>
+                  </DialogTrigger>
+                </Dialog>
+              </div>
+            </div>
+
+            {/* ผู้สอบทาน */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                ผู้สอบทาน
+              </label>
+              <div className="flex items-center gap-3">
+                <Input
+                  value={reviewer}
+                  onChange={(e) => setReviewer(e.target.value)}
+                  placeholder="-"
+                  className="w-full"
+                />
+                <Dialog
+                  open={isPersonDialogOpen && currentField === "reviewer"}
+                  onOpenChange={setIsPersonDialogOpen}
+                >
+                  <DialogTrigger asChild>
+                    <Button
+                      type="button"
+                      className="bg-[#3E52B9] hover:bg-[#3346a6]"
+                      onClick={() => handleOpenPersonDialog("reviewer")}
+                    >
+                      เลือกผู้รับผิดชอบ
+                    </Button>
+                  </DialogTrigger>
+                </Dialog>
+              </div>
+            </div>
+
+            {/* ผู้อนุมัติ */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                ผู้อนุมัติ
+              </label>
+              <div className="flex items-center gap-3">
+                <Input
+                  value={approver}
+                  onChange={(e) => setApprover(e.target.value)}
+                  placeholder="-"
+                  className="w-full"
+                />
+                <Dialog
+                  open={isPersonDialogOpen && currentField === "approver"}
+                  onOpenChange={setIsPersonDialogOpen}
+                >
+                  <DialogTrigger asChild>
+                    <Button
+                      type="button"
+                      className="bg-[#3E52B9] hover:bg-[#3346a6]"
+                      onClick={() => handleOpenPersonDialog("approver")}
+                    >
+                      เลือกผู้รับผิดชอบ
+                    </Button>
+                  </DialogTrigger>
+                </Dialog>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Step Navigation */}
+        <div className="mb-6">
+          <div className="flex items-center space-x-4 overflow-x-auto">
+            <div className="flex items-center">
+              <div className="flex items-center justify-center w-8 h-8 bg-gray-200 text-gray-600 rounded-full text-sm font-medium">
+                1
+              </div>
+              <span className="ml-2 text-sm text-gray-600 whitespace-nowrap">
+                การประเมินความเสี่ยงระดับกิจกรรม
+              </span>
+            </div>
+            <div className="flex items-center">
+              <div className="w-4 h-0.5 bg-gray-300"></div>
+              <div className="flex items-center justify-center w-8 h-8 bg-gray-200 text-gray-600 rounded-full text-sm font-medium">
+                2
+              </div>
+              <span className="ml-2 text-sm text-gray-600 whitespace-nowrap">
+                แผนการปฏิบัติงาน (Engagement Plan)
+              </span>
+            </div>
+            <div className="flex items-center">
+              <div className="w-4 h-0.5 bg-gray-300"></div>
+              <div className="flex items-center justify-center w-8 h-8 bg-blue-600 text-white rounded-full text-sm font-medium">
+                3
+              </div>
+              <span className="ml-2 text-sm font-medium text-blue-600 whitespace-nowrap">
+                Audit Program
+              </span>
+            </div>
+            <div className="flex items-center">
+              <div className="w-4 h-0.5 bg-gray-300"></div>
+              <div className="flex items-center justify-center w-8 h-8 bg-gray-200 text-gray-600 rounded-full text-sm font-medium">
+                4
+              </div>
+              <span className="ml-2 text-sm text-gray-600 whitespace-nowrap">
+                การรายงานผลการตรวจสอบ (Audit Reporting)
+              </span>
+            </div>
+            <div className="flex items-center">
+              <div className="w-4 h-0.5 bg-gray-300"></div>
+              <div className="flex items-center justify-center w-8 h-8 bg-gray-200 text-gray-600 rounded-full text-sm font-medium">
+                5
+              </div>
+              <span className="ml-2 text-sm text-gray-600 whitespace-nowrap">
+                สรุปผลการดำเนินงาน
+              </span>
+            </div>
           </div>
         </div>
       </div>
 
-      <Tabs defaultValue="program" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="program">รายการ Audit Program</TabsTrigger>
-          <TabsTrigger value="schedule">ตารางเวลา</TabsTrigger>
-          <TabsTrigger value="summary">สรุปรวม</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="program" className="space-y-6">
-          {/* Summary Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-blue-100 rounded-lg">
-                    <FileText className="h-5 w-5 text-blue-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">ทั้งหมด</p>
-                    <p className="text-2xl font-bold text-gray-900">{auditPrograms.length}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-green-100 rounded-lg">
-                    <CheckSquare className="h-5 w-5 text-green-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">เสร็จสิ้น</p>
-                    <p className="text-2xl font-bold text-gray-900">{completedPrograms}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-yellow-100 rounded-lg">
-                    <Clock className="h-5 w-5 text-yellow-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">กำลังดำเนินการ</p>
-                    <p className="text-2xl font-bold text-gray-900">{inProgressPrograms}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-purple-100 rounded-lg">
-                    <Clock className="h-5 w-5 text-purple-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">รวมชั่วโมง</p>
-                    <p className="text-2xl font-bold text-gray-900">{totalHours}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Audit Program Table */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2">
-                  <CheckSquare className="h-5 w-5" />
-                  รายการ Audit Program
-                </CardTitle>
-                <Button onClick={handleAddNew}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  เพิ่มรายการ
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-12">#</TableHead>
-                      <TableHead>วัตถุประสงค์</TableHead>
-                      <TableHead>วิธีการตรวจ��อบ</TableHead>
-                      <TableHead>หลักฐาน</TableHead>
-                      <TableHead>ขนาดตัวอย่าง</TableHead>
-                      <TableHead>ผู้รับผิดชอบ</TableHead>
-                      <TableHead>ชั่วโมง</TableHead>
-                      <TableHead>ความสำคัญ</TableHead>
-                      <TableHead>สถานะ</TableHead>
-                      <TableHead className="w-24">การดำเนินการ</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {auditPrograms.map((program, index) => (
-                      <TableRow key={program.id}>
-                        <TableCell>{index + 1}</TableCell>
-                        <TableCell className="max-w-[200px]">
-                          <div className="font-medium">{program.objective}</div>
-                        </TableCell>
-                        <TableCell className="max-w-[250px]">
-                          <ul className="text-sm space-y-1">
-                            {program.procedures.map((procedure, idx) => (
-                              <li key={idx} className="flex items-start gap-1">
-                                <span className="text-gray-400 mt-1">•</span>
-                                <span>{procedure}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </TableCell>
-                        <TableCell className="max-w-[200px] text-sm">
-                          {program.evidence}
-                        </TableCell>
-                        <TableCell className="max-w-[150px] text-sm">
-                          {program.sampleSize}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1 text-sm">
-                            <User className="h-3 w-3" />
-                            {program.responsible}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-center">
-                          {program.estimatedHours}
-                        </TableCell>
-                        <TableCell>
-                          <Badge className={priorityColors[program.priority as keyof typeof priorityColors]}>
-                            {program.priority}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge className={statusColors[program.status as keyof typeof statusColors]}>
-                            {program.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex gap-1">
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => handleEdit(program)}
-                            >
-                              <Edit className="h-3 w-3" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => handleDelete(program.id)}
-                              className="text-red-600 hover:text-red-800"
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="schedule" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>ตารางเวลาการดำเนินงาน</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center text-gray-500 py-8">
-                <Clock className="h-12 w-12 mx-auto mb-3" />
-                <p>ตารางเวลาจะแสดงที่นี่</p>
-                <p className="text-sm">หลังจากที่มีการกำหนด Audit Program ครบถ้วนแล้ว</p>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="summary" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>สรุปรวม Audit Program</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <h3 className="font-semibold mb-3">สถิติการดำเนินงาน</h3>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span>จำนวนรายการทั้งหมด:</span>
-                      <span className="font-medium">{auditPrograms.length}</span>
+      {/* ส่วนล่าง: Audit Program Objectives */}
+      <div className="space-y-6 mt-8">
+        <Card>
+          <CardHeader>
+            <CardTitle>วัตถุประสงค์การตรวจสอบ</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {objectives.length > 0 ? (
+                objectives.map((objective, idx) => (
+                <div key={idx} className="border rounded-lg">
+                  <button
+                    type="button"
+                    className="w-full text-left px-4 py-3 bg-gray-50 hover:bg-gray-100 flex justify-between items-center"
+                    onClick={() => handleExpand(idx)}
+                  >
+                    <span className="font-medium text-gray-800">
+                      {objective}
+                    </span>
+                    <span>{expanded === idx ? "▲" : "▼"}</span>
+                  </button>
+                  {expanded === idx && (
+                    <div className="p-4 space-y-4 bg-white">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          วิธีการเพื่อให้ได้มาซึ่งข้อมูล
+                        </label>
+                        <Textarea
+                          value={auditData[idx].method}
+                          onChange={(e) =>
+                            handleChange(idx, "method", e.target.value)
+                          }
+                          placeholder="ระบุวิธีการ..."
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          การวิเคราะห์/ประเมินผล
+                        </label>
+                        <Textarea
+                          value={auditData[idx].analysis}
+                          onChange={(e) =>
+                            handleChange(idx, "analysis", e.target.value)
+                          }
+                          placeholder="ระบุการวิเคราะห์/ประเมินผล..."
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          การจัดเก็บข้อมูล
+                        </label>
+                        <Textarea
+                          value={auditData[idx].storage}
+                          onChange={(e) =>
+                            handleChange(idx, "storage", e.target.value)
+                          }
+                          placeholder="ระบุการจัดเก็บข้อมูล..."
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          แหล่งข้อมูล/เอกสารที่ใช้ในการตรวจสอบ
+                        </label>
+                        <Textarea
+                          value={auditData[idx].source}
+                          onChange={(e) =>
+                            handleChange(idx, "source", e.target.value)
+                          }
+                          placeholder="ระบุแหล่งข้อมูล/เอกสาร..."
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          ผู้รับผิดชอบ
+                        </label>
+                        <div className="flex items-center gap-3">
+                          <Input
+                            value={auditData[idx].responsible}
+                            placeholder="ระบุผู้รับผิดชอบ..."
+                            className="w-full bg-gray-50"
+                            readOnly
+                          />
+                          <Dialog
+                            open={
+                              isPersonDialogOpen &&
+                              currentField === `responsible-${idx}`
+                            }
+                            onOpenChange={setIsPersonDialogOpen}
+                          >
+                            <DialogTrigger asChild>
+                              <Button
+                                type="button"
+                                className="bg-[#3E52B9] hover:bg-[#3346a6]"
+                                onClick={() => {
+                                  setCurrentField(`responsible-${idx}`);
+                                  setIsPersonDialogOpen(true);
+                                  setSearchTerm("");
+                                  setSelectedPerson(auditData[idx].responsible);
+                                }}
+                              >
+                                เลือกผู้รับผิดชอบ
+                              </Button>
+                            </DialogTrigger>
+                          </Dialog>
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex justify-between">
-                      <span>รวมชั่วโมงการทำงาน:</span>
-                      <span className="font-medium">{totalHours} ชั่วโมง</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>ความสำคัญสูง:</span>
-                      <span className="font-medium">
-                        {auditPrograms.filter(p => p.priority === "สูง").length} รายการ
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>ความคืบหน้า:</span>
-                      <span className="font-medium">
-                        {Math.round((completedPrograms / auditPrograms.length) * 100)}%
-                      </span>
-                    </div>
-                  </div>
+                  )}
                 </div>
-                
-                <div>
-                  <h3 className="font-semibold mb-3">หมายเหตุ</h3>
-                  <div className="text-sm text-gray-600 space-y-2">
-                    <p>• รายการที่มีความสำคัญสูงควรดำเนินการก่อน</p>
-                    <p>• ควรมีการทบทวนและปรับปรุง Audit Program ตามความเหมาะสม</p>
-                    <p>• เวลาที่ประมาณการอาจเปลี่ยนแปลงตามความซับซ้อนที่เพิ่มขึ้น</p>
+              ))
+              ) : (
+                <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-lg">
+                  <div className="mb-3">
+                    <svg className="h-12 w-12 mx-auto text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                    </svg>
                   </div>
+                  <p className="font-medium">ไม่พบวัตถุประสงค์การตรวจสอบ</p>
+                  <p className="text-sm mt-1">กรุณากรอกวัตถุประสงค์ในขั้นตอนที่ 2 ก่อน</p>
+                  <Link href={`/audit-engagement-plan/${id}/step-2-engagement-plan`}>
+                    <Button className="mt-3" variant="outline">
+                      ไปขั้นตอนที่ 2
+                    </Button>
+                  </Link>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-
-      {/* Dialog for Add/Edit */}
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>
-              {isEditing ? "แก้ไข Audit Program" : "เพิ่ม Audit Program ใหม่"}
-            </DialogTitle>
-            <DialogDescription>
-              กำหนดรายละเอียดของ Audit Program
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="objective">วัตถุประสงค์</Label>
-              <Input
-                id="objective"
-                value={formData.objective}
-                onChange={(e) => setFormData({...formData, objective: e.target.value})}
-                placeholder="ระบุวัตถุประสงค์การตรวจสอบ"
-              />
+              )}
             </div>
-
-            <div>
-              <Label>วิธีการตรวจสอบ</Label>
-              <div className="space-y-2">
-                {formData.procedures.map((procedure, index) => (
-                  <div key={index} className="flex gap-2">
-                    <Input
-                      value={procedure}
-                      onChange={(e) => updateProcedure(index, e.target.value)}
-                      placeholder={`วิธีการตรวจสอบที่ ${index + 1}`}
-                    />
-                    {formData.procedures.length > 1 && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => removeProcedure(index)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                ))}
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={addProcedure}
-                  className="w-full"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  เพิ่มวิธีการตรวจสอบ
-                </Button>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="evidence">หลักฐานการตรวจสอบ</Label>
-                <Textarea
-                  id="evidence"
-                  value={formData.evidence}
-                  onChange={(e) => setFormData({...formData, evidence: e.target.value})}
-                  placeholder="ระบุหลักฐานที่ใช้ในการตรวจสอบ"
-                  rows={3}
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="sampleSize">ขนาดตัวอย่าง</Label>
-                <Textarea
-                  id="sampleSize"
-                  value={formData.sampleSize}
-                  onChange={(e) => setFormData({...formData, sampleSize: e.target.value})}
-                  placeholder="ระบุขนาดและวิธีการเลือกตัวอย่าง"
-                  rows={3}
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <Label htmlFor="responsible">ผู้รับผิดชอบ</Label>
-                <Input
-                  id="responsible"
-                  value={formData.responsible}
-                  onChange={(e) => setFormData({...formData, responsible: e.target.value})}
-                  placeholder="ระบุชื่อผู้รับผิดชอบ"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="estimatedHours">ประมาณเวลา (ชั่วโมง)</Label>
-                <Input
-                  id="estimatedHours"
-                  type="number"
-                  value={formData.estimatedHours}
-                  onChange={(e) => setFormData({...formData, estimatedHours: parseInt(e.target.value) || 0})}
-                  placeholder="0"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="priority">ความสำคัญ</Label>
-                <Select
-                  value={formData.priority}
-                  onValueChange={(value) => setFormData({...formData, priority: value})}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="เลือกความสำคัญ" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="สูง">สูง</SelectItem>
-                    <SelectItem value="ปานกลาง">ปานกลาง</SelectItem>
-                    <SelectItem value="ต่ำ">ต่ำ</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div>
-              <Label htmlFor="status">สถานะ</Label>
-              <Select
-                value={formData.status}
-                onValueChange={(value) => setFormData({...formData, status: value})}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="เลือกสถานะ" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="รอดำเนินการ">รอดำเนินการ</SelectItem>
-                  <SelectItem value="กำลังดำเนินการ">กำลังดำเนินการ</SelectItem>
-                  <SelectItem value="เสร็จสิ้น">เสร็จสิ้น</SelectItem>
-                  <SelectItem value="ล่าช้า">ล่าช้า</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-              ยกเลิก
-            </Button>
-            <Button onClick={handleSave}>
-              {isEditing ? "บันทึกการแก้ไข" : "เพิ่มรายการ"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Navigation */}
       <div className="flex justify-between mt-8">
         <Link href={`/audit-engagement-plan/${id}/step-2-engagement-plan`}>
           <Button variant="outline">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            ขั้นตอนก่อนหน้า: แผนการปฏิบัติงาน
+            <span className="mr-2">ขั้นตอนก่อนหน้า: แผนการปฏิบัติงาน</span>
           </Button>
         </Link>
-        <Link href={`/audit-engagement-plan/${id}/step-4-audit-reporting`}>
-          <Button>
-            ขั้นตอนถัดไป: วิธีการสรุปผล
-            <ArrowRight className="h-4 w-4 ml-2" />
-          </Button>
-        </Link>
+        <Button onClick={handleNextStep}>
+          <span className="mr-2">ขั้นตอนถัดไป: การรายงานผลการตรวจสอบ</span>
+        </Button>
       </div>
+      {/* Person Selection Dialog */}
+      <PersonSelectionDialog
+        isOpen={isPersonDialogOpen}
+        onOpenChange={setIsPersonDialogOpen}
+        selectedPerson={selectedPerson}
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
+        onSelectPerson={(personName, personStatus) => {
+          setSelectedPerson(`${personName} (${personStatus})`);
+        }}
+        onConfirmSelection={() => {
+          if (currentField) {
+            if (currentField === "preparer") setPreparer(selectedPerson);
+            else if (currentField === "reviewer") setReviewer(selectedPerson);
+            else if (currentField === "approver") setApprover(selectedPerson);
+            else if (currentField.startsWith("responsible-")) {
+              const idx = parseInt(currentField.split("-")[1], 10);
+              setAuditData((prev) => {
+                const next = [...prev];
+                next[idx] = { ...next[idx], responsible: selectedPerson };
+                return next;
+              });
+            }
+          }
+          setIsPersonDialogOpen(false);
+          setCurrentField(null);
+          setSelectedPerson("");
+        }}
+      />
     </div>
   );
 }

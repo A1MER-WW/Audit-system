@@ -1,19 +1,18 @@
 "use client";
 
-import React, { useState } from "react";
-import { useParams } from "next/navigation";
+import React, { useState, useEffect } from "react";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { useEngagementPlan } from "@/hooks/useEngagementPlan";
 import {
   ArrowLeft,
   ArrowRight,
-  AlertTriangle,
-  Target,
-  List,
+  Settings,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
 import { getProgram } from "@/lib/mock-engagement-plan-programs";
 import {
   Table,
@@ -25,75 +24,31 @@ import {
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+
 import {
   Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
+
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Search } from "lucide-react";
 
-// Mock data for activity risk assessment
-const mockActivityRisks = [
-  {
-    id: 1,
-    activity: "การวางแผนโครงการ",
-    riskDescription: "การวางแผนไม่ครอบคลุมหรือไม่สอดคล้องกับวัตถุประสงค์",
-    probability: "สูง",
-    impact: "สูง",
-    riskLevel: "สูงมาก",
-    controlMeasures: "มีการทบทวนแผนโดยผู้เชี่ยวชาญและคณะกรรมการ",
-    residualRisk: "ปานกลาง",
-  },
-  {
-    id: 2,
-    activity: "การจัดหาพัสดุ",
-    riskDescription: "การจัดซื้อจัดจ้างไม่โปร่งใสหรือไม่เป็นไปตามระเบียบ",
-    probability: "ปานกลาง",
-    impact: "สูง",
-    riskLevel: "สูง",
-    controlMeasures: "มีระบบการควบคุมการจัดซื้อจัดจ้างและการตรวจสอบ",
-    residualRisk: "ต่ำ",
-  },
-  {
-    id: 3,
-    activity: "การบริหารงบประมาณ",
-    riskDescription: "การใช้งงบประมาณเกินกว่าที่อนุมัติหรือไม่มีประสิทธิภาพ",
-    probability: "ต่ำ",
-    impact: "สูง",
-    riskLevel: "ปานกลาง",
-    controlMeasures: "มีระบบการติดตามและควบคุมงบประมาณรายเดือน",
-    residualRisk: "ต่ำ",
-  },
-];
-
-const riskLevels = [
-  { value: "ต่ำ", color: "bg-green-100 text-green-700" },
-  { value: "ปานกลาง", color: "bg-yellow-100 text-yellow-700" },
-  { value: "สูง", color: "bg-orange-100 text-orange-700" },
-  { value: "สูงมาก", color: "bg-red-100 text-red-700" },
-];
+import {
+  availableActivities,
+  riskLevels,
+  type Activity,
+} from "@/lib/mock-activity-data";
+import { 
+  PersonSelectionDialog, 
+  ActivityManagementDialog 
+} from "@/components/features/engagement-plan/popup";
+import TestDataLoader from "../test-data-loader";
 
 export default function Step1ActivityRiskPage() {
   const params = useParams();
   const id = params?.id as string;
+  const router = useRouter();
+  const { state, dispatch } = useEngagementPlan();
 
-  const [editingRisk, setEditingRisk] = useState<number | null>(null);
-  const [formData, setFormData] = useState({
-    activity: "",
-    riskDescription: "",
-    probability: "",
-    impact: "",
-    controlMeasures: "",
-  });
+
 
   // ดึงข้อมูลจาก engagement plan จริง
   const engagementPlan = getProgram(parseInt(id));
@@ -132,9 +87,6 @@ export default function Step1ActivityRiskPage() {
       };
 
   // State สำหรับ text fields ใหม่
-  const [auditTopics, setAuditTopics] = useState("");
-  const [auditType, setAuditType] = useState("");
-  const [auditor, setAuditor] = useState("");
   const [auditedUnit, setAuditedUnit] = useState<string>("");
   const [auditCategory, setAuditCategory] = useState<string>("");
   const [preparer, setPreparer] = useState<string>(
@@ -147,28 +99,72 @@ export default function Step1ActivityRiskPage() {
     "นางสาวจิรวรรณ สมัคร (หัวหน้ากลุ่มตรวจสอบภายใน)"
   );
 
+  // Description state
+  const [description, setDescription] = useState<string>("");
+
   // State สำหรับ popup dialog
   const [isPersonDialogOpen, setIsPersonDialogOpen] = useState<boolean>(false);
-  const [currentField, setCurrentField] = useState<"preparer" | "reviewer" | "approver" | null>(null);
+  const [currentField, setCurrentField] = useState<
+    "preparer" | "reviewer" | "approver" | null
+  >(null);
   const [selectedPerson, setSelectedPerson] = useState<string>("");
   const [searchTerm, setSearchTerm] = useState<string>("");
 
-  // รายชื่อผู้รับผิดชอบ (ตามภาพ)
-  const peopleList = [
-    { id: "1", name: "กคม.", status: "ผู้ตรวจสอบภายใน" },
-    { id: "2", name: "นางสาวจิรรวรรม สมัคร", status: "หัวหน้ากลุ่มตรวจสอบภายใน" },
-    { id: "3", name: "นางสาวจิตติมา สุขสอบ", status: "ผู้ตรวจสอบภายใน" },
-    { id: "4", name: "ภูวดล", status: "ผู้ตรวจสอบภายใน" },
-    { id: "5", name: "รัฐพล", status: "ผู้ตรวจสอบภายใน" },
-  ];
+  // State สำหรับ Activity Management Dialog
+  const [isActivityDialogOpen, setIsActivityDialogOpen] =
+    useState<boolean>(false);
+  const [activitySearchTerm, setActivitySearchTerm] = useState<string>("");
+  const [selectedActivities, setSelectedActivities] = useState<Activity[]>([]);
+  const [tempSelectedActivities, setTempSelectedActivities] = useState<
+    Activity[]
+  >([]);
 
-  const filteredPeople = peopleList.filter(
-    (person) =>
-      person.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      person.status.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Load data from context when component mounts
+  useEffect(() => {
+    if (state.step1) {
+      if (state.step1.basicInfo) {
+        setAuditedUnit(state.step1.basicInfo.auditedUnit || "");
+        setAuditCategory(state.step1.basicInfo.auditCategory || "");
+        setPreparer(state.step1.basicInfo.preparer || "นางสาวกุสุมา สุขสอน (ผู้ตรวจสอบภายใน)");
+        setReviewer(state.step1.basicInfo.reviewer || "นางสาวจิรวรรณ สมัคร (หัวหน้ากลุ่มตรวจสอบภายใน)");
+        setApprover(state.step1.basicInfo.approver || "นางสาวจิรวรรณ สมัคร (หัวหน้ากลุ่มตรวจสอบภายใน)");
+      }
+      setDescription(state.step1.description || "");
+      // Convert context activities to component activities format
+      const contextActivities = state.step1.selectedActivities || [];
+      const convertedActivities = contextActivities.map(activity => ({
+        ...activity,
+        selected: true
+      }));
+      setSelectedActivities(convertedActivities);
+    }
+  }, [state.step1]);
 
-  const handleOpenPersonDialog = (field: "preparer" | "reviewer" | "approver") => {
+  // Function to handle next step - save data to context
+  const handleNextStep = () => {
+    // Save Step 1 data to context
+    dispatch({
+      type: "UPDATE_STEP1",
+      payload: {
+        basicInfo: {
+          auditedUnit,
+          auditCategory,
+          preparer,
+          reviewer,
+          approver,
+        },
+        description: description || "ยังไม่ได้กรอกคำอธิบาย",
+        selectedActivities,
+      }
+    });
+    
+    // Navigate to Step 2
+    router.push(`/audit-engagement-plan/${id}/step-2-engagement-plan`);
+  };
+
+  const handleOpenPersonDialog = (
+    field: "preparer" | "reviewer" | "approver"
+  ) => {
     setCurrentField(field);
     setIsPersonDialogOpen(true);
     setSearchTerm("");
@@ -192,6 +188,47 @@ export default function Step1ActivityRiskPage() {
     setCurrentField(null);
     setSelectedPerson("");
   };
+
+  // Functions for Activity Management
+
+  const handleOpenActivityDialog = () => {
+    // Initialize temp selection with current selected activities
+    setTempSelectedActivities([...selectedActivities]);
+    setIsActivityDialogOpen(true);
+  };
+
+  const handleToggleActivity = (activityId: number) => {
+    const activity = availableActivities.find((a) => a.id === activityId);
+    if (!activity) return;
+
+    if (tempSelectedActivities.find((a) => a.id === activityId)) {
+      // Remove from temp selected
+      setTempSelectedActivities((prev) =>
+        prev.filter((a) => a.id !== activityId)
+      );
+    } else {
+      // Add to temp selected
+      setTempSelectedActivities((prev) => [...prev, activity]);
+    }
+  };
+
+  const handleConfirmActivitySelection = () => {
+    // Apply temp selection to actual selection
+    setSelectedActivities([...tempSelectedActivities]);
+    setIsActivityDialogOpen(false);
+    setActivitySearchTerm("");
+    setTempSelectedActivities([]);
+  };
+
+  const handleCancelActivitySelection = () => {
+    setIsActivityDialogOpen(false);
+    setActivitySearchTerm("");
+    setTempSelectedActivities([]);
+  };
+
+  const removeActivityFromSelected = (activityId: number) => {
+    setSelectedActivities((prev) => prev.filter((a) => a.id !== activityId));
+  };
   const getRiskBadge = (level: string) => {
     const riskLevel = riskLevels.find((r) => r.value === level);
     return (
@@ -201,31 +238,14 @@ export default function Step1ActivityRiskPage() {
     );
   };
 
-  const handleSave = () => {
-    // Implementation for saving data
-    setEditingRisk(null);
-    setFormData({
-      activity: "",
-      riskDescription: "",
-      probability: "",
-      impact: "",
-      controlMeasures: "",
-    });
-  };
 
-  const handleCancel = () => {
-    setEditingRisk(null);
-    setFormData({
-      activity: "",
-      riskDescription: "",
-      probability: "",
-      impact: "",
-      controlMeasures: "",
-    });
-  };
+
 
   return (
     <div className="px-6 py-4">
+      {/* Test Data Loader */}
+      <TestDataLoader />
+      
       {/* Header */}
       <div className="mb-6">
         <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
@@ -300,11 +320,14 @@ export default function Step1ActivityRiskPage() {
               <div className="flex items-center gap-3">
                 <Input
                   value={preparer}
-                  onChange={(e) => setPreparer(e.target.value)}
                   placeholder="-"
-                  className="w-full"
+                  className="w-full bg-gray-50"
+                  readOnly
                 />
-                <Dialog open={isPersonDialogOpen && currentField === "preparer"} onOpenChange={setIsPersonDialogOpen}>
+                <Dialog
+                  open={isPersonDialogOpen && currentField === "preparer"}
+                  onOpenChange={setIsPersonDialogOpen}
+                >
                   <DialogTrigger asChild>
                     <Button
                       type="button"
@@ -326,11 +349,14 @@ export default function Step1ActivityRiskPage() {
               <div className="flex items-center gap-3">
                 <Input
                   value={reviewer}
-                  onChange={(e) => setReviewer(e.target.value)}
                   placeholder="-"
-                  className="w-full"
+                  className="w-full bg-gray-50"
+                  readOnly
                 />
-                <Dialog open={isPersonDialogOpen && currentField === "reviewer"} onOpenChange={setIsPersonDialogOpen}>
+                <Dialog
+                  open={isPersonDialogOpen && currentField === "reviewer"}
+                  onOpenChange={setIsPersonDialogOpen}
+                >
                   <DialogTrigger asChild>
                     <Button
                       type="button"
@@ -352,11 +378,14 @@ export default function Step1ActivityRiskPage() {
               <div className="flex items-center gap-3">
                 <Input
                   value={approver}
-                  onChange={(e) => setApprover(e.target.value)}
                   placeholder="-"
-                  className="w-full"
+                  className="w-full bg-gray-50"
+                  readOnly
                 />
-                <Dialog open={isPersonDialogOpen && currentField === "approver"} onOpenChange={setIsPersonDialogOpen}>
+                <Dialog
+                  open={isPersonDialogOpen && currentField === "approver"}
+                  onOpenChange={setIsPersonDialogOpen}
+                >
                   <DialogTrigger asChild>
                     <Button
                       type="button"
@@ -374,12 +403,12 @@ export default function Step1ActivityRiskPage() {
 
         {/* Step Navigation */}
         <div className="mb-6">
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-4 overflow-x-auto">
             <div className="flex items-center">
               <div className="flex items-center justify-center w-8 h-8 bg-blue-600 text-white rounded-full text-sm font-medium">
                 1
               </div>
-              <span className="ml-2 text-sm font-medium text-blue-600">
+              <span className="ml-2 text-sm font-medium text-blue-600 whitespace-nowrap">
                 การประเมินความเสี่ยงระดับกิจกรรม
               </span>
             </div>
@@ -388,7 +417,7 @@ export default function Step1ActivityRiskPage() {
               <div className="flex items-center justify-center w-8 h-8 bg-gray-200 text-gray-600 rounded-full text-sm font-medium">
                 2
               </div>
-              <span className="ml-2 text-sm text-gray-600">
+              <span className="ml-2 text-sm text-gray-600 whitespace-nowrap">
                 แผนการปฏิบัติงาน (Engagement Plan)
               </span>
             </div>
@@ -397,15 +426,24 @@ export default function Step1ActivityRiskPage() {
               <div className="flex items-center justify-center w-8 h-8 bg-gray-200 text-gray-600 rounded-full text-sm font-medium">
                 3
               </div>
-              <span className="ml-2 text-sm text-gray-600">Audit Program</span>
+              <span className="ml-2 text-sm text-gray-600 whitespace-nowrap">Audit Program</span>
             </div>
             <div className="flex items-center">
               <div className="w-4 h-0.5 bg-gray-300"></div>
               <div className="flex items-center justify-center w-8 h-8 bg-gray-200 text-gray-600 rounded-full text-sm font-medium">
                 4
               </div>
-              <span className="ml-2 text-sm text-gray-600">
+              <span className="ml-2 text-sm text-gray-600 whitespace-nowrap">
                 การรายงานผลการตรวจสอบ (Audit Reporting)
+              </span>
+            </div>
+            <div className="flex items-center">
+              <div className="w-4 h-0.5 bg-gray-300"></div>
+              <div className="flex items-center justify-center w-8 h-8 bg-gray-200 text-gray-600 rounded-full text-sm font-medium">
+                5
+              </div>
+              <span className="ml-2 text-sm text-gray-600 whitespace-nowrap">
+                สรุปผลการดำเนินงาน
               </span>
             </div>
           </div>
@@ -418,489 +456,102 @@ export default function Step1ActivityRiskPage() {
           <CardTitle className="text-lg text-gray-800">
             การประเมินความเสี่ยงระดับกิจกรรม
           </CardTitle>
-          <div className="text-sm text-gray-600">
-            ประเมินความเสี่ยงในแต่ละกิจกรรมของกระบวนการตรวจสอบ
+          {/* ช่องกรอกคำอธิบาย */}
+          <div className="mt-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              คำอธิบาย
+            </label>
+            <Textarea
+              placeholder="กรอกคำอธิบายเกี่ยวกับการประเมินความเสี่ยงระดับกิจกรรม..."
+              className="w-full min-h-[80px]"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
           </div>
         </CardHeader>
-        <CardContent className="p-0">
-          {/* วิเคราะห์ความเสี่ยงการไม่บรรลุวัตถุประสงค์และเป้าหมาย */}
-          <div className="p-6 border-b border-gray-100">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">
-              วิเคราะห์ความเสี่ยงการไม่บรรลุวัตถุประสงค์และเป้าหมาย
+
+        {/* รายการกิจกรรม/เรื่องที่จะเข้าตรวจสอบ */}
+        <div className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-medium text-gray-900">
+              รายการกิจกรรม/เรื่องที่จะเข้าตรวจสอบ
             </h3>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  หัวข้อตรวจ
-                </label>
-                <Textarea
-                  value={auditTopics || mockEngagementPlan.title}
-                  onChange={(e) => setAuditTopics(e.target.value)}
-                  className="w-full min-h-[60px]"
-                  placeholder="กรอกหัวข้อการตรวจสอบ..."
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  ประเภทการตรวจ
-                </label>
-                <Textarea
-                  value={auditType}
-                  onChange={(e) => setAuditType(e.target.value)}
-                  className="w-full min-h-[60px]"
-                  placeholder="กรอกประเภทการตรวจสอบ..."
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  ผู้ตรวจ
-                </label>
-                <Input
-                  value={auditor || mockEngagementPlan.department}
-                  onChange={(e) => setAuditor(e.target.value)}
-                  className="w-full"
-                  placeholder="กรอกชื่อผู้ตรวจสอบ..."
-                />
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    วันเดือนปี
-                  </label>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="bg-blue-600 text-white border-blue-600 hover:bg-blue-700"
-                    >
-                      เลือกกิจกรรมตรวจ
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="bg-blue-600 text-white border-blue-600 hover:bg-blue-700"
-                    >
-                      เลือกกิจกรรมตรวจ
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <Button
+              className="bg-blue-600 hover:bg-blue-700"
+              onClick={handleOpenActivityDialog}
+            >
+              <Settings className="h-4 w-4 mr-2" />
+              จัดการกิจกรรม
+            </Button>
           </div>
 
-          {/* วิธีการที่จะใช้ในการตรวจสอบ */}
-          <div className="p-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">
-              วิธีการที่จะใช้ในการตรวจสอบ
-            </h3>
-            <div className="space-y-4">
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-gray-50 border-0">
-                      <TableHead className="text-center w-16 py-4">
-                        ลำดับ
-                      </TableHead>
-                      <TableHead className="text-center py-4">
-                        กิจกรรมการตรวจสอบ
-                      </TableHead>
-                      <TableHead className="text-center py-4">
-                        ความเสี่ยงที่เคก
-                      </TableHead>
-                      <TableHead className="text-center py-4">
-                        ระดับความเสี่ยง
-                      </TableHead>
-                      <TableHead className="text-center w-20 py-4"></TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
+          <div className="space-y-4">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-gray-50 border-0">
+                    <TableHead className="text-center w-16 py-4">
+                      ลำดับ
+                    </TableHead>
+                    <TableHead className="text-center py-4">
+                      กิจกรรม/เรื่อง
+                    </TableHead>
+                    <TableHead className="text-center py-4">
+                      ความเสี่ยงด้าน
+                    </TableHead>
+                    <TableHead className="text-center py-4">
+                      ระดับความเสี่ยง
+                    </TableHead>
+                    <TableHead className="text-center w-20 py-4"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {selectedActivities.length === 0 ? (
                     <TableRow>
-                      <TableCell className="text-center">1</TableCell>
-                      <TableCell>
-                        ผู้ตรวจสอบที่ได้รับมอบหมายกิจกรรม (ผู้ตรวจสอบภายใน)
-                      </TableCell>
-                      <TableCell>การเปิดเสียง (0)</TableCell>
-                      <TableCell className="text-center">สูงมาก</TableCell>
-                      <TableCell className="text-center">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0"
-                        >
-                          🗑️
-                        </Button>
+                      <TableCell
+                        colSpan={5}
+                        className="text-center py-8 text-gray-500"
+                      >
+                        ยังไม่มีกิจกรรมที่เลือก กรุณากดปุ่ม &quot;จัดการกิจกรรม&quot;
+                        เพื่อเลือกกิจกรรม
                       </TableCell>
                     </TableRow>
-                    <TableRow>
-                      <TableCell className="text-center">2</TableCell>
-                      <TableCell>
-                        ผู้ตรวจสอบที่สัมพบญาณโดยการศึกษาค่าใช้จ่ายที่บันทึไว้
-                        ภายใต้โครงการทดสอบ เพื่อใช้ในการบันทึกงบประมาณ
-                      </TableCell>
-                      <TableCell>การเปิดเสียง (0)</TableCell>
-                      <TableCell className="text-center">สูงมาก</TableCell>
-                      <TableCell className="text-center">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0"
-                        >
-                          🗑️
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell className="text-center">3</TableCell>
-                      <TableCell>
-                        การสำพญาณตามงานการศึกษาหยุดการใช้จ่ายต่าง ๆ ปองเดียศุ
-                        ภายในโครงการเดียวกัน และเปรียบเปรียนกันรายจ่าย
-                        ที่สำคัญของแต่ละประเภท
-                      </TableCell>
-                      <TableCell>การเปิดเสียง (0)</TableCell>
-                      <TableCell className="text-center">สูงมาก</TableCell>
-                      <TableCell className="text-center">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0"
-                        >
-                          🗑️
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell className="text-center">4</TableCell>
-                      <TableCell>
-                        รับ นายงานค่าใช้จ่ายผู้ทำงานค่าใช้จ่ายต่าง ๆ ของงะแน์งาน
-                      </TableCell>
-                      <TableCell>การเปิดเสียง (0)</TableCell>
-                      <TableCell className="text-center">สูงมาก</TableCell>
-                      <TableCell className="text-center">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0"
-                        >
-                          🗑️
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell className="text-center">5</TableCell>
-                      <TableCell>
-                        ผู้ตรวจที่ประบาณการตั้งแกยิ่ม
-                        พาณพอรำส่งแปี่ราต้มสมศ่งค่ยศรมดงานได้
-                        ขงคีที่การเออการต้องรเคทธิ ดสรณ์นา
-                      </TableCell>
-                      <TableCell>การเปิดเสียง (0)</TableCell>
-                      <TableCell className="text-center">สูงมาก</TableCell>
-                      <TableCell className="text-center">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0"
-                        >
-                          🗑️
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell className="text-center">6</TableCell>
-                      <TableCell>
-                        การทดจยีนัดสำคืต์ำบนชได์สุนี้คีโปแสดชสี่ให์ม
-                        ใได้ระกญ่ฟข้างศราใล
-                      </TableCell>
-                      <TableCell>การเปิดเสียง (0)</TableCell>
-                      <TableCell className="text-center">สูงมาก</TableCell>
-                      <TableCell className="text-center">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0"
-                        >
-                          🗑️
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell className="text-center">7</TableCell>
-                      <TableCell>
-                        การทดจยีนัดสำคืต์ำบนชได์ทะงานคงรายนีาของสำคัญ
-                      </TableCell>
-                      <TableCell>การเปิดเสียง (0)</TableCell>
-                      <TableCell className="text-center">สูงมาก</TableCell>
-                      <TableCell className="text-center">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0"
-                        >
-                          🗑️
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  </TableBody>
-                </Table>
-              </div>
-
-              <div className="flex justify-end">
-                <Button className="bg-blue-600 hover:bg-blue-700">
-                  บันทึกกิจกรรม
-                </Button>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Tabs defaultValue="assessment" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="assessment">การประเมินความเสี่ยง</TabsTrigger>
-          <TabsTrigger value="matrix">เมทริกซ์ความเสี่ยง</TabsTrigger>
-          <TabsTrigger value="summary">สรุปผล</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="assessment" className="space-y-6">
-          {/* Risk Assessment Form */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <AlertTriangle className="h-5 w-5" />
-                รายการประเมินความเสี่ยงระดับกิจกรรม
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[50px]">#</TableHead>
-                      <TableHead>กิจกรรม</TableHead>
-                      <TableHead>ความเสี่ยง</TableHead>
-                      <TableHead>โอกาสเกิด</TableHead>
-                      <TableHead>ผลกระทบ</TableHead>
-                      <TableHead>ระดับความเสี่ยง</TableHead>
-                      <TableHead>มาตรการควบคุม</TableHead>
-                      <TableHead>ความเสี่ยงคงเหลือ</TableHead>
-                      <TableHead className="w-[100px]">การดำเนินการ</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {mockActivityRisks.map((risk, index) => (
-                      <TableRow key={risk.id}>
-                        <TableCell>{index + 1}</TableCell>
-                        <TableCell className="font-medium max-w-[150px]">
-                          {editingRisk === risk.id ? (
-                            <Input
-                              value={formData.activity}
-                              onChange={(e) =>
-                                setFormData({
-                                  ...formData,
-                                  activity: e.target.value,
-                                })
-                              }
-                              placeholder="กิจกรรม"
-                            />
-                          ) : (
-                            risk.activity
-                          )}
+                  ) : (
+                    selectedActivities.map((activity, index) => (
+                      <TableRow key={activity.id}>
+                        <TableCell className="text-center">
+                          {index + 1}
                         </TableCell>
-                        <TableCell className="max-w-[200px]">
-                          {editingRisk === risk.id ? (
-                            <Textarea
-                              value={formData.riskDescription}
-                              onChange={(e) =>
-                                setFormData({
-                                  ...formData,
-                                  riskDescription: e.target.value,
-                                })
-                              }
-                              placeholder="คำอธิบายความเสี่ยง"
-                              rows={2}
-                            />
-                          ) : (
-                            <span className="text-sm">
-                              {risk.riskDescription}
-                            </span>
-                          )}
+                        <TableCell className="max-w-md">
+                          {activity.activity}
                         </TableCell>
-                        <TableCell>
-                          {editingRisk === risk.id ? (
-                            <Select
-                              value={formData.probability}
-                              onValueChange={(value) =>
-                                setFormData({ ...formData, probability: value })
-                              }
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="เลือก" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="ต่ำ">ต่ำ</SelectItem>
-                                <SelectItem value="ปานกลาง">ปานกลาง</SelectItem>
-                                <SelectItem value="สูง">สูง</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          ) : (
-                            getRiskBadge(risk.probability)
-                          )}
+                        <TableCell className="text-center">
+                          {activity.riskDescription}
                         </TableCell>
-                        <TableCell>
-                          {editingRisk === risk.id ? (
-                            <Select
-                              value={formData.impact}
-                              onValueChange={(value) =>
-                                setFormData({ ...formData, impact: value })
-                              }
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="เลือก" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="ต่ำ">ต่ำ</SelectItem>
-                                <SelectItem value="ปานกลาง">ปานกลาง</SelectItem>
-                                <SelectItem value="สูง">สูง</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          ) : (
-                            getRiskBadge(risk.impact)
-                          )}
+                        <TableCell className="text-center">
+                          {getRiskBadge(activity.riskLevel)}
                         </TableCell>
-                        <TableCell>{getRiskBadge(risk.riskLevel)}</TableCell>
-                        <TableCell className="max-w-[200px]">
-                          {editingRisk === risk.id ? (
-                            <Textarea
-                              value={formData.controlMeasures}
-                              onChange={(e) =>
-                                setFormData({
-                                  ...formData,
-                                  controlMeasures: e.target.value,
-                                })
-                              }
-                              placeholder="มาตรการควบคุม"
-                              rows={2}
-                            />
-                          ) : (
-                            <span className="text-sm">
-                              {risk.controlMeasures}
-                            </span>
-                          )}
-                        </TableCell>
-                        <TableCell>{getRiskBadge(risk.residualRisk)}</TableCell>
-                        <TableCell>
-                          {editingRisk === risk.id ? (
-                            <div className="flex gap-1">
-                              <Button size="sm" onClick={handleSave}>
-                                บันทึก
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={handleCancel}
-                              >
-                                ยกเลิก
-                              </Button>
-                            </div>
-                          ) : (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => {
-                                setEditingRisk(risk.id);
-                                setFormData({
-                                  activity: risk.activity,
-                                  riskDescription: risk.riskDescription,
-                                  probability: risk.probability,
-                                  impact: risk.impact,
-                                  controlMeasures: risk.controlMeasures,
-                                });
-                              }}
-                            >
-                              แก้ไข
-                            </Button>
-                          )}
+                        <TableCell className="text-center">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                            onClick={() =>
+                              removeActivityFromSelected(activity.id)
+                            }
+                          >
+                            🗑️
+                          </Button>
                         </TableCell>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-
-              <div className="flex justify-end mt-4">
-                <Button variant="outline">เพิ่มรายการความเสี่ยง</Button>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="matrix" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>เมทริกซ์ความเสี่ยง</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center text-gray-500 py-8">
-                <Target className="h-12 w-12 mx-auto mb-3" />
-                <p>เมทริกซ์ความเสี่ยงจะแสดงที่นี่</p>
-                <p className="text-sm">
-                  หลังจากที่มีการประเมินความเสี่ยงครบถ้วนแล้ว
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="summary" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <List className="h-5 w-5" />
-                สรุปผลการประเมินความเสี่ยง
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                {riskLevels.map((level) => {
-                  const count = mockActivityRisks.filter(
-                    (risk) => risk.riskLevel === level.value
-                  ).length;
-                  return (
-                    <div
-                      key={level.value}
-                      className="text-center p-4 border rounded-lg"
-                    >
-                      <div
-                        className={`inline-flex px-3 py-1 rounded-full text-sm font-medium ${level.color} mb-2`}
-                      >
-                        {level.value}
-                      </div>
-                      <p className="text-2xl font-bold text-gray-900">
-                        {count}
-                      </p>
-                      <p className="text-sm text-gray-600">รายการ</p>
-                    </div>
-                  );
-                })}
-              </div>
-
-              <div className="prose max-w-none">
-                <h3>ข้อสรุปและข้อเสนอแนะ</h3>
-                <ul>
-                  <li>
-                    พบความเสี่ยงระดับสูงมาก 1 รายการ ในด้านการวางแผนโครงการ
-                  </li>
-                  <li>
-                    ควรเพิ่มมาตรการควบคุมเพิ่มเติมสำหรับความเสี่ยงระดับสูง
-                  </li>
-                  <li>
-                    มาตรการควบคุมปัจจุบันสามารถลดความเสี่ยงได้อย่างมีประสิทธิภาพ
-                  </li>
-                </ul>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+        </div>
+      </Card>
 
       {/* Navigation */}
       <div className="flex justify-between mt-8">
@@ -910,88 +561,34 @@ export default function Step1ActivityRiskPage() {
             กลับสู่รายละเอียดแผน
           </Button>
         </Link>
-        <Link href={`/audit-engagement-plan/${id}/step-2-engagement-plan`}>
-          <Button>
-            ขั้นตอนถัดไป: แผนการปฏิบัติงาน
-            <ArrowRight className="h-4 w-4 ml-2" />
-          </Button>
-        </Link>
+        <Button onClick={handleNextStep}>
+          ขั้นตอนถัดไป: แผนการปฏิบัติงาน
+          <ArrowRight className="h-4 w-4 ml-2" />
+        </Button>
       </div>
 
       {/* Person Selection Dialog */}
-      <Dialog open={isPersonDialogOpen} onOpenChange={setIsPersonDialogOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <ArrowLeft className="h-4 w-4" />
-              เลือกผู้รับผิดชอบ
-            </DialogTitle>
-          </DialogHeader>
-          
-          <div className="space-y-4">
-            {/* Search Bar */}
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-              <Input
-                placeholder="Search"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
+      <PersonSelectionDialog
+        isOpen={isPersonDialogOpen}
+        onOpenChange={setIsPersonDialogOpen}
+        selectedPerson={selectedPerson}
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
+        onSelectPerson={handleSelectPerson}
+        onConfirmSelection={handleConfirmSelection}
+      />
 
-            {/* People List */}
-            <div className="space-y-2 max-h-80 overflow-y-auto">
-              {filteredPeople.map((person) => (
-                <div
-                  key={person.id}
-                  className={`flex items-center space-x-3 p-3 rounded-lg cursor-pointer hover:bg-gray-50 ${
-                    selectedPerson === `${person.name} (${person.status})`
-                      ? "bg-blue-50 border border-blue-200"
-                      : "border border-gray-200"
-                  }`}
-                  onClick={() => handleSelectPerson(person.name, person.status)}
-                >
-                  <div className="flex-shrink-0">
-                    <div
-                      className={`w-4 h-4 rounded-full border-2 ${
-                        selectedPerson === `${person.name} (${person.status})`
-                          ? "border-blue-500 bg-blue-500"
-                          : "border-gray-300"
-                      }`}
-                    >
-                      {selectedPerson === `${person.name} (${person.status})` && (
-                        <div className="w-full h-full rounded-full bg-white flex items-center justify-center">
-                          <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900">
-                      {person.name}
-                    </p>
-                    <p className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded inline-block">
-                      {person.status}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Confirm Button */}
-            <div className="flex justify-end pt-4">
-              <Button
-                onClick={handleConfirmSelection}
-                disabled={!selectedPerson}
-                className="bg-[#3E52B9] hover:bg-[#3346a6]"
-              >
-                บันทึก
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* Activity Management Dialog */}
+      <ActivityManagementDialog
+        isOpen={isActivityDialogOpen}
+        onOpenChange={setIsActivityDialogOpen}
+        searchTerm={activitySearchTerm}
+        onSearchChange={setActivitySearchTerm}
+        tempSelectedActivities={tempSelectedActivities}
+        onToggleActivity={handleToggleActivity}
+        onConfirmSelection={handleConfirmActivitySelection}
+        onCancelSelection={handleCancelActivitySelection}
+      />
     </div>
   );
 }

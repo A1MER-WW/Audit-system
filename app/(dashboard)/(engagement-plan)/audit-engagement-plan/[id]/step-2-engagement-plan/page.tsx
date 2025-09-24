@@ -1,448 +1,1043 @@
 "use client";
 
 import React, { useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { 
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import {
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+
+// Sortable Components
+function SortableObjective({ 
+  objective, 
+  index, 
+  onRemove 
+}: { 
+  objective: string; 
+  index: number; 
+  onRemove: (index: number) => void; 
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: index.toString() });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.8 : 1,
+    zIndex: isDragging ? 999 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`flex items-start gap-3 p-3 bg-white border rounded-lg group hover:bg-gray-50 ${
+        isDragging ? "shadow-xl border-blue-200 bg-blue-50" : ""
+      }`}
+    >
+      <button
+        {...attributes}
+        {...listeners}
+        className="p-1 text-gray-400 hover:text-gray-600 cursor-grab active:cursor-grabbing"
+        title="ลากเพื่อจัดลำดับ"
+      >
+        <GripVertical className="h-4 w-4" />
+      </button>
+      <div className="flex-1">
+        <span className="text-sm font-medium text-blue-600">
+          วัตถุประสงค์ที่ {index + 1}
+        </span>
+        <p className="text-gray-700 mt-1">{objective}</p>
+      </div>
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => onRemove(index)}
+        className="opacity-0 group-hover:opacity-100 transition-opacity text-red-500 hover:text-red-700"
+      >
+        <X className="h-4 w-4" />
+      </Button>
+    </div>
+  );
+}
+
+function SortableScope({ 
+  scope, 
+  index, 
+  onRemove,
+  onUpdateSubScope,
+  onAddSubScope,
+  onRemoveSubScope,
+  newSubScope,
+  setNewSubScope,
+  sensors,
+  onSubScopeDragEnd
+}: { 
+  scope: { id: number; text: string; subScopes: { id: number; text: string }[] }; 
+  index: number; 
+  onRemove: (id: number) => void;
+  onUpdateSubScope: (scopeId: number, subScopeId: number, newText: string) => void;
+  onAddSubScope: (scopeId: number) => void;
+  onRemoveSubScope: (scopeId: number, subScopeId: number) => void;
+  newSubScope: { [key: number]: string };
+  setNewSubScope: React.Dispatch<React.SetStateAction<{ [key: number]: string }>>;
+  sensors: any;
+  onSubScopeDragEnd: (scopeId: number) => (event: DragEndEvent) => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: scope.id.toString() });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.8 : 1,
+    zIndex: isDragging ? 999 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`p-4 bg-white border rounded-lg group hover:bg-gray-50 ${
+        isDragging ? "shadow-xl border-blue-200 bg-blue-50" : ""
+      }`}
+    >
+      <div className="flex items-start gap-3 mb-3">
+        <button
+          {...attributes}
+          {...listeners}
+          className="p-1 text-gray-400 hover:text-gray-600 cursor-grab active:cursor-grabbing"
+          title="ลากเพื่อจัดลำดับ"
+        >
+          <GripVertical className="h-4 w-4" />
+        </button>
+        <div className="flex-1">
+          <span className="text-sm font-medium text-green-600">
+            ขอบเขตที่ {index + 1}
+          </span>
+          <p className="text-gray-700 mt-1">{scope.text}</p>
+        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => onRemove(scope.id)}
+          className="opacity-0 group-hover:opacity-100 transition-opacity text-red-500 hover:text-red-700"
+        >
+          <X className="h-4 w-4" />
+        </Button>
+      </div>
+      
+      {/* Sub-scopes */}
+      <div className="ml-8 space-y-2">
+        {scope.subScopes.length > 0 && (
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={onSubScopeDragEnd(scope.id)}
+          >
+            <SortableContext
+              items={scope.subScopes.map((sub) => `${scope.id}-${sub.id}`)}
+              strategy={verticalListSortingStrategy}
+            >
+              {scope.subScopes.map((subScope) => (
+                <SortableSubScope
+                  key={subScope.id}
+                  subScope={subScope}
+                  scopeId={scope.id}
+                  onUpdate={onUpdateSubScope}
+                  onRemove={onRemoveSubScope}
+                />
+              ))}
+            </SortableContext>
+          </DndContext>
+        )}
+        
+        {/* Add new sub-scope */}
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-gray-500 w-4">•</span>
+          <Input
+            value={newSubScope[scope.id] || ""}
+            onChange={(e) => setNewSubScope(prev => ({ ...prev, [scope.id]: e.target.value }))}
+            placeholder="เพิ่มรายละเอียดย่อย..."
+            className="flex-1 text-sm"
+            onKeyPress={(e) => {
+              if (e.key === "Enter" && newSubScope[scope.id]?.trim()) {
+                onAddSubScope(scope.id);
+              }
+            }}
+          />
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onAddSubScope(scope.id)}
+            disabled={!newSubScope[scope.id]?.trim()}
+            className="text-green-600 hover:text-green-700"
+          >
+            <Plus className="h-3 w-3" />
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SortableSubScope({ 
+  subScope, 
+  scopeId,
+  onUpdate,
+  onRemove
+}: { 
+  subScope: { id: number; text: string }; 
+  scopeId: number;
+  onUpdate: (scopeId: number, subScopeId: number, newText: string) => void;
+  onRemove: (scopeId: number, subScopeId: number) => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: `${scopeId}-${subScope.id}` });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.8 : 1,
+    zIndex: isDragging ? 999 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`flex items-center gap-2 p-2 bg-gray-50 rounded border group hover:bg-gray-100 ${
+        isDragging ? "shadow-xl border-blue-200 bg-blue-50" : ""
+      }`}
+    >
+      <button
+        {...attributes}
+        {...listeners}
+        className="p-1 text-gray-400 hover:text-gray-600 cursor-grab active:cursor-grabbing"
+        title="ลากเพื่อจัดลำดับ"
+      >
+        <GripVertical className="h-3 w-3" />
+      </button>
+      <span className="text-xs text-gray-500 w-4">•</span>
+      <Input
+        value={subScope.text}
+        onChange={(e) => onUpdate(scopeId, subScope.id, e.target.value)}
+        className="flex-1 text-sm border-none bg-transparent focus-visible:ring-0"
+        placeholder="รายละเอียดย่อย..."
+      />
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => onRemove(scopeId, subScope.id)}
+        className="text-red-500 hover:text-red-700 opacity-0 group-hover:opacity-100 transition-opacity"
+      >
+        <X className="h-3 w-3" />
+      </Button>
+    </div>
+  );
+}
+
+import {
   ArrowLeft,
   ArrowRight,
-  FileText,
-  Target,
-  Clock,
-  Users,
-  Save,
-  Eye,
   Plus,
-  MapPin
+  GripVertical,
+  X,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-
-
-// Mock data for engagement plan
-const mockEngagementPlan = {
-  auditTopic: "การตรวจสอบการจัดทำและบริหารจัดการโครงการลงทุนภาครัฐ",
-  objectives: [
-    "ประเมินความมีประสิทธิภาพของการจัดทำแผนโครงการ",
-    "ตรวจสอบความถูกต้องของการดำเนินโครงการ",
-    "ประเมินผลสำเร็จของโครงการตามเป้าหมายที่กำหนด"
-  ],
-  scope: {
-    activities: ["การวางแผน", "การดำเนินงาน", "การติดตามประเมินผล"],
-    period: "มกราคม 2568 - มีนาคม 2568",
-    locations: ["กรมทางหลวง", "กรมทางหลวงชนบท"],
-    limitations: "ไม่รวมโครงการที่อยู่ระหว่างการพิจารณาอนุมัติ"
-  },
-  methodology: [
-    "การสำรวจและสัมภาษณ์ผู้เกี่ยวข้อง",
-    "การตรวจสอบเอกสารและหลักฐาน",
-    "การทดสอบการควบคุมภายใน",
-    "การวิเคราะห์ข้อมูลเชิงสถิติ"
-  ],
-  resources: {
-    teamSize: 5,
-    duration: "12 สัปดาห์",
-    budget: "500,000 บาท"
-  }
-};
+import { getProgram } from "@/lib/mock-engagement-plan-programs";
+import { Dialog, DialogTrigger } from "@/components/ui/dialog";
+import { PersonSelectionDialog } from "@/components/features/engagement-plan/popup";
+import { useEngagementPlan } from "@/hooks/useEngagementPlan";
+import TestDataLoader from "../test-data-loader";
 
 export default function Step2EngagementPlanPage() {
   const params = useParams();
   const id = params?.id as string;
-  
-  const [formData, setFormData] = useState({
-    objectives: mockEngagementPlan.objectives,
-    scope: mockEngagementPlan.scope,
-    methodology: mockEngagementPlan.methodology,
-    resources: mockEngagementPlan.resources
-  });
+  const router = useRouter();
+  const { state, dispatch } = useEngagementPlan();
 
+  // ดึงข้อมูลจาก engagement plan จริง
+  const engagementPlan = getProgram(parseInt(id));
+
+  const mockEngagementPlan = engagementPlan
+    ? {
+        title: engagementPlan.auditTopics.auditTopic,
+        fiscalYear: engagementPlan.fiscalYear.toString(),
+        department: engagementPlan.auditTopics.departments
+          .map((d: any) => d.departmentName)
+          .join(", "),
+        status:
+          engagementPlan.status === "AUDITOR_ASSESSING"
+            ? "กำลังดำเนินการประเมิน"
+            : engagementPlan.status === "PENDING"
+            ? "รอดำเนินการ"
+            : engagementPlan.status === "COMPLETED"
+            ? "เสร็จสิ้น"
+            : engagementPlan.status,
+        objectives: ["ผู้ตรวจสอบที่ได้รับมอบหมายกิจกรรม (ผู้ตรวจสอบภายใน)"],
+        generalObjectives: [
+          "ประเมินประสิทธิภาพ และประสิทธิผลของโครงการ/งาน/กิจกรรม",
+        ],
+        specificObjectives: [
+          "ประเมินความรู้ ความเข้าใจ ของเจ้าหน้าที่ผู้ปฏิบัติงานงาน/กิจกรรม",
+        ],
+      }
+    : {
+        title: "ไม่พบข้อมูลแผนการปฏิบัติงาน",
+        fiscalYear: "2568",
+        department: "ไม่ระบุ",
+        status: "ไม่ระบุ",
+        objectives: ["ไม่ระบุ"],
+        generalObjectives: ["ไม่ระบุ"],
+        specificObjectives: ["ไม่ระบุ"],
+      };
+
+  const [auditedUnit, setAuditedUnit] = useState<string>("");
+  const [auditCategory, setAuditCategory] = useState<string>("");
+  const [preparer, setPreparer] = useState<string>(
+    "นางสาวกุสุมา สุขสอน (ผู้ตรวจสอบภายใน)"
+  );
+  const [reviewer, setReviewer] = useState<string>(
+    "นางสาวจิรวรรณ สมัคร (หัวหน้ากลุ่มตรวจสอบภายใน)"
+  );
+  const [approver, setApprover] = useState<string>(
+    "นางสาวจิรวรรณ สมัคร (หัวหน้ากลุ่มตรวจสอบภายใน)"
+  );
+  const [auditResponsible, setAuditResponsible] = useState<string>(
+    "นางสาวกุสุมา สุขสอน (ผู้ตรวจสอบภายใน)"
+  );
+  const [supervisor, setSupervisor] = useState<string>(
+    "นางสาวจิรวรรณ สมัคร (หัวหน้ากลุ่มตรวจสอบภายใน)"
+  );
+
+  // State สำหรับ popup dialog
+  const [isPersonDialogOpen, setIsPersonDialogOpen] = useState<boolean>(false);
+  const [currentField, setCurrentField] = useState<
+    | "preparer"
+    | "reviewer"
+    | "approver"
+    | "auditResponsible"
+    | "supervisor"
+    | null
+  >(null);
+  const [selectedPerson, setSelectedPerson] = useState<string>("");
+  const [searchTerm, setSearchTerm] = useState<string>("");
+
+  const handleOpenPersonDialog = (
+    field:
+      | "preparer"
+      | "reviewer"
+      | "approver"
+      | "auditResponsible"
+      | "supervisor"
+  ) => {
+    setCurrentField(field);
+    setIsPersonDialogOpen(true);
+    setSearchTerm("");
+    // ตั้งค่า selectedPerson ตามค่าปัจจุบัน
+    if (field === "preparer") setSelectedPerson(preparer);
+    if (field === "reviewer") setSelectedPerson(reviewer);
+    if (field === "approver") setSelectedPerson(approver);
+    if (field === "auditResponsible") setSelectedPerson(auditResponsible);
+    if (field === "supervisor") setSelectedPerson(supervisor);
+  };
+
+  const handleSelectPerson = (personName: string, personStatus: string) => {
+    setSelectedPerson(`${personName} (${personStatus})`);
+  };
+
+  const handleConfirmSelection = () => {
+    if (currentField && selectedPerson) {
+      if (currentField === "preparer") setPreparer(selectedPerson);
+      if (currentField === "reviewer") setReviewer(selectedPerson);
+      if (currentField === "approver") setApprover(selectedPerson);
+      if (currentField === "auditResponsible")
+        setAuditResponsible(selectedPerson);
+      if (currentField === "supervisor") setSupervisor(selectedPerson);
+    }
+    setIsPersonDialogOpen(false);
+    setCurrentField(null);
+    setSelectedPerson("");
+  };
+
+  // Drag and drop sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  // State for objectives and scope - Initialize from context
+  const [objectives, setObjectives] = useState<string[]>(state.step2?.objectives || []);
+  const [scopes, setScopes] = useState<
+    { id: number; text: string; subScopes: { id: number; text: string }[] }[]
+  >(state.step2?.scopes || []);
+  const [auditDuration, setAuditDuration] = useState<string>(state.step2?.auditDuration || "");
+  const [auditMethodology, setAuditMethodology] = useState<string>(state.step2?.auditMethodology || "");
+
+  // State for adding new items
   const [newObjective, setNewObjective] = useState("");
-  const [newMethodology, setNewMethodology] = useState("");
+  const [newScope, setNewScope] = useState("");
+  const [newSubScope, setNewSubScope] = useState<{ [key: number]: string }>({});
 
+  // Counter for unique IDs
+  const [nextScopeId, setNextScopeId] = useState(1);
+  const [nextSubScopeId, setNextSubScopeId] = useState(1);
+
+  // Function to handle next step - save data to context
+  const handleNextStep = () => {
+    // Save all Step 2 data to context
+    dispatch({
+      type: "UPDATE_STEP2",
+      payload: {
+        objectives,
+        scopes,
+        auditDuration,
+        auditMethodology,
+        auditResponsible,
+        supervisor,
+      }
+    });
+    
+    // Navigate to Step 3
+    router.push(`/audit-engagement-plan/${id}/step-3-audit-program`);
+  };
+
+  // Functions for objectives
   const addObjective = () => {
     if (newObjective.trim()) {
-      setFormData({
-        ...formData,
-        objectives: [...formData.objectives, newObjective.trim()]
-      });
+      const updatedObjectives = [...objectives, newObjective.trim()];
+      setObjectives(updatedObjectives);
       setNewObjective("");
+      
+      // Auto-save to context
+      dispatch({
+        type: "UPDATE_STEP2",
+        payload: {
+          objectives: updatedObjectives,
+          scopes,
+          auditDuration,
+          auditMethodology,
+          auditResponsible,
+          supervisor,
+        }
+      });
     }
   };
 
   const removeObjective = (index: number) => {
-    setFormData({
-      ...formData,
-      objectives: formData.objectives.filter((_, i) => i !== index)
+    const updatedObjectives = objectives.filter((_, i) => i !== index);
+    setObjectives(updatedObjectives);
+    
+    // Auto-save to context
+    dispatch({
+      type: "UPDATE_STEP2",
+      payload: {
+        objectives: updatedObjectives,
+        scopes,
+        auditDuration,
+        auditMethodology,
+        auditResponsible,
+        supervisor,
+      }
     });
   };
 
-  const addMethodology = () => {
-    if (newMethodology.trim()) {
-      setFormData({
-        ...formData,
-        methodology: [...formData.methodology, newMethodology.trim()]
-      });
-      setNewMethodology("");
+
+
+  // Functions for scopes
+  const addScope = () => {
+    if (newScope.trim()) {
+      const newScopeItem = {
+        id: nextScopeId,
+        text: newScope.trim(),
+        subScopes: [],
+      };
+      setScopes([...scopes, newScopeItem]);
+      setNewScope("");
+      setNextScopeId(nextScopeId + 1);
     }
   };
 
-  const removeMethodology = (index: number) => {
-    setFormData({
-      ...formData,
-      methodology: formData.methodology.filter((_, i) => i !== index)
-    });
+  const removeScope = (scopeId: number) => {
+    setScopes(scopes.filter((scope) => scope.id !== scopeId));
+  };
+
+  const addSubScope = (scopeId: number) => {
+    const subScopeText = newSubScope[scopeId]?.trim();
+    if (subScopeText) {
+      setScopes(
+        scopes.map((scope) => {
+          if (scope.id === scopeId) {
+            return {
+              ...scope,
+              subScopes: [
+                ...scope.subScopes,
+                { id: nextSubScopeId, text: subScopeText },
+              ],
+            };
+          }
+          return scope;
+        })
+      );
+      setNewSubScope({ ...newSubScope, [scopeId]: "" });
+      setNextSubScopeId(nextSubScopeId + 1);
+    }
+  };
+
+  const removeSubScope = (scopeId: number, subScopeId: number) => {
+    setScopes(
+      scopes.map((scope) => {
+        if (scope.id === scopeId) {
+          return {
+            ...scope,
+            subScopes: scope.subScopes.filter((sub) => sub.id !== subScopeId),
+          };
+        }
+        return scope;
+      })
+    );
+  };
+
+  const updateSubScope = (scopeId: number, subScopeId: number, newText: string) => {
+    setScopes(
+      scopes.map((scope) =>
+        scope.id === scopeId
+          ? {
+              ...scope,
+              subScopes: scope.subScopes.map((sub) =>
+                sub.id === subScopeId
+                  ? { ...sub, text: newText }
+                  : sub
+              ),
+            }
+          : scope
+      )
+    );
+  };
+
+  // Drag handlers
+  const handleObjectiveDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (active.id !== over?.id) {
+      const oldIndex = objectives.findIndex((_, index) => index.toString() === active.id);
+      const newIndex = objectives.findIndex((_, index) => index.toString() === over?.id);
+      if (oldIndex !== -1 && newIndex !== -1) {
+        const newObjectives = arrayMove(objectives, oldIndex, newIndex);
+        setObjectives(newObjectives);
+      }
+    }
+  };
+
+  const handleScopeDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (active.id !== over?.id) {
+      const oldIndex = scopes.findIndex((scope) => scope.id.toString() === active.id);
+      const newIndex = scopes.findIndex((scope) => scope.id.toString() === over?.id);
+      if (oldIndex !== -1 && newIndex !== -1) {
+        const newScopes = arrayMove(scopes, oldIndex, newIndex);
+        setScopes(newScopes);
+      }
+    }
+  };
+
+  const handleSubScopeDragEnd = (scopeId: number) => (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (active.id !== over?.id) {
+      const scope = scopes.find(s => s.id === scopeId);
+      if (!scope) return;
+
+      const activeId = active.id.toString().split('-')[1]; // Extract subScope id
+      const overId = over?.id.toString().split('-')[1]; // Extract subScope id
+
+      const oldIndex = scope.subScopes.findIndex((sub) => sub.id.toString() === activeId);
+      const newIndex = scope.subScopes.findIndex((sub) => sub.id.toString() === overId);
+      
+      if (oldIndex !== -1 && newIndex !== -1) {
+        const newSubScopes = arrayMove(scope.subScopes, oldIndex, newIndex);
+        setScopes(scopes.map(s => 
+          s.id === scopeId 
+            ? { ...s, subScopes: newSubScopes }
+            : s
+        ));
+      }
+    }
   };
 
   return (
     <div className="px-6 py-4">
+      {/* Test Data Loader */}
+      <TestDataLoader />
+      
       {/* Header */}
       <div className="mb-6">
         <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
           <Link href="/audit-engagement-plan" className="hover:text-blue-600">
-            การจัดทำ Audit Program / แผนการปฏิบัติงาน
+            การจัดทำ Audit Program / แผนการปฏิบัติงาน (Engagement plan)
           </Link>
           <ArrowRight className="h-4 w-4" />
-          <Link href={`/audit-engagement-plan/${id}`} className="hover:text-blue-600">
-            รายละเอียดแผน #{id}
-          </Link>
-          <ArrowRight className="h-4 w-4" />
-          <span>ขั้นตอนที่ 2</span>
+          <span>แผนการปฏิบัติงานตรวจสอบ</span>
         </div>
-        <div className="flex items-center justify-between">
+
+        <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold text-gray-900 mb-2">
-              ขั้นตอนที่ 2: แผนการปฏิบัติงานตรวจสอบ (Engagement Plan)
+              แผนการปฏิบัติงานตรวจสอบ (Audit Program)
             </h1>
-            <p className="text-gray-600">
-              จัดทำแผนการปฏิบัติงานตรวจสอบที่ครอบคลุมวัตถุประสงค์ ขอบเขต และวิธีการตรวจสอบ
-            </p>
+            <div className="text-gray-600">
+              ปีงบประมาณ พ.ศ. {mockEngagementPlan.fiscalYear}
+              <span className="mx-2">•</span>
+              {mockEngagementPlan.department}
+            </div>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline">
-              <Eye className="h-4 w-4 mr-2" />
-              ดูตัวอย่าง
+            <Button variant="outline" size="sm">
+              ปริ้นท์
             </Button>
-            <Button>
-              <Save className="h-4 w-4 mr-2" />
-              บันทึก
+            <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
+              บันทึกแผนการปฏิบัติงานตรวจสอบ
             </Button>
+          </div>
+        </div>
+
+        {/* แผนการปฏิบัติงาน Card */}
+        <Card className="mb-6">
+          <CardHeader className="pb-4">
+            <CardTitle className="text-lg">
+              {mockEngagementPlan.title}
+            </CardTitle>
+          </CardHeader>
+
+          <CardContent className="space-y-5">
+            {/* หน่วยรับตรวจ */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                หน่วยรับตรวจ
+              </label>
+              <Input
+                value={auditedUnit}
+                onChange={(e) => setAuditedUnit(e.target.value)}
+                placeholder="-"
+                className="w-full"
+              />
+            </div>
+
+            {/* ประเภทของการตรวจ */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                ประเภทของการตรวจ
+              </label>
+              <Input
+                value={auditCategory}
+                onChange={(e) => setAuditCategory(e.target.value)}
+                placeholder="-"
+                className="w-full"
+              />
+            </div>
+
+            {/* ผู้จัดทำ */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                ผู้จัดทำ
+              </label>
+              <div className="flex items-center gap-3">
+                <Input
+                  value={preparer}
+                  placeholder="-"
+                  className="w-full bg-gray-50"
+                  readOnly
+                />
+                <Dialog
+                  open={isPersonDialogOpen && currentField === "preparer"}
+                  onOpenChange={setIsPersonDialogOpen}
+                >
+                  <DialogTrigger asChild>
+                    <Button
+                      type="button"
+                      className="bg-[#3E52B9] hover:bg-[#3346a6]"
+                      onClick={() => handleOpenPersonDialog("preparer")}
+                    >
+                      เลือกผู้รับผิดชอบ
+                    </Button>
+                  </DialogTrigger>
+                </Dialog>
+              </div>
+            </div>
+
+            {/* ผู้สอบทาน */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                ผู้สอบทาน
+              </label>
+              <div className="flex items-center gap-3">
+                <Input
+                  value={reviewer}
+                  placeholder="-"
+                  className="w-full bg-gray-50"
+                  readOnly
+                />
+                <Dialog
+                  open={isPersonDialogOpen && currentField === "reviewer"}
+                  onOpenChange={setIsPersonDialogOpen}
+                >
+                  <DialogTrigger asChild>
+                    <Button
+                      type="button"
+                      className="bg-[#3E52B9] hover:bg-[#3346a6]"
+                      onClick={() => handleOpenPersonDialog("reviewer")}
+                    >
+                      เลือกผู้รับผิดชอบ
+                    </Button>
+                  </DialogTrigger>
+                </Dialog>
+              </div>
+            </div>
+
+            {/* ผู้อนุมัติ */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                ผู้อนุมัติ
+              </label>
+              <div className="flex items-center gap-3">
+                <Input
+                  value={approver}
+                  placeholder="-"
+                  className="w-full bg-gray-50"
+                  readOnly
+                />
+                <Dialog
+                  open={isPersonDialogOpen && currentField === "approver"}
+                  onOpenChange={setIsPersonDialogOpen}
+                >
+                  <DialogTrigger asChild>
+                    <Button
+                      type="button"
+                      className="bg-[#3E52B9] hover:bg-[#3346a6]"
+                      onClick={() => handleOpenPersonDialog("approver")}
+                    >
+                      เลือกผู้รับผิดชอบ
+                    </Button>
+                  </DialogTrigger>
+                </Dialog>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Step Navigation */}
+        <div className="mb-6">
+          <div className="flex items-center space-x-4 overflow-x-auto">
+            <div className="flex items-center">
+              <div className="flex items-center justify-center w-8 h-8 bg-gray-200 text-gray-600 rounded-full text-sm font-medium">
+                1
+              </div>
+              <span className="ml-2 text-sm text-gray-600 whitespace-nowrap">
+                การประเมินความเสี่ยงระดับกิจกรรม
+              </span>
+            </div>
+            <div className="flex items-center">
+              <div className="w-4 h-0.5 bg-gray-300"></div>
+              <div className="flex items-center justify-center w-8 h-8 bg-blue-600 text-white rounded-full text-sm font-medium">
+                2
+              </div>
+              <span className="ml-2 text-sm font-medium text-blue-600 whitespace-nowrap">
+                แผนการปฏิบัติงาน (Engagement Plan)
+              </span>
+            </div>
+            <div className="flex items-center">
+              <div className="w-4 h-0.5 bg-gray-300"></div>
+              <div className="flex items-center justify-center w-8 h-8 bg-gray-200 text-gray-600 rounded-full text-sm font-medium">
+                3
+              </div>
+              <span className="ml-2 text-sm text-gray-600 whitespace-nowrap">Audit Program</span>
+            </div>
+            <div className="flex items-center">
+              <div className="w-4 h-0.5 bg-gray-300"></div>
+              <div className="flex items-center justify-center w-8 h-8 bg-gray-200 text-gray-600 rounded-full text-sm font-medium">
+                4
+              </div>
+              <span className="ml-2 text-sm text-gray-600 whitespace-nowrap">
+                การรายงานผลการตรวจสอบ (Audit Reporting)
+              </span>
+            </div>
+            <div className="flex items-center">
+              <div className="w-4 h-0.5 bg-gray-300"></div>
+              <div className="flex items-center justify-center w-8 h-8 bg-gray-200 text-gray-600 rounded-full text-sm font-medium">
+                5
+              </div>
+              <span className="ml-2 text-sm text-gray-600 whitespace-nowrap">
+                สรุปผลการดำเนินงาน
+              </span>
+            </div>
           </div>
         </div>
       </div>
 
-      <Tabs defaultValue="objectives" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="objectives">วัตถุประสงค์</TabsTrigger>
-          <TabsTrigger value="scope">ขอบเขต</TabsTrigger>
-          <TabsTrigger value="methodology">วิธีการ</TabsTrigger>
-          <TabsTrigger value="resources">ทรัพยากร</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="objectives" className="space-y-6">
+      <div className="space-y-6">
+        <div className="space-y-6">
+          {/* วัตถุประสงค์การตรวจสอบ */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Target className="h-5 w-5" />
-                วัตถุประสงค์การตรวจสอบ
-              </CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  วัตถุประสงค์การตรวจสอบ
+                </CardTitle>
+                <Button onClick={addObjective} disabled={!newObjective.trim()}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  เพิ่มวัตถุประสงค์
+                </Button>
+              </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div>
-                <Label htmlFor="audit-topic">หัวข้อการตรวจสอบ</Label>
+              {objectives.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  ยังไม่มีวัตถุประสงค์ กดปุ่ม &quot;เพิ่มวัตถุประสงค์&quot; เพื่อเริ่มต้น
+                </div>
+              ) : (
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleObjectiveDragEnd}
+                >
+                  <SortableContext
+                    items={objectives.map((_, index) => index.toString())}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    <div className="space-y-3">
+                      {objectives.map((objective, index) => (
+                        <SortableObjective
+                          key={index}
+                          objective={objective}
+                          index={index}
+                          onRemove={removeObjective}
+                        />
+                      ))}
+                    </div>
+                  </SortableContext>
+                </DndContext>
+              )}
+
+              <div className="flex gap-2 mt-4">
                 <Input
-                  id="audit-topic"
-                  value={mockEngagementPlan.auditTopic}
-                  className="mt-1"
-                  readOnly
+                  placeholder="เพิ่มวัตถุประสงค์ใหม่..."
+                  value={newObjective}
+                  onChange={(e) => setNewObjective(e.target.value)}
+                  onKeyPress={(e) => {
+                    if (e.key === "Enter") {
+                      addObjective();
+                    }
+                  }}
                 />
               </div>
-
-              <div>
-                <Label>วัตถุประสงค์เฉพาะ</Label>
-                <div className="space-y-2 mt-2">
-                  {formData.objectives.map((objective, index) => (
-                    <div key={index} className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg">
-                      <div className="flex-1">
-                        <span className="text-sm">{objective}</span>
-                      </div>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => removeObjective(index)}
-                        className="text-red-600 hover:text-red-800"
-                      >
-                        ลบ
-                      </Button>
-                    </div>
-                  ))}
-                  
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="เพิ่มวัตถุประสงค์ใหม่..."
-                      value={newObjective}
-                      onChange={(e) => setNewObjective(e.target.value)}
-                      onKeyPress={(e) => {
-                        if (e.key === 'Enter') {
-                          addObjective();
-                        }
-                      }}
-                    />
-                    <Button onClick={addObjective} disabled={!newObjective.trim()}>
-                      <Plus className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </div>
             </CardContent>
           </Card>
-        </TabsContent>
 
-        <TabsContent value="scope" className="space-y-6">
+          {/* ขอบเขตการตรวจสอบ */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <MapPin className="h-5 w-5" />
-                ขอบเขตการตรวจสอบ
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <Label htmlFor="activities">กิจกรรมที่ตรวจสอบ</Label>
-                  <Textarea
-                    id="activities"
-                    value={formData.scope.activities.join(", ")}
-                    onChange={(e) => setFormData({
-                      ...formData,
-                      scope: {
-                        ...formData.scope,
-                        activities: e.target.value.split(", ")
-                      }
-                    })}
-                    className="mt-1"
-                    rows={3}
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="period">ช่วงเวลาที่ตรวจสอบ</Label>
-                  <Input
-                    id="period"
-                    value={formData.scope.period}
-                    onChange={(e) => setFormData({
-                      ...formData,
-                      scope: {
-                        ...formData.scope,
-                        period: e.target.value
-                      }
-                    })}
-                    className="mt-1"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="locations">สถานที่/หน่วยงาน</Label>
-                  <Textarea
-                    id="locations"
-                    value={formData.scope.locations.join("\n")}
-                    onChange={(e) => setFormData({
-                      ...formData,
-                      scope: {
-                        ...formData.scope,
-                        locations: e.target.value.split("\n")
-                      }
-                    })}
-                    className="mt-1"
-                    rows={3}
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="limitations">ข้อจำกัดการตรวจสอบ</Label>
-                  <Textarea
-                    id="limitations"
-                    value={formData.scope.limitations}
-                    onChange={(e) => setFormData({
-                      ...formData,
-                      scope: {
-                        ...formData.scope,
-                        limitations: e.target.value
-                      }
-                    })}
-                    className="mt-1"
-                    rows={3}
-                  />
-                </div>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  ขอบเขตการตรวจสอบ
+                </CardTitle>
+                <Button onClick={addScope} disabled={!newScope.trim()}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  เพิ่มขอบเขต
+                </Button>
               </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="methodology" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="h-5 w-5" />
-                วิธีการตรวจสอบ
-              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div>
-                <Label>วิธีการและเทคนิคการตรวจสอบ</Label>
-                <div className="space-y-2 mt-2">
-                  {formData.methodology.map((method, index) => (
-                    <div key={index} className="flex items-center gap-2 p-3 bg-green-50 rounded-lg">
-                      <div className="flex-1">
-                        <span className="text-sm">{method}</span>
-                      </div>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => removeMethodology(index)}
-                        className="text-red-600 hover:text-red-800"
-                      >
-                        ลบ
-                      </Button>
-                    </div>
-                  ))}
-                  
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="เพิ่มวิธีการตรวจสอบใหม่..."
-                      value={newMethodology}
-                      onChange={(e) => setNewMethodology(e.target.value)}
-                      onKeyPress={(e) => {
-                        if (e.key === 'Enter') {
-                          addMethodology();
-                        }
-                      }}
-                    />
-                    <Button onClick={addMethodology} disabled={!newMethodology.trim()}>
-                      <Plus className="h-4 w-4" />
-                    </Button>
-                  </div>
+              {scopes.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  ยังไม่มีขอบเขตการตรวจสอบ กดปุ่ม &quot;เพิ่มขอบเขต&quot; เพื่อเริ่มต้น
                 </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
-                <Card>
-                  <CardContent className="p-4">
-                    <div className="text-center">
-                      <Users className="h-8 w-8 text-blue-600 mx-auto mb-2" />
-                      <h3 className="font-semibold">การสัมภาษณ์</h3>
-                      <p className="text-sm text-gray-600 mt-1">
-                        สัมภาษณ์ผู้เกี่ยวข้องทุกระดับ
-                      </p>
+              ) : (
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleScopeDragEnd}
+                >
+                  <SortableContext
+                    items={scopes.map((scope) => scope.id.toString())}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    <div className="space-y-4">
+                      {scopes.map((scope, index) => (
+                        <SortableScope
+                          key={scope.id}
+                          scope={scope}
+                          index={index}
+                          onRemove={removeScope}
+                          onUpdateSubScope={updateSubScope}
+                          onAddSubScope={addSubScope}
+                          onRemoveSubScope={removeSubScope}
+                          newSubScope={newSubScope}
+                          setNewSubScope={setNewSubScope}
+                          sensors={sensors}
+                          onSubScopeDragEnd={handleSubScopeDragEnd}
+                        />
+                      ))}
                     </div>
-                  </CardContent>
-                </Card>
+                  </SortableContext>
+                </DndContext>
+              )}
 
-                <Card>
-                  <CardContent className="p-4">
-                    <div className="text-center">
-                      <FileText className="h-8 w-8 text-green-600 mx-auto mb-2" />
-                      <h3 className="font-semibold">การตรวจสอบเอกสาร</h3>
-                      <p className="text-sm text-gray-600 mt-1">
-                        ตรวจสอบเอกสารและหลักฐาน
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardContent className="p-4">
-                    <div className="text-center">
-                      <Target className="h-8 w-8 text-purple-600 mx-auto mb-2" />
-                      <h3 className="font-semibold">การทดสอบ</h3>
-                      <p className="text-sm text-gray-600 mt-1">
-                        ทดสอบการควบคุมภายใน
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
+              <div className="flex gap-2 mt-4">
+                <Input
+                  placeholder="เพิ่มขอบเขตการตรวจสอบใหม่..."
+                  value={newScope}
+                  onChange={(e) => setNewScope(e.target.value)}
+                  onKeyPress={(e) => {
+                    if (e.key === "Enter") {
+                      addScope();
+                    }
+                  }}
+                />
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
 
-        <TabsContent value="resources" className="space-y-6">
+          {/* ระยะเวลาที่ใช้ในการตรวจสอบ */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Clock className="h-5 w-5" />
-                ทรัพยากรและกำหนดเวลา
+                ระยะเวลาที่ใช้ในการตรวจสอบ
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div>
-                  <Label htmlFor="team-size">จำนวนทีมงาน</Label>
-                  <Input
-                    id="team-size"
-                    type="number"
-                    value={formData.resources.teamSize}
-                    onChange={(e) => setFormData({
-                      ...formData,
-                      resources: {
-                        ...formData.resources,
-                        teamSize: parseInt(e.target.value) || 0
-                      }
-                    })}
-                    className="mt-1"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">คน</p>
-                </div>
+              <Textarea
+                placeholder="ระบุระยะเวลาที่ใช้ในการตรวจสอบ เช่น 12 สัปดาห์ หรือ 3 เดือน..."
+                value={auditDuration}
+                onChange={(e) => setAuditDuration(e.target.value)}
+                rows={3}
+              />
+            </CardContent>
+          </Card>
 
-                <div>
-                  <Label htmlFor="duration">ระยะเวลาดำเนินการ</Label>
-                  <Input
-                    id="duration"
-                    value={formData.resources.duration}
-                    onChange={(e) => setFormData({
-                      ...formData,
-                      resources: {
-                        ...formData.resources,
-                        duration: e.target.value
-                      }
-                    })}
-                    className="mt-1"
-                  />
-                </div>
+          {/* วิธีการตรวจสอบ */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                วิธีการตรวจสอบ
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Textarea
+                placeholder="ระบุวิธีการและเทคนิคที่ใช้ในการตรวจสอบ เช่น การสัมภาษณ์ การตรวจสอบเอกสาร การทดสอบการควบคุมภายใน..."
+                value={auditMethodology}
+                onChange={(e) => setAuditMethodology(e.target.value)}
+                rows={4}
+              />
+            </CardContent>
+          </Card>
 
-                <div>
-                  <Label htmlFor="budget">งบประมาณ</Label>
-                  <Input
-                    id="budget"
-                    value={formData.resources.budget}
-                    onChange={(e) => setFormData({
-                      ...formData,
-                      resources: {
-                        ...formData.resources,
-                        budget: e.target.value
-                      }
-                    })}
-                    className="mt-1"
-                  />
-                </div>
-              </div>
-
-              <div className="mt-6 p-4 bg-yellow-50 rounded-lg">
-                <h4 className="font-semibold text-yellow-800 mb-2">หมายเหตุ</h4>
-                <p className="text-sm text-yellow-700">
-                  ทรัพยากรและเวลาที่กำหนดนี้เป็นการประมาณการเบื้องต้น 
-                  อาจมีการปรับเปลี่ยนตามความซับซ้อนของการตรวจสอบที่เพิ่มขึ้น
-                </p>
+          {/* ผู้รับผิดชอบในการตรวจสอบ */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                ผู้รับผิดชอบในการตรวจสอบ
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-3">
+                <Input
+                  value={auditResponsible}
+                  placeholder="-"
+                  className="w-full bg-gray-50"
+                  readOnly
+                />
+                <Dialog
+                  open={
+                    isPersonDialogOpen && currentField === "auditResponsible"
+                  }
+                  onOpenChange={setIsPersonDialogOpen}
+                >
+                  <DialogTrigger asChild>
+                    <Button
+                      type="button"
+                      className="bg-[#3E52B9] hover:bg-[#3346a6]"
+                      onClick={() => handleOpenPersonDialog("auditResponsible")}
+                    >
+                      เลือกผู้รับผิดชอบ
+                    </Button>
+                  </DialogTrigger>
+                </Dialog>
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
-      </Tabs>
+
+          {/* ภายใต้การกำกับและควบคุมของ */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                ภายใต้การกำกับและควบคุมของ
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-3">
+                <Input
+                  value={supervisor}
+                  placeholder="-"
+                  className="w-full bg-gray-50"
+                  readOnly
+                />
+                <Dialog
+                  open={isPersonDialogOpen && currentField === "supervisor"}
+                  onOpenChange={setIsPersonDialogOpen}
+                >
+                  <DialogTrigger asChild>
+                    <Button
+                      type="button"
+                      className="bg-[#3E52B9] hover:bg-[#3346a6]"
+                      onClick={() => handleOpenPersonDialog("supervisor")}
+                    >
+                      เลือกผู้รับผิดชอบ
+                    </Button>
+                  </DialogTrigger>
+                </Dialog>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
 
       {/* Navigation */}
       <div className="flex justify-between mt-8">
@@ -452,13 +1047,22 @@ export default function Step2EngagementPlanPage() {
             ขั้นตอนก่อนหน้า: การประเมินความเสี่ยง
           </Button>
         </Link>
-        <Link href={`/audit-engagement-plan/${id}/step-3-audit-program`}>
-          <Button>
-            ขั้นตอนถัดไป: Audit Program
-            <ArrowRight className="h-4 w-4 ml-2" />
-          </Button>
-        </Link>
+        <Button onClick={handleNextStep}>
+          ขั้นตอนถัดไป: Audit Program
+          <ArrowRight className="h-4 w-4 ml-2" />
+        </Button>
       </div>
+
+      {/* Person Selection Dialog */}
+      <PersonSelectionDialog
+        isOpen={isPersonDialogOpen}
+        onOpenChange={setIsPersonDialogOpen}
+        selectedPerson={selectedPerson}
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
+        onSelectPerson={handleSelectPerson}
+        onConfirmSelection={handleConfirmSelection}
+      />
     </div>
   );
 }
