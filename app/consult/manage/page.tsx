@@ -157,10 +157,11 @@ export default function ConsultPage() {
     };
   const handleAdd = () => {
     console.log(" Add ")
-    router.push(`/consult/manage/addconsult`)
+    router.push(`/consult/manage/add`)
   }
-  const handleEdit = (id: number) => {
+  const handleEdit = (id: number ,name:string) => {
     console.log(" ID:", id)
+    router.push(`/consult/manage/edit?id=${id}&name=${encodeURIComponent(name)}`)
   }
   const handleFilter = () => {
     setShowFilterDialog(true)
@@ -323,7 +324,7 @@ export default function ConsultPage() {
                             color="darkblue"
                             onClick={(e) => {
                                 e.stopPropagation()
-                                handleEdit(row.index+1)
+                                handleEdit(row.index+1,row.original.title)
                             }}
                             title="แก้ไข"
                         >
@@ -372,7 +373,7 @@ export default function ConsultPage() {
         </div>
       </div> 
        {/* dialog box here */}
-        {/* dialog for preview */}
+       {/* dialog for preview */}
         <Dialog open={showFilterDialog} onOpenChange={setShowFilterDialog} >
           <DialogContent className="sm:max-w-lg">
             <DialogHeader>

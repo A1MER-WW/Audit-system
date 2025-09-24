@@ -47,6 +47,9 @@ import { Breadcrumb, BreadcrumbItem, BreadcrumbList } from "@/components/ui/brea
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { faqDocumentType, useFaqDocuments } from "@/hooks/useFaqDocument";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Card } from "@/components/ui/card";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 
 const columns: ColumnDef<faqDocumentType>[] = [
@@ -115,16 +118,30 @@ const columns: ColumnDef<faqDocumentType>[] = [
   },
   {
     accessorKey: "issue_answer",
-    header: "ประเด็นคำถาม",
+    header: "ประเด็นคำตอบ",
     cell: ({ row }) => (
       <div className="text-left max-w-[400px] truncate">{row.getValue("issue_answer")}</div>
     ),
   },
   {
     accessorKey: "phonenumber",
-    header: "สถานะ",
+    header: "เบอร์โทรศัพท์",
     cell: ({ row }) => (
       <div className="text-left font-medium">{row.getValue("phonenumber")}</div>
+    ),
+  },
+  {
+    accessorKey: "email",
+    header: "E-mail",
+    cell: ({ row }) => (
+      <div className="text-left font-medium">{row.getValue("email")}</div>
+    ),
+  },
+  {
+    accessorKey: "responsible_person",
+    header: "ผู้รับผิดชอบ",
+    cell: ({ row }) => (
+      <div className="text-left font-medium">{row.getValue("responsible_person")}</div>
     ),
   },
   {
@@ -160,6 +177,8 @@ export default function FaqManagePage() {
     React.useState<VisibilityState>({})
     const [rowSelection, setRowSelection] = React.useState({})
     const [searchValue, setSearchValue] = React.useState("")
+      const [inputValue, setInputValue] = React.useState('');
+      const [showFilterDialog, setShowFilterDialog] = React.useState<boolean>(false);
     const router = useRouter()
 
 // ใช้ useDocuments hook เพื่อดึงข้อมูลจาก API
@@ -177,19 +196,26 @@ export default function FaqManagePage() {
 
     //-----------Handle-------------------------
 
-      const handleTabChange = (value: string) => {
-            setActiveTab(value)
-            localStorage.setItem("faq-active-tab", value)
-        }
-    const handleView = (id: number , name:string) => {
-        router.push(`/faq/manage/view?id=${id}&name=${encodeURIComponent(name)}`)
+    const handleTabChange = (value: string) => {
+          setActiveTab(value)
+          localStorage.setItem("faq-active-tab", value)
     }
-    const handleEdit = (id: number, name:string) => {
-        console.log(" ID:", id)
-        router.push(`/faq/manage/view?id=${id}&name=${encodeURIComponent(name)}`)
+    const handleSearchClick = () => {
+      setSearchValue(inputValue);
+    };
+    const handleAdd = () => {
+      console.log(" Add ")
+      router.push(`/faq/manage/add`)
     }
-    const handleDelete = (id: number) => {
-        console.log(" ID:", id)
+    const handleEdit = (id: number ,name:string) => {
+      console.log(" ID:", id)
+      router.push(`/faq/manage/edit?id=${id}&name=${encodeURIComponent(name)}`)
+    }
+    const handleFilter = () => {
+      setShowFilterDialog(true)
+    }
+    const handleExport = () => {
+      console.log(" Export:")
     }
 
     //------------------------------------------
@@ -239,12 +265,11 @@ export default function FaqManagePage() {
             </div>
           </div>
           <div>
-          <h1>จัดการฐานข้อมูลทางด้านกฏหมาย</h1>
+          <h1>จัดการข้อมูลดูแลงานให้บริการและคำปรึกษา</h1>
             <p className="text-muted-foreground text-sm text-balance pt-1 ">
             ควบคุมและจัดการข้อมูลการให้บริการ
             </p>
           </div>
-
             <div>
                 <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
                 <TabsList>
@@ -263,71 +288,55 @@ export default function FaqManagePage() {
                     </button>
                 </div>
                 )}
-                <div className="flex items-center py-4">
-                <Input
-                placeholder="ค้นหาชื่อเอกสาร..."
-                value={searchValue}
-                onChange={(event) => setSearchValue(event.target.value)}
-                className="max-w-sm"
-                />
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                    <Button variant="outline" className="ml-auto">
-                        คอลัมน์ <ChevronDown />
-                    </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent className="bg" align="end">
-                    {tableView
-                    .getAllColumns()
-                    .filter((column) => column.getCanHide())
-                    .map((column) => {
-                        // แปลชื่อคอลัมน์เป็นภาษาไทย
-                        const getColumnDisplayName = (columnId: string) => {
-                        switch (columnId) {
-                            case "notificationdate":
-                            return "วันที่แจ้ง"
-                            case "department":
-                            return "หน่วยงาน"
-                            case "category":
-                            return "หมวดหมู่"
-                            case "title":
-                            return "ชื่อเรื่อง"
-                            case "issue_question":
-                            return "ประเด็นคำถาม"
-                            case "issue_answer":
-                            return "ประเด็นคำตอบ"
-                            case "phonenumber":
-                            return "เบอร์โทร"
-                            case "email":
-                            return "E-mail"
-                            case "responsible_person":
-                            return "ผู้รับผิดชอบ"
-                            case "status":
-                            return "สถานะ"
-                            case "display":
-                            return "การแสดงผล"
-                            case "actions":
-                            return "การดำเนินการ"
-                            default:
-                            return columnId
-                        }
-                        }
-
-                        return (
-                        <DropdownMenuCheckboxItem
-                            key={column.id}
-                            className="capitalize"
-                            checked={column.getIsVisible()}
-                            onCheckedChange={(value) =>
-                            column.toggleVisibility(!!value)
-                            }
+                <div className=" justify-items-end items-center py-4">
+                  <div className="flex">
+                    <Input
+                    placeholder="ค้นหาชื่อเอกสาร..."
+                    value={inputValue}
+                    onChange={(e) => setInputValue(e.target.value)}
+                    className="max-w-sm"
+                    />
+                    {/* Search Button */}
+                    <div className="items-center ml-4">
+        
+                        <Button variant="outline" 
+                        className="text-[#FFFFFF] border-[#3E52B9] bg-[#3E52B9]"
+                        onClick={handleSearchClick}
                         >
-                            {getColumnDisplayName(column.id)}
-                        </DropdownMenuCheckboxItem>
-                        )
-                    })}
-                </DropdownMenuContent>
-                </DropdownMenu>
+                            ค้นหา
+                        </Button>
+                    </div>
+                    {/* Filter Button */}
+                    <div className="flex justify-end items-center ml-4">
+        
+                        <Button variant="outline" 
+                          className="text-[#3E52B9] border-[#3E52B9]"
+                        onClick={handleFilter}
+                          >
+                              Filter
+                        </Button>
+                    </div>
+                    {/* Export Button */}
+                    <div className="flex justify-end items-center ml-4">
+        
+                        <Button variant="outline" 
+                          className="text-[#3E52B9] border-[#3E52B9]"
+                        onClick={handleExport}
+                          >
+                              Export to PDF
+                        </Button>
+                    </div>
+                    {/* Add Button */}
+                    <div className="items-center ml-4">
+        
+                        <Button variant="outline" 
+                        className="text-[#FFFFFF] border-[#3E52B9] bg-[#3E52B9]"
+                        onClick={handleAdd}
+                        >
+                            เพิ่มหัวข้อ
+                        </Button>
+                    </div>
+                  </div>
                 </div>
                     <div className="overflow-hidden rounded-md border">
                         <Table>
@@ -376,19 +385,6 @@ export default function FaqManagePage() {
                                 ))}
                                 <TableCell>
                                     <div className="flex items-center justify-center gap-2">
-                                    {/* //-- view
-                                     <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className="h-8 w-8 p-0"
-                                        onClick={(e) => {
-                                            e.stopPropagation()
-                                            handleView(row.index+1,row.original.title)
-                                        }}
-                                        title="ดูรายละเอียด"
-                                    >
-                                        <Eye className="h-4 w-4" />
-                                    </Button> */}
                                     <Button
                                         variant="outline"
                                         size="sm"
@@ -401,19 +397,6 @@ export default function FaqManagePage() {
                                     >
                                         <Edit className="h-4 w-4" />
                                     </Button>
-                                    {/*  // --- delete
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                                        onClick={(e) => {
-                                            e.stopPropagation()
-                                            handleDelete(row.index+1)
-                                        }}
-                                        title="ลบ"
-                                    >
-                                        <Trash2 className="h-4 w-4" />
-                                    </Button> */}
                                 </div>
                                 </TableCell>
                                 </TableRow>
@@ -468,174 +451,131 @@ export default function FaqManagePage() {
                     </button>
                 </div>
                 )}
-                <div className="flex items-center py-4">
-                    
-                <Input
-                placeholder="ค้นหาชื่อเอกสาร..."
-                value={searchValue}
-                onChange={(event) => setSearchValue(event.target.value)}
-                className="max-w-sm"
-                />
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                    <Button variant="outline" className="ml-auto">
-                        คอลัมน์ <ChevronDown />
-                    </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent className="bg" align="end">
-                    {tableView
-                    .getAllColumns()
-                    .filter((column) => column.getCanHide())
-                    .map((column) => {
-                        // แปลชื่อคอลัมน์เป็นภาษาไทย
-                        const getColumnDisplayName = (columnId: string) => {
-                        switch (columnId) {
-                            case "notificationdate":
-                            return "วันที่แจ้ง"
-                            case "department":
-                            return "หน่วยงาน"
-                            case "category":
-                            return "หมวดหมู่"
-                            case "title":
-                            return "ชื่อเรื่อง"
-                            case "issue_question":
-                            return "ประเด็นคำถาม"
-                            case "issue_answer":
-                            return "ประเด็นคำตอบ"
-                            case "phonenumber":
-                            return "เบอร์โทร"
-                            case "email":
-                            return "E-mail"
-                            case "responsible_person":
-                            return "ผู้รับผิดชอบ"
-                            case "status":
-                            return "สถานะ"
-                            case "display":
-                            return "การแสดงผล"
-                            case "actions":
-                            return "การดำเนินการ"
-                            default:
-                            return columnId
-                        }
-                        }
-
-                        return (
-                        <DropdownMenuCheckboxItem
-                            key={column.id}
-                            className="capitalize"
-                            checked={column.getIsVisible()}
-                            onCheckedChange={(value) =>
-                            column.toggleVisibility(!!value)
-                            }
+                <div className=" justify-items-end items-center py-4">
+                  <div className="flex">
+                    <Input
+                    placeholder="ค้นหาชื่อเอกสาร..."
+                    value={inputValue}
+                    onChange={(e) => setInputValue(e.target.value)}
+                    className="max-w-sm"
+                    />
+                    {/* Search Button */}
+                    <div className="items-center ml-4">
+        
+                        <Button variant="outline" 
+                        className="text-[#FFFFFF] border-[#3E52B9] bg-[#3E52B9]"
+                        onClick={handleSearchClick}
                         >
-                            {getColumnDisplayName(column.id)}
-                        </DropdownMenuCheckboxItem>
-                        )
-                    })}
-                </DropdownMenuContent>
-                </DropdownMenu>
+                            ค้นหา
+                        </Button>
                     </div>
-                        <div className="overflow-hidden rounded-md border">
-                            <Table>
-                            <TableHeader>
-                                {tableView.getHeaderGroups().map((headerGroup) => (
-                                    <TableRow key={headerGroup.id}>
-                                    {headerGroup.headers.map((header) => {
-                                        return (
-                                        <TableHead key={header.id}>
-                                            {header.isPlaceholder
-                                            ? null
-                                            : flexRender(
-                                                header.column.columnDef.header,
-                                                header.getContext()
-                                                )}
-                                        </TableHead>
-                                        )
-                                    })}
-                                    </TableRow>
-                                ))}
-                            </TableHeader>
-                            <TableBody>
-                                {loading ? (
-                                // แสดง loading state
-                                <TableRow>
-                                    <TableCell colSpan={columns.length} className="h-24 text-center">
-                                    <div className="flex items-center justify-center">
-                                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-900"></div>
-                                        <span className="ml-2">กำลังโหลดข้อมูล...</span>
-                                    </div>
-                                    </TableCell>
+                    {/* Filter Button */}
+                    <div className="flex justify-end items-center ml-4">
+        
+                        <Button variant="outline" 
+                          className="text-[#3E52B9] border-[#3E52B9]"
+                        onClick={handleFilter}
+                          >
+                              Filter
+                        </Button>
+                    </div>
+                    {/* Export Button */}
+                    <div className="flex justify-end items-center ml-4">
+        
+                        <Button variant="outline" 
+                          className="text-[#3E52B9] border-[#3E52B9]"
+                        onClick={handleExport}
+                          >
+                              Export to PDF
+                        </Button>
+                    </div>
+                    {/* Add Button */}
+                    <div className="items-center ml-4">
+        
+                        <Button variant="outline" 
+                        className="text-[#FFFFFF] border-[#3E52B9] bg-[#3E52B9]"
+                        onClick={handleAdd}
+                        >
+                            เพิ่มหัวข้อ
+                        </Button>
+                    </div>
+                  </div>
+                </div>
+                <div className="overflow-hidden rounded-md border">
+                        <Table>
+                          <TableHeader>
+                              {tableView.getHeaderGroups().map((headerGroup) => (
+                                  <TableRow key={headerGroup.id}>
+                                  {headerGroup.headers.map((header) => {
+                                      return (
+                                      <TableHead key={header.id}>
+                                          {header.isPlaceholder
+                                          ? null
+                                          : flexRender(
+                                              header.column.columnDef.header,
+                                              header.getContext()
+                                              )}
+                                      </TableHead>
+                                      )
+                                  })}
+                                  </TableRow>
+                              ))}
+                          </TableHeader>
+                          <TableBody>
+                              {loading ? (
+                              // แสดง loading state
+                              <TableRow>
+                                  <TableCell colSpan={columns.length} className="h-24 text-center">
+                                  <div className="flex items-center justify-center">
+                                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-900"></div>
+                                      <span className="ml-2">กำลังโหลดข้อมูล...</span>
+                                  </div>
+                                  </TableCell>
+                              </TableRow>
+                              ) : tableView.getRowModel().rows?.length ? (
+                              tableView.getRowModel().rows.map((row) => (
+                                <TableRow
+                                  key={row.id}
+                                  data-state={row.getIsSelected() && "selected"}
+                                  >
+                                  {row.getVisibleCells().map((cell) => (
+                                      <TableCell key={cell.id}>
+                                      {flexRender(
+                                          cell.column.columnDef.cell,
+                                          cell.getContext()
+                                      )}
+                                      </TableCell>
+                                  ))}
+                                  <TableCell>
+                                      <div className="flex items-center justify-center gap-2">
+                                      <Button
+                                          variant="outline"
+                                          size="sm"
+                                          className="h-8 w-8 p-0"
+                                          onClick={(e) => {
+                                              e.stopPropagation()
+                                              handleEdit(row.index+1,row.original.title)
+                                          }}
+                                          title="แก้ไข"
+                                      >
+                                          <Edit className="h-4 w-4" />
+                                      </Button>
+                                  </div>
+                                  </TableCell>
                                 </TableRow>
-                                ) : tableView.getRowModel().rows?.length ? (
-                                tableView.getRowModel().rows.map((row) => (
-                                    <TableRow
-                                    key={row.id}
-                                    data-state={row.getIsSelected() && "selected"}
-                                    >
-                                    {row.getVisibleCells().map((cell) => (
-                                        <TableCell key={cell.id}>
-                                        {flexRender(
-                                            cell.column.columnDef.cell,
-                                            cell.getContext()
-                                        )}
-                                        </TableCell>
-                                    ))}
-                                    <TableCell>
-                                        <div className="flex items-center justify-center gap-2">
-                                        {/* //--view page 
-                                         <Button
-                                            variant="outline"
-                                            size="sm"
-                                            className="h-8 w-8 p-0"
-                                            onClick={(e) => {
-                                                e.stopPropagation()
-                                                handleView(row.index+1,row.original.title)
-                                            }}
-                                            title="ดูรายละเอียด"
-                                        >
-                                            <Eye className="h-4 w-4" />
-                                        </Button> */}
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            className="h-8 w-8 p-0"
-                                            onClick={(e) => {
-                                                e.stopPropagation()
-                                                handleEdit(row.index+1,row.original.title)
-                                            }}
-                                            title="แก้ไข"
-                                        >
-                                            <Edit className="h-4 w-4" />
-                                        </Button>
-                                        {/*  //-- delete
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                                            onClick={(e) => {
-                                                e.stopPropagation()
-                                                handleDelete(row.index+1)
-                                            }}
-                                            title="ลบ"
-                                        >
-                                            <Trash2 className="h-4 w-4" />
-                                        </Button> */}
-                                    </div>
-                                    </TableCell>
-                                    </TableRow>
-                                ))
-                                ) : (
-                                <TableRow>
-                                    <TableCell
-                                    colSpan={columns.length}
-                                    className="h-24 text-center"
-                                    >
-                                    ไม่พบข้อมูล
-                                    </TableCell>
-                                </TableRow>
-                                )}
-                            </TableBody>
-                            </Table>
+                              ))
+                              ) : (
+                              <TableRow>
+                                  <TableCell
+                                  colSpan={columns.length}
+                                  className="h-24 text-center"
+                                  >
+                                  ไม่พบข้อมูล
+                                  </TableCell>
+                              </TableRow>
+                              )}
+                          </TableBody>
+                          </Table>
                         </div>
                         <div className="flex items-center justify-end space-x-2 py-4">
                             <div className="text-muted-foreground flex-1 text-sm">
@@ -665,6 +605,77 @@ export default function FaqManagePage() {
                 </Tabs>
             </div>
         </div>
+        {/* dialog box here */}
+       {/* dialog for preview */}
+        <Dialog open={showFilterDialog} onOpenChange={setShowFilterDialog} >
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+                <DialogTitle className="font-semibold">
+                        ตัวกรอง
+                </DialogTitle>
+                <Card className="shadow-lg">
+                  <div className="h-full px-3 py-4 overflow-y-auto dark:bg-gray-800">
+                    <h1>หมวดหมู่</h1>
+                    <div className="mt-2">
+                      <Select>
+                        <SelectTrigger className="w-[200px]">
+                            <SelectValue placeholder="เลือกหมวดหมู่" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectGroup>
+                            <SelectItem value="1">Category1</SelectItem>
+                            <SelectItem value="2">Category2</SelectItem>
+                            <SelectItem value="3">Category3</SelectItem>
+                            <SelectItem value="4">Category4</SelectItem>
+                            <SelectItem value="5">Category5</SelectItem>
+                            </SelectGroup>
+                        </SelectContent>
+                    </Select>
+                    </div>
+                    <h1 className="mt-4">ประเภท</h1>
+                    <div className="mt-2">
+                      <Select>
+                        <SelectTrigger className="w-[200px]">
+                            <SelectValue placeholder="เลือกประเภท" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectGroup>
+                            <SelectItem value="1">Category1</SelectItem>
+                            <SelectItem value="2">Category2</SelectItem>
+                            <SelectItem value="3">Category3</SelectItem>
+                            <SelectItem value="4">Category4</SelectItem>
+                            <SelectItem value="5">Category5</SelectItem>
+                            </SelectGroup>
+                        </SelectContent>
+                    </Select>
+                    </div>
+                    <h1 className="mt-4">การแสดงผล</h1>
+                    <div className="mt-2">
+                      <Select>
+                        <SelectTrigger className="w-[200px]">
+                            <SelectValue placeholder="เลือกการแสดงผล" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectGroup>
+                            <SelectItem value="1">Category1</SelectItem>
+                            <SelectItem value="2">Category2</SelectItem>
+                            <SelectItem value="3">Category3</SelectItem>
+                            <SelectItem value="4">Category4</SelectItem>
+                            <SelectItem value="5">Category5</SelectItem>
+                            </SelectGroup>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </Card>
+            </DialogHeader>
+            <div className="justify-self-end items-center py-4">
+                <Button className=" bg-[#3E52B9] w-[100px]"
+                // onClick={handleSignedConfirm}
+                >กรองข้อมูล</Button>
+            </div>
+          </DialogContent>
+        </Dialog>
     </div>
     )
 }

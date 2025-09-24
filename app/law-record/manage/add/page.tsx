@@ -21,7 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 
 
-export default function LowRecordManageViewPage() {
+export default function LowRecordManageAddPage() {
 
     const { goBack } = useNavigationHistory();
     const router = useRouter();
@@ -56,7 +56,7 @@ export default function LowRecordManageViewPage() {
               <Breadcrumb>
                 <BreadcrumbList>
                   <BreadcrumbItem >
-                    {searchParams.values().toArray().at(1)}
+                    เพิ่มข้อมูลทางด้านกฏหมาย 
                   </BreadcrumbItem>
                 </BreadcrumbList>
               </Breadcrumb>
@@ -107,12 +107,11 @@ export default function LowRecordManageViewPage() {
         </Card>
         <Card className="shadow-lg ">
           <div className='content-left ml-4'>
-            <h1 className='text-lg'>ต้องการลบข้อมูลนี้ใช่หรือไม่</h1>
+            <h1 className='text-lg'>ต้องการเพิ่มข้อมูลนี้ใช่หรือไม่</h1>
             <div className="flex">
               <p className="text-muted-foreground text-sm text-balance pt-4 ">
-              ลบฐานข้อมูลด้านกฏหมายนี้
+              เพิ่มฐานข้อมูลด้านกฏหมายนี้
               </p>
-              <Button variant="outline" className="mt-2 ml-4 bg-red-500">ลบข้อมูล</Button>
             </div>
           </div>
         </Card>

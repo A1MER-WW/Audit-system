@@ -22,7 +22,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { SignatureComponent } from "@/components/signature-component";
 
 
-export default function FaqManageViewPage() {
+export default function FaqManageAddPage() {
 
     const { goBack } = useNavigationHistory();
     const router = useRouter();
@@ -212,10 +212,10 @@ export default function FaqManageViewPage() {
                 />
             </div>
         </Card>
-        <div className="w-200 pt-4">
-            <div className="flex gap-4 mt-4">
-                <Button variant="outline" className="flex-1">ยกเลิก</Button>
-                <Button className="flex-1 bg-[#3E52B9]"
+        <div className="w-full pt-4">
+            <div className="justify-self-end gap-4 mt-4">
+                <Button variant="outline" className="w-[100px] mr-4">ยกเลิก</Button>
+                <Button className="w-[100px] bg-[#3E52B9] mr-4"
                 onClick={handleSaved}
                 >บันทึก</Button>
             </div>
