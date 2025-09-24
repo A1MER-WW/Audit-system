@@ -24,7 +24,7 @@ import { SignatureComponent } from "@/components/signature-component";
 import { useRouter } from "next/navigation"
 
 
-export default function ViewConsult() {
+export default function AddConsult() {
     const { goBack } = useNavigationHistory();
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -117,7 +117,7 @@ export default function ViewConsult() {
           </div>
         </Card>
         {/* ในส่วนนี้ต้องดึง policy มา check เพื่อให้หัวหน้างานพิจารณา */}
-        <div className="w-400 flex flex-row-reverse gap-4 mt-4 ">
+        <div className="flex justify-self-end gap-4 mt-4 ">
             <Button 
                 className=" bg-[#3E52B9]" 
                 onClick={handleToApprove}
@@ -208,17 +208,40 @@ export default function ViewConsult() {
                         </SelectGroup>
                     </SelectContent>
                 </Select>
-                <div className="w-200 pt-4">
-                    <DropzoneComponent />
-                    <div className="flex gap-4 mt-4">
-                      <Button variant="outline" className="flex-1">ยกเลิก</Button>
-                      <Button className="flex-1 bg-[#3E52B9]"
-                      onClick={handleSaved}
-                      >บันทึก</Button>
-                    </div>
-                </div>
+            </div>
+            <div className="w-200 pt-4">
+              <DropzoneComponent />
             </div>
         </Card>
+        <Card className="shadow-lg mt-4">
+          <div className='content-left ml-4'>
+            <h1 className='text-lg'>สถานะการใช้งาน</h1>
+              <p className="text-muted-foreground text-sm text-balance pt-4 ">
+              อนุญาตใช้งาน 
+              </p>
+              <div className="grid gap-3 pt-4">
+                <Select>
+                    <SelectTrigger className="w-[200px]">
+                        <SelectValue placeholder="เลือกประเภทเอกสาร" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectGroup>
+                        <SelectItem value="apple">Active</SelectItem>
+                        <SelectItem value="banana">InActive</SelectItem>
+                        </SelectGroup>
+                    </SelectContent>
+                </Select>
+              </div>
+            </div>
+        </Card>
+        <div className="w-100 pt-4">
+            <div className="flex gap-4 mt-4">
+              <Button variant="outline" className="flex-1">ยกเลิก</Button>
+              <Button className="flex-1 bg-[#3E52B9]"
+              onClick={handleSaved}
+              >บันทึก</Button>
+            </div>
+        </div>
         {/* dialog box here */}
         {/* dialog for preview */}
         <Dialog open={showPreviewDialog} onOpenChange={setShowPreviewDialog} >
@@ -233,11 +256,11 @@ export default function ViewConsult() {
                 {data?.detial}
             </div>
             <div className="mt-4 text-sm " 
-            style={
-                        {
-                            textAlignLast:"right"
-                        } as React.CSSProperties
-                      }
+                style={
+                  {
+                      textAlignLast:"right"
+                  } as React.CSSProperties
+                }
             >
                วันที่ {new Date().toLocaleString()}
             </div>
@@ -281,6 +304,26 @@ export default function ViewConsult() {
                 <Card className="shadow-lg">
                     <div className="text-sm text-balance ml-2">
                        Pig00000.png
+                    </div>
+                </Card>
+                <Card className="shadow-lg">
+                    <div className="text-sm text-balance ml-2">
+                       <div className="mt-2">
+                          <Select>
+                            <SelectTrigger className="w-[200px]">
+                                <SelectValue placeholder="เลือกการแสดงผล" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectGroup>
+                                <SelectItem value="1">Category1</SelectItem>
+                                <SelectItem value="2">Category2</SelectItem>
+                                <SelectItem value="3">Category3</SelectItem>
+                                <SelectItem value="4">Category4</SelectItem>
+                                <SelectItem value="5">Category5</SelectItem>
+                                </SelectGroup>
+                            </SelectContent>
+                          </Select>
+                        </div>
                     </div>
                 </Card>
                 <p className="text-muted-foreground text-sm text-balance pt-4 ">

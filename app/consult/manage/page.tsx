@@ -10,6 +10,7 @@ import {
   ChevronLeft ,
   Edit,
   Eye,
+  Pencil,
   Trash2,
   type LucideIcon
 } from "lucide-react"
@@ -45,6 +46,9 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { useConsultDocuments, type consultDocumentType as consultDocumentsType } from "@/hooks/useConsultDocuments"
 import { useRouter } from "next/navigation"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Card } from "@/components/ui/card";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 
 const columns: ColumnDef<consultDocumentsType>[] = [
@@ -134,6 +138,8 @@ export default function ConsultPage() {
     React.useState<VisibilityState>({})
   const [rowSelection, setRowSelection] = React.useState({})
   const [searchValue, setSearchValue] = React.useState("")
+  const [inputValue, setInputValue] = React.useState('');
+  const [showFilterDialog, setShowFilterDialog] = React.useState<boolean>(false);
 
 // ใช้ useDocuments hook เพื่อดึงข้อมูลจาก API
   const { documents, loading, error, refetch } = useConsultDocuments({
@@ -146,11 +152,18 @@ export default function ConsultPage() {
     //router.push(`/consult/addconsult?id=${id}&name=${encodeURIComponent(name)}`)
     router.push(`/consult/manage/viewconsult?id=${id}&name=${encodeURIComponent(name)}`)
   }
+  const handleSearchClick = () => {
+      setSearchValue(inputValue);
+    };
+  const handleAdd = () => {
+    console.log(" Add ")
+    router.push(`/consult/manage/addconsult`)
+  }
   const handleEdit = (id: number) => {
     console.log(" ID:", id)
   }
-  const handleDelete = (id: number) => {
-    console.log(" ID:", id)
+  const handleFilter = () => {
+    setShowFilterDialog(true)
   }
   //-------------------
   const { goBack } = useNavigationHistory();
@@ -216,59 +229,45 @@ export default function ConsultPage() {
             </button>
           </div>
         )}
-        <div className="flex items-center py-4">
-          <Input
-          placeholder="ค้นหาชื่อเอกสาร..."
-          value={searchValue}
-          onChange={(event) => setSearchValue(event.target.value)}
-          className="max-w-sm"
-        />
-        <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="ml-auto">
-                คอลัมน์ <ChevronDown />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="bg" align="end">
-            {tableView
-              .getAllColumns()
-              .filter((column) => column.getCanHide())
-              .map((column) => {
-                // แปลชื่อคอลัมน์เป็นภาษาไทย
-                const getColumnDisplayName = (columnId: string) => {
-                  switch (columnId) {
-                    case "department":
-                      return "หน่วยงาน"
-                    case "title":
-                      return "ชื่อเรื่อง"
-                    case "detial":
-                      return "รายละเอียด"
-                    case "status":
-                      return "สถานะ"
-                    case "display":
-                      return "การแสดงผล"
-                    case "actions":
-                      return "การดำเนินการ"
-                    default:
-                      return columnId
-                  }
-                }
+        <div className=" justify-items-end items-center py-4">
+          <div className="flex">
+            <Input
+            placeholder="ค้นหาชื่อเอกสาร..."
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            className="max-w-sm"
+            />
+            {/* Search Button */}
+            <div className="items-center ml-4">
 
-                return (
-                  <DropdownMenuCheckboxItem
-                    key={column.id}
-                    className="capitalize"
-                    checked={column.getIsVisible()}
-                    onCheckedChange={(value) =>
-                      column.toggleVisibility(!!value)
-                    }
+                <Button variant="outline" 
+                className="text-[#FFFFFF] border-[#3E52B9] bg-[#3E52B9]"
+                onClick={handleSearchClick}
+                >
+                    ค้นหา
+                </Button>
+            </div>
+            {/* Filter Button */}
+            <div className="flex justify-end items-center ml-4">
+
+                <Button variant="outline" 
+                  className="text-[#3E52B9] border-[#3E52B9]"
+                onClick={handleFilter}
                   >
-                    {getColumnDisplayName(column.id)}
-                  </DropdownMenuCheckboxItem>
-                )
-              })}
-          </DropdownMenuContent>
-        </DropdownMenu>
+                      Filter
+                </Button>
+            </div>
+            {/* Add Button */}
+            <div className="items-center ml-4">
+
+                <Button variant="outline" 
+                className="text-[#FFFFFF] border-[#3E52B9] bg-[#3E52B9]"
+                onClick={handleAdd}
+                >
+                    เพิ่มเกร็ดความรู้
+                </Button>
+            </div>
+          </div>
         </div>
         <div className="overflow-hidden rounded-md border">
           <Table>
@@ -321,37 +320,14 @@ export default function ConsultPage() {
                             variant="outline"
                             size="sm"
                             className="h-8 w-8 p-0"
-                            onClick={(e) => {
-                                e.stopPropagation()
-                                handleView(row.index+1,row.original.title)
-                            }}
-                            title="ดูรายละเอียด"
-                        >
-                            <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-8 w-8 p-0"
+                            color="darkblue"
                             onClick={(e) => {
                                 e.stopPropagation()
                                 handleEdit(row.index+1)
                             }}
                             title="แก้ไข"
                         >
-                            <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                            onClick={(e) => {
-                                e.stopPropagation()
-                                handleDelete(row.index+1)
-                            }}
-                            title="ลบ"
-                        >
-                            <Trash2 className="h-4 w-4" />
+                            <Pencil  className="h-4 w-4 fill"  color="#0040d6"/>
                         </Button>
                     </div>
                     </TableCell>
@@ -395,6 +371,77 @@ export default function ConsultPage() {
           </div>
         </div>
       </div> 
+       {/* dialog box here */}
+        {/* dialog for preview */}
+        <Dialog open={showFilterDialog} onOpenChange={setShowFilterDialog} >
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+                <DialogTitle className="font-semibold">
+                        ตัวกรอง
+                </DialogTitle>
+                <Card className="shadow-lg">
+                  <div className="h-full px-3 py-4 overflow-y-auto dark:bg-gray-800">
+                    <h1>หมวดหมู่</h1>
+                    <div className="mt-2">
+                      <Select>
+                        <SelectTrigger className="w-[200px]">
+                            <SelectValue placeholder="เลือกหมวดหมู่" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectGroup>
+                            <SelectItem value="1">Category1</SelectItem>
+                            <SelectItem value="2">Category2</SelectItem>
+                            <SelectItem value="3">Category3</SelectItem>
+                            <SelectItem value="4">Category4</SelectItem>
+                            <SelectItem value="5">Category5</SelectItem>
+                            </SelectGroup>
+                        </SelectContent>
+                    </Select>
+                    </div>
+                    <h1 className="mt-4">สถานะ</h1>
+                    <div className="mt-2">
+                      <Select>
+                        <SelectTrigger className="w-[200px]">
+                            <SelectValue placeholder="เลือกสถานะ" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectGroup>
+                            <SelectItem value="1">Category1</SelectItem>
+                            <SelectItem value="2">Category2</SelectItem>
+                            <SelectItem value="3">Category3</SelectItem>
+                            <SelectItem value="4">Category4</SelectItem>
+                            <SelectItem value="5">Category5</SelectItem>
+                            </SelectGroup>
+                        </SelectContent>
+                    </Select>
+                    </div>
+                    <h1 className="mt-4">การแสดงผล</h1>
+                    <div className="mt-2">
+                      <Select>
+                        <SelectTrigger className="w-[200px]">
+                            <SelectValue placeholder="เลือกการแสดงผล" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectGroup>
+                            <SelectItem value="1">Category1</SelectItem>
+                            <SelectItem value="2">Category2</SelectItem>
+                            <SelectItem value="3">Category3</SelectItem>
+                            <SelectItem value="4">Category4</SelectItem>
+                            <SelectItem value="5">Category5</SelectItem>
+                            </SelectGroup>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </Card>
+            </DialogHeader>
+            <div className="justify-self-end items-center py-4">
+                <Button className=" bg-[#3E52B9] w-[100px]"
+                // onClick={handleSignedConfirm}
+                >กรองข้อมูล</Button>
+            </div>
+          </DialogContent>
+        </Dialog>
     </div>
   );
 }

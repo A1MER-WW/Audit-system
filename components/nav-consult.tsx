@@ -42,14 +42,14 @@ export function NavConsults({
 
     if (!consults || consults.length === 0) {
         return(
-           <SidebarGroup className="group-data-[collapsible=icon]:hidden ">
+           <SidebarGroup className="group-data-[collapsible=icon]:hidden">
             <SidebarMenu>
                 <SidebarMenuItem>
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <SidebarMenuButton>
                             <MessageCircleQuestionMark />
-                            <span>ระบบให้คำปรึกษา</span>
+                            <span className="cursor-pointer">ระบบให้คำปรึกษา</span>
                             </SidebarMenuButton>
                         </DropdownMenuTrigger>
 
