@@ -105,15 +105,15 @@ export function NavMainDatabase({
                   </SidebarMenuButton>
 
                   <SidebarMenuSub>
-                    <Link href="/master-database/risk-factors">
+                    <Link href="/ap-master-base/ap-risk-factors">
                       <span className="text-sm">รายการด้านของปัจจัยเสี่ยง</span>
                     </Link>
                   </SidebarMenuSub>
 
                   <SidebarMenuSub>
-                    <a href="">
+                    <Link href="/ap-master-base/ap-risk-criteria">
                       <span className="text-sm">รายการเกณฑ์พิจารณาความเสี่ยง</span>
-                    </a>
+                    </Link>
                   </SidebarMenuSub>
                 </Collapsible>
 

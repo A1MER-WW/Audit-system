@@ -131,7 +131,7 @@ export function NavProjects({
                   </SidebarMenuButton>
 
                   <SidebarMenuSub>
-                    <a href="/risk-assessments">
+                    <a href="/none-info-risk-assessments">
                       <span className="text-sm">กำหนดปัจจัยเสี่ยงและเกณฑ์การพิจารณาความเสี่ยง</span>
                     </a>
                   </SidebarMenuSub>
@@ -143,8 +143,26 @@ export function NavProjects({
                   </SidebarMenuSub>
 
                   <SidebarMenuSub>
-                    <a href="/risk-assessments">
+                    <a href="/opinions-of-agency">
                       <span className="text-sm">กำหนดปัจจัยเสี่ยงและเกณฑ์การพิจารณาความเสี่ยง(หน่วยงานในสังกัด)</span>
+                    </a>
+                  </SidebarMenuSub>
+
+                  <SidebarMenuSub>
+                    <a href="/summary-of-opinions">
+                      <span className="text-sm">สรุปความเห็นปัจจัยและเกณฑ์พิจารณาความเสี่ยง</span>
+                    </a>
+                  </SidebarMenuSub>
+
+                  <SidebarMenuSub>
+                    <a href="/chief-summary">
+                      <span className="text-sm">สรุปความเห็นปัจจัยและเกณฑ์พิจารณาความเสี่ยง(หัวหน้าผู้ตรวจสอบ)</span>
+                    </a>
+                  </SidebarMenuSub>
+
+                  <SidebarMenuSub>
+                    <a href="/report-risk-assessments">
+                      <span className="text-sm">รายงานผลการทบทวนปัจจัยเสี่ยงและ เกณฑ์ความเสี่ยง(ผู้ตรวจสอบ,หัวหน้าผู้ตรวจสอบ)</span>
                     </a>
                   </SidebarMenuSub>
 
@@ -207,7 +225,7 @@ export function NavProjects({
                   </SidebarMenuButton>
 
                   <SidebarMenuSub>
-                    <a href="">
+                    <a href="/ap-none-info-risk-assessments">
                       <span className="text-sm">
                         กำหนดปัจจัยเสี่ยงและเกณฑ์การพิจารณาความเสี่ยง
                       </span>
@@ -216,15 +234,15 @@ export function NavProjects({
                   
 
                   <SidebarMenuSub>
-                    <a href="">
+                    <a href="/ap-chief-internal-auditor">
                       <span className="text-sm">กำหนดปัจจัยเสี่ยงและเกณฑ์การพิจารณาความเสี่ยง(หัวหน้าผู้ตรวจสอบ)</span>
                     </a>
                   </SidebarMenuSub>
 
 
                   <SidebarMenuSub>
-                    <a href="">
-                      <span className="text-sm">กำหนดปัจจัยเสี่ยงและเกณฑ์การพิจารณาความเสี่ยง(หน่วยงานในสังกัด)</span>
+                    <a href="ap-report-risk-assessments">
+                      <span className="text-sm">รายงานผลการทบทวนปัจจัยเสี่ยงและเกณฑ์ความเสี่ยงที่ผ่านการอนุมัติ(ผู้ตรวจสอบ,หัวหน้าหน่วยจรวจสอบ)</span>
                     </a>
                   </SidebarMenuSub>
 
