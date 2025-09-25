@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Loader2 } from "lucide-react";
 
 const PRIMARY = "#3F4FC6";
 
@@ -18,11 +19,13 @@ export default function ScreeningChoiceDialog({
   onOpenChange,
   initial = "need",
   onConfirm,
+  loading = false,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   initial?: "need" | "none" | null;
   onConfirm: (value: "need" | "none") => void;
+  loading?: boolean;
 }) {
   const [choice, setChoice] = useState<"need" | "none">(initial ?? "need");
 
@@ -80,17 +83,25 @@ export default function ScreeningChoiceDialog({
             variant="outline"
             className="h-11 w-[160px] rounded-xl text-[15px] font-medium border-primary text-primary"
             onClick={() => onOpenChange(false)}
+            disabled={loading}
           >
             ยกเลิก
           </Button>
           <Button
-            className="h-11 w-[160px] rounded-xl text-[15px] font-medium bg-primary text-white"
+            className="h-11 w-[160px] rounded-xl text-[15px] font-medium bg-primary text-white disabled:opacity-50"
             onClick={() => {
               onConfirm(choice);
-              onOpenChange(false);
             }}
+            disabled={loading}
           >
-            ยืนยัน
+            {loading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                กำลังดำเนินการ...
+              </>
+            ) : (
+              "ยืนยัน"
+            )}
           </Button>
         </div>
       </DialogContent>

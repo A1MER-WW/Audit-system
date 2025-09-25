@@ -542,7 +542,7 @@ export default function RiskAssessmentResultView({ detail }: Props) {
             {/* Show different buttons based on active tab */}
             {tab === "results" ? (
               <>
-                <Button
+                {/* <Button
                   variant="outline"
                   size="sm"
                   onClick={() => {
@@ -557,17 +557,17 @@ export default function RiskAssessmentResultView({ detail }: Props) {
                   className="text-red-600 hover:text-red-700 hover:bg-red-50"
                 >
                   ล้างข้อมูล
-                </Button>
-                <Link
+                </Button> */}
+                {/* <Link
                   href={`/audit-program-risk-evaluation/${detail.id}/assess`}
                   className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-medium text-white shadow hover:bg-blue-700"
                 >
                   แก้ไขการประเมิน
-                </Link>
+                </Link> */}
               </>
             ) : (
               <>
-                <Button
+                {/* <Button
                   variant="outline"
                   size="sm"
                   onClick={() => {
@@ -581,8 +581,8 @@ export default function RiskAssessmentResultView({ detail }: Props) {
                   className="text-orange-600 hover:text-orange-700 hover:bg-orange-50"
                 >
                   ล้างการจัดลำดับ
-                </Button>
-                <Button
+                </Button> */}
+                {/* <Button
                   size="sm"
                   onClick={() => setTab("results")}
                   variant="outline"
@@ -603,7 +603,7 @@ export default function RiskAssessmentResultView({ detail }: Props) {
                   ) : (
                     "เสนอหัวหน้ากลุ่มตรวจสอบภายใน"
                   )}
-                </Button>
+                </Button> */}
               </>
             )}
           </div>

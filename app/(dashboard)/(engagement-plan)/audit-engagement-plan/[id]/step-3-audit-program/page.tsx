@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { Dialog, DialogTrigger } from "@/components/ui/dialog";
 import { PersonSelectionDialog } from "@/components/features/engagement-plan/popup";
+import { DEFAULT_USERS } from "@/constants/default-users";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
@@ -59,15 +60,9 @@ export default function Step3AuditProgramPage() {
   );
 
   // State สำหรับผู้รับผิดชอบแต่ละ field
-  const [preparer, setPreparer] = useState<string>(
-    "นางสาวกุสุมา สุขสอน (ผู้ตรวจสอบภายใน)"
-  );
-  const [reviewer, setReviewer] = useState<string>(
-    "นางสาวจิรวรรณ สมัคร (หัวหน้ากลุ่มตรวจสอบภายใน)"
-  );
-  const [approver, setApprover] = useState<string>(
-    "นางสาวจิรวรรณ สมัคร (หัวหน้ากลุ่มตรวจสอบภายใน)"
-  );
+  const [preparer, setPreparer] = useState<string>(state.step1?.basicInfo?.preparer || DEFAULT_USERS.preparer);
+  const [reviewer, setReviewer] = useState<string>(state.step1?.basicInfo?.reviewer || DEFAULT_USERS.reviewer);
+  const [approver, setApprover] = useState<string>(state.step1?.basicInfo?.approver || DEFAULT_USERS.approver);
 
   // State สำหรับ popup dialog
   const [isPersonDialogOpen, setIsPersonDialogOpen] = useState<boolean>(false);
@@ -93,6 +88,20 @@ export default function Step3AuditProgramPage() {
         auditPrograms,
       }
     });
+
+    // Also save the personnel data back to step 1 to keep it synchronized
+    dispatch({
+      type: "UPDATE_STEP1",
+      payload: {
+        basicInfo: {
+          auditedUnit: state.step1?.basicInfo?.auditedUnit || "",
+          auditCategory: state.step1?.basicInfo?.auditCategory || "",
+          preparer,
+          reviewer,
+          approver,
+        },
+      },
+    });
     
     // Navigate to Step 4
     router.push(`/audit-engagement-plan/${id}/step-4-audit-reporting`);
@@ -105,6 +114,21 @@ export default function Step3AuditProgramPage() {
     if (field === "preparer") setSelectedPerson(preparer);
     if (field === "reviewer") setSelectedPerson(reviewer);
     if (field === "approver") setSelectedPerson(approver);
+  };
+
+  const handleSelectPerson = (personName: string, personStatus: string) => {
+    setSelectedPerson(`${personName} (${personStatus})`);
+  };
+
+  const handleConfirmSelection = () => {
+    if (currentField && selectedPerson) {
+      if (currentField === "preparer") setPreparer(selectedPerson);
+      if (currentField === "reviewer") setReviewer(selectedPerson);
+      if (currentField === "approver") setApprover(selectedPerson);
+    }
+    setIsPersonDialogOpen(false);
+    setCurrentField(null);
+    setSelectedPerson("");
   };
 
 

@@ -44,6 +44,8 @@ export default function ChiefSubmittedRiskAssessmentView({ detail }: Props) {
   >([]);
   const [approving, setApproving] = useState(false);
   const [showRiskMatrix, setShowRiskMatrix] = useState(false);
+  const [filteredAssessments, setFilteredAssessments] = useState<AssessmentResult[]>([]);
+  const [filterInfo, setFilterInfo] = useState<string>("");
 
   // ดึงข้อมูลการประเมินจาก localStorage และประมวลผลให้แสดงในตาราง
   const assessments = useMemo((): AssessmentResult[] => {
@@ -273,6 +275,36 @@ export default function ChiefSubmittedRiskAssessmentView({ detail }: Props) {
     loadSavedReorderAndReasons();
   }, [loadSavedReorderAndReasons]);
 
+  // Functions to handle filtering
+  const handleDimensionClick = (dimension: string) => {
+    const filtered = assessments.filter(a => a.dimension === dimension);
+    setFilteredAssessments(filtered);
+    setFilterInfo(`แสดงข้อมูล: ${dimension} (${filtered.length} รายการ)`);
+    setTab("results");
+  };
+
+  const handleRiskLevelClick = (riskLevel: string) => {
+    const filtered = assessments.filter(a => a.riskLevel === riskLevel);
+    setFilteredAssessments(filtered);
+    setFilterInfo(`แสดงข้อมูล: ระดับความเสี่ยง ${riskLevel} (${filtered.length} รายการ)`);
+    setTab("results");
+  };
+
+  const handleMatrixCellClick = (probability: number, impact: number) => {
+    const filtered = assessments.filter(a => a.probability === probability && a.impact === impact);
+    setFilteredAssessments(filtered);
+    setFilterInfo(`แสดงข้อมูล: ความน่าจะเป็น ${probability}, ผลกระทบ ${impact} (${filtered.length} รายการ)`);
+    setTab("results");
+  };
+
+  const clearFilter = () => {
+    setFilteredAssessments([]);
+    setFilterInfo("");
+  };
+
+  // Get current assessments to display (filtered or all)
+  const currentAssessments = filteredAssessments.length > 0 ? filteredAssessments : assessments;
+
   const handleApprove = async () => {
     setApproving(true);
     
@@ -378,7 +410,7 @@ export default function ChiefSubmittedRiskAssessmentView({ detail }: Props) {
       <div className="mt-6">
         <div className="flex items-center justify-between mb-4">
           <div className="px-1 text-lg font-semibold text-gray-800">
-            สรุปจำนวนผลการประเมินและจัดลำดับความเสี่ยงแต่ละด้าน
+            สรุปจำนวนผลการประเมินและจัดลำดับความเสี่ยงแต่ละระดับ
           </div>
           <div className="flex items-center gap-3">
             <span className="text-sm text-gray-600">รายงานเมทริกซ์ความเสี่ยง</span>
@@ -391,7 +423,10 @@ export default function ChiefSubmittedRiskAssessmentView({ detail }: Props) {
 
         {/* Statistics Cards */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
-          <Card className="border-2 border-red-200 bg-gradient-to-br from-red-50 to-red-100">
+          <Card 
+            className="border-2 border-red-200 bg-gradient-to-br from-red-50 to-red-100 cursor-pointer hover:shadow-md transition-shadow"
+            onClick={() => handleRiskLevelClick("สูงมาก")}
+          >
             <CardContent className="p-4 text-center">
               <div className="text-2xl font-bold text-red-700 mb-1">
                 {riskStatistics.riskCounts["สูงมาก"]}
@@ -401,7 +436,10 @@ export default function ChiefSubmittedRiskAssessmentView({ detail }: Props) {
             </CardContent>
           </Card>
 
-          <Card className="border-2 border-orange-200 bg-gradient-to-br from-orange-50 to-orange-100">
+          <Card 
+            className="border-2 border-orange-200 bg-gradient-to-br from-orange-50 to-orange-100 cursor-pointer hover:shadow-md transition-shadow"
+            onClick={() => handleRiskLevelClick("สูง")}
+          >
             <CardContent className="p-4 text-center">
               <div className="text-2xl font-bold text-orange-700 mb-1">
                 {riskStatistics.riskCounts["สูง"]}
@@ -411,7 +449,10 @@ export default function ChiefSubmittedRiskAssessmentView({ detail }: Props) {
             </CardContent>
           </Card>
 
-          <Card className="border-2 border-yellow-200 bg-gradient-to-br from-yellow-50 to-yellow-100">
+          <Card 
+            className="border-2 border-yellow-200 bg-gradient-to-br from-yellow-50 to-yellow-100 cursor-pointer hover:shadow-md transition-shadow"
+            onClick={() => handleRiskLevelClick("ปานกลาง")}
+          >
             <CardContent className="p-4 text-center">
               <div className="text-2xl font-bold text-yellow-700 mb-1">
                 {riskStatistics.riskCounts["ปานกลาง"]}
@@ -421,7 +462,10 @@ export default function ChiefSubmittedRiskAssessmentView({ detail }: Props) {
             </CardContent>
           </Card>
 
-          <Card className="border-2 border-green-200 bg-gradient-to-br from-green-50 to-green-100">
+          <Card 
+            className="border-2 border-green-200 bg-gradient-to-br from-green-50 to-green-100 cursor-pointer hover:shadow-md transition-shadow"
+            onClick={() => handleRiskLevelClick("น้อย")}
+          >
             <CardContent className="p-4 text-center">
               <div className="text-2xl font-bold text-green-700 mb-1">
                 {riskStatistics.riskCounts["น้อย"]}
@@ -431,7 +475,10 @@ export default function ChiefSubmittedRiskAssessmentView({ detail }: Props) {
             </CardContent>
           </Card>
 
-          <Card className="border-2 border-gray-200 bg-gradient-to-br from-gray-50 to-gray-100">
+          <Card 
+            className="border-2 border-gray-200 bg-gradient-to-br from-gray-50 to-gray-100 cursor-pointer hover:shadow-md transition-shadow"
+            onClick={() => handleRiskLevelClick("น้อยที่สุด")}
+          >
             <CardContent className="p-4 text-center">
               <div className="text-2xl font-bold text-gray-700 mb-1">
                 {riskStatistics.riskCounts["น้อยที่สุด"]}
@@ -442,24 +489,20 @@ export default function ChiefSubmittedRiskAssessmentView({ detail }: Props) {
           </Card>
         </div>
 
-        {/* Conditional display based on switch */}
-        {showRiskMatrix ? (
-          <RiskMatrix assessments={assessments} />
-        ) : (
-          /* Risk Distribution Chart */
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                สรุปจำนวนผลการประเมินและจัดลำดับความเสี่ยงแต่ละด้าน
-              </CardTitle>
-            </CardHeader>
+        {/* Risk Distribution Chart - Always show */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              สรุปจำนวนผลการประเมินและจัดลำดับความเสี่ยงแต่ละด้าน
+            </CardTitle>
+          </CardHeader>
             <CardContent>
             <div className="space-y-6">
               {/* Chart Container */}
               <div className="bg-white p-6 rounded-lg border">
                 <div className="flex justify-between items-center mb-6">
                   <h3 className="text-base font-medium text-gray-800">
-                    จำนวนความเสี่ยงแยกตามด้านและระดับความเสี่ยง (รายการ)
+                    จำนวนความเสี่ยงแยกตามแต่ละด้านและระดับความเสี่ยง (รายการ)
                   </h3>
                   <div className="text-sm text-gray-600">
                     จำนวน: {riskStatistics.total}
@@ -470,24 +513,66 @@ export default function ChiefSubmittedRiskAssessmentView({ detail }: Props) {
                 <div className="relative">
                   {/* Y-axis scale */}
                   <div className="absolute left-0 top-0 h-80 flex flex-col justify-between text-xs text-gray-400 py-2">
-                    <span>40</span>
-                    <span>32</span>
-                    <span>24</span>
-                    <span>16</span>
-                    <span>8</span>
-                    <span>0</span>
+                    {(() => {
+                      // Calculate the maximum count in any dimension
+                      const maxCount = Math.max(
+                        ...["strategy", "finance", "operations", "informationtechnology", "regulatorycompliance", "fraudrisk"].map(
+                          (dimension) => {
+                            return assessments.filter((a) => {
+                              if (dimension === "strategy") return a.dimension === "ด้านกลยุทธ์";
+                              if (dimension === "finance") return a.dimension === "ด้านการเงิน";
+                              if (dimension === "operations") return a.dimension === "ด้านการดำเนินงาน";
+                              if (dimension === "informationtechnology") return a.dimension === "ด้านเทคโนโลยีสารสนเทศ";
+                              if (dimension === "regulatorycompliance") return a.dimension === "ด้านการปฏิบัติตามกฎระเบียบ";
+                              if (dimension === "fraudrisk") return a.dimension === "ด้านการเกิดทุจริต";
+                              return false;
+                            }).length;
+                          }
+                        ),
+                        1
+                      );
+                      
+                      const yAxisMax = Math.max(maxCount, 5);
+                      const step = Math.ceil(yAxisMax / 5);
+                      
+                      return Array.from({ length: 6 }, (_, i) => (
+                        <span key={i}>{yAxisMax - (i * step)}</span>
+                      ));
+                    })()}
                   </div>
 
                   {/* Chart Grid */}
                   <div className="ml-8 h-80 relative border-l border-b border-gray-200">
                     {/* Horizontal grid lines */}
-                    {[0, 8, 16, 24, 32, 40].map((value) => (
-                      <div
-                        key={value}
-                        className="absolute w-full border-t border-gray-100"
-                        style={{ bottom: `${(value / 40) * 100}%` }}
-                      />
-                    ))}
+                    {(() => {
+                      const maxCount = Math.max(
+                        ...["strategy", "finance", "operations", "informationtechnology", "regulatorycompliance", "fraudrisk"].map(
+                          (dimension) => {
+                            return assessments.filter((a) => {
+                              if (dimension === "strategy") return a.dimension === "ด้านกลยุทธ์";
+                              if (dimension === "finance") return a.dimension === "ด้านการเงิน";
+                              if (dimension === "operations") return a.dimension === "ด้านการดำเนินงาน";
+                              if (dimension === "informationtechnology") return a.dimension === "ด้านเทคโนโลยีสารสนเทศ";
+                              if (dimension === "regulatorycompliance") return a.dimension === "ด้านการปฏิบัติตามกฎระเบียบ";
+                              if (dimension === "fraudrisk") return a.dimension === "ด้านการเกิดทุจริต";
+                              return false;
+                            }).length;
+                          }
+                        ),
+                        1
+                      );
+                      
+                      const yAxisMax = Math.max(maxCount, 5);
+                      const step = Math.ceil(yAxisMax / 5);
+                      
+                      return Array.from({ length: 6 }, (_, i) => (
+                        <div
+                          key={i}
+                          className="absolute w-full border-t border-gray-100"
+                          style={{ bottom: `${(i / 5) * 100}%` }}
+                        />
+                      ));
+                    })()}
 
                     {/* Bars Container */}
                     <div className="flex items-end justify-around h-full px-4 py-2">
@@ -559,13 +644,33 @@ export default function ChiefSubmittedRiskAssessmentView({ detail }: Props) {
                         };
 
                         const total = dimensionRisks.length;
-                        const maxValue = 40;
-                        const barHeight = Math.max((total / maxValue) * 280, 4); // 280px is chart height minus padding
+                        
+                        // Calculate dynamic max value based on actual data
+                        const maxCount = Math.max(
+                          ...["strategy", "finance", "operations", "informationtechnology", "regulatorycompliance", "fraudrisk"].map(
+                            (dim) => {
+                              return assessments.filter((a) => {
+                                if (dim === "strategy") return a.dimension === "ด้านกลยุทธ์";
+                                if (dim === "finance") return a.dimension === "ด้านการเงิน";
+                                if (dim === "operations") return a.dimension === "ด้านการดำเนินงาน";
+                                if (dim === "informationtechnology") return a.dimension === "ด้านเทคโนโลยีสารสนเทศ";
+                                if (dim === "regulatorycompliance") return a.dimension === "ด้านการปฏิบัติตามกฎระเบียบ";
+                                if (dim === "fraudrisk") return a.dimension === "ด้านการเกิดทุจริต";
+                                return false;
+                              }).length;
+                            }
+                          ),
+                          1
+                        );
+                        
+                        const yAxisMax = Math.max(maxCount, 5);
+                        const barHeight = Math.max((total / yAxisMax) * 280, 4); // 280px is chart height minus padding
 
                         return (
                           <div
                             key={dimension.key}
-                            className="flex flex-col items-center min-w-[80px]"
+                            className="flex flex-col items-center min-w-[80px] cursor-pointer hover:bg-gray-50 p-2 rounded transition-colors"
+                            onClick={() => handleDimensionClick(dimension.label)}
                           >
                             {/* Stacked Bar */}
                             <div
@@ -721,6 +826,15 @@ export default function ChiefSubmittedRiskAssessmentView({ detail }: Props) {
             </div>
           </CardContent>
         </Card>
+
+        {/* Risk Matrix - Show when switch is enabled */}
+        {showRiskMatrix && (
+          <div className="mb-6">
+            <RiskMatrix 
+              assessments={assessments}
+              onCellClick={handleMatrixCellClick}
+            />
+          </div>
         )}
 
         {/* วัตถุประสงค์ (หัวข้ออยู่นอก, รายการอยู่ในกล่องมีกรอบ) */}
@@ -759,6 +873,23 @@ export default function ChiefSubmittedRiskAssessmentView({ detail }: Props) {
         </section>
       </div>
       
+      {/* Filter Info */}
+      {filterInfo && (
+        <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-center justify-between">
+          <div className="text-sm text-blue-800 font-medium">
+            {filterInfo}
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={clearFilter}
+            className="text-blue-600 border-blue-300 hover:bg-blue-100"
+          >
+            แสดงทั้งหมด
+          </Button>
+        </div>
+      )}
+
       {/* Tabs */}
       <Tabs value={tab} onValueChange={setTab} className="mt-4">
         <div className="flex justify-between items-center">
@@ -821,8 +952,8 @@ export default function ChiefSubmittedRiskAssessmentView({ detail }: Props) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {assessments.length > 0 ? (
-                  assessments.map((a: AssessmentResult, i: number) => (
+                {currentAssessments.length > 0 ? (
+                  currentAssessments.map((a: AssessmentResult, i: number) => (
                     <TableRow
                       key={a.uniqueKey || `assessment-${i}`}
                       className="hover:bg-gray-50"

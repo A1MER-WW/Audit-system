@@ -6,10 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Textarea } from '@/components/ui/textarea';
+
 import { SignatureComponent } from '@/components/signature-component';
 import { OTPVerification } from '@/components/otp-verification';
+import { SignatureSelectionDialog } from '@/components/signature-selection-dialog';
+import { ApprovalDialog } from '@/components/features/popup/approval-dialog';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { FileText,  } from 'lucide-react';
 
@@ -458,208 +459,33 @@ export default function TopicsManagerPage() {
       </Dialog>
 
       {/* Approval Dialog */}
-      <Dialog open={showApprovalDialog} onOpenChange={setShowApprovalDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader className="flex flex-row items-center justify-between">
-            <DialogTitle className="text-lg font-semibold">
-              พิจารณาหัวข้อของงานตรวจสอบ
-            </DialogTitle>
-          </DialogHeader>
-          
-          <div className="py-4 space-y-4">
-            <p className="text-sm text-gray-600">
-              กรุณาเลือกสถานะการพิจารณา
-            </p>
-            
-            <div className="space-y-3">
-             
-              
-              <div className="flex items-center space-x-2">
-                <Checkbox 
-                  id="include-attachment" 
-                
-                />
-                <label 
-                  htmlFor="include-attachment" 
-                  className="text-sm text-gray-700"
-                >
-                  อนุมัติ
-                </label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Checkbox 
-                  id="include-attachment" 
-
-
-                />
-                <label 
-                  htmlFor="include-attachment" 
-                  className="text-sm text-gray-700"
-                >
-                  ไม่อนุมัติ
-                </label>
-              </div>
-              
-              <div>
-                <label className="text-sm font-medium text-gray-700 block mb-2">
-                  ความเห็นหนังสือกิจการการ
-                </label>
-                <Textarea
-                  placeholder="ไม่ระบุความเห็นหนังสือกิจการการ"
-                  value={comment}
-                  onChange={(e) => setComment(e.target.value)}
-                  className="min-h-[150px] resize-none"
-                />
-              </div>
-            </div>
-            
-            <p className="text-sm text-gray-600">
-              ยินยันข้อมูลการการตัวจริงข้อมูลงานตรวจสอบ
-            </p>
-          </div>
-
-          <DialogFooter className="flex gap-2">
-            <Button 
-              variant="outline" 
-              onClick={() => setShowApprovalDialog(false)}
-              className="flex-1"
-            >
-              ยกเลิก
-            </Button>
-            <Button 
-              onClick={handleFirstApproval}
-              className="bg-[#3E52B9] hover:bg-[#2A3A8F] text-white flex-1"
-            >
-              ยืนยัน
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ApprovalDialog
+        open={showApprovalDialog}
+        onOpenChange={setShowApprovalDialog}
+        comment={comment}
+        onCommentChange={setComment}
+        onConfirm={handleFirstApproval}
+      />
 
       {/* Signature Selection Dialog */}
-      <Dialog open={showSignatureDialog} onOpenChange={setShowSignatureDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-lg font-semibold">
-              ลายเซ็นอิเล็กทรอนิกส์
-            </DialogTitle>
-          </DialogHeader>
-          
-          <div className="py-4">
-            {approvalStep === 1 && (
-              <div className="space-y-4">
-                <p className="text-sm text-gray-600">
-                  เลือกวิธีการลงลายเซ็น
-                </p>
-                
-                <div className="space-y-3">
-                  <button
-                    onClick={() => handleSignatureChoice('new')}
-                    className={`w-full p-4 border rounded-lg text-left hover:bg-gray-50 transition-colors ${
-                      signatureChoice === 'new' ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className={`w-4 h-4 rounded-full border-2 ${
-                        signatureChoice === 'new' ? 'border-blue-500 bg-blue-500' : 'border-gray-300'
-                      }`}>
-                        {signatureChoice === 'new' && <div className="w-2 h-2 bg-white rounded-full mx-auto mt-1"></div>}
-                      </div>
-                      <div>
-                        <div className="font-medium">เซ็นชื่อใหม่</div>
-                        <div className="text-sm text-gray-500">วาดลายเซ็นด้วยเมาส์หรือสัมผัส</div>
-                      </div>
-                    </div>
-                  </button>
-
-                  <button
-                    onClick={() => handleSignatureChoice('saved')}
-                    className={`w-full p-4 border rounded-lg text-left hover:bg-gray-50 transition-colors ${
-                      signatureChoice === 'saved' ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className={`w-4 h-4 rounded-full border-2 ${
-                        signatureChoice === 'saved' ? 'border-blue-500 bg-blue-500' : 'border-gray-300'
-                      }`}>
-                        {signatureChoice === 'saved' && <div className="w-2 h-2 bg-white rounded-full mx-auto mt-1"></div>}
-                      </div>
-                      <div>
-                        <div className="font-medium">เลือกลายเซ็นที่เคยบันทึกไว้</div>
-                        <div className="text-sm text-gray-500">ใช้ลายเซ็นที่บันทึกไว้แล้ว</div>
-                      </div>
-                    </div>
-                  </button>
-                </div>
-
-                {signatureChoice === 'new' && (
-                  <div className="mt-4">
-                    <SignatureComponent
-                      onSignatureChange={setSignatureData}
-                      initialName="ผู้อนุมัติ"
-                    />
-                  </div>
-                )}
-              </div>
-            )}
-
-            {approvalStep === 2 && signatureChoice === 'saved' && (
-              <div className="space-y-4">
-                <div className="text-center">
-                  <h3 className="font-medium mb-2">ยืนยันตัวตนเพื่อใช้ลายเซ็น</h3>
-                  <p className="text-sm text-gray-600 mb-4">
-                    กรุณากรอกรหัส OTP เพื่อปลดล็อคลายเซ็นที่บันทึกไว้
-                  </p>
-                </div>
-                
-                <OTPVerification 
-                  onOTPChange={handleOTPChange}
-                  isValid={isOtpValid}
-                />
-                
-                {isOtpValid && (
-                  <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <div className="w-5 h-5 bg-green-100 rounded-full flex items-center justify-center">
-                        <span className="text-green-600 text-xs">✓</span>
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-green-800">ปลดล็อคลายเซ็นเรียบร้อย</p>
-                        <p className="text-xs text-green-600">พร้อมใช้ลายเซ็นที่บันทึกไว้แล้ว</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          <DialogFooter className="flex gap-2">
-            <Button 
-              variant="outline" 
-              onClick={() => {
-                setShowSignatureDialog(false);
-                setApprovalStep(1);
-                setSignatureChoice(null);
-              }}
-              className="flex-1"
-            >
-              ยกเลิก
-            </Button>
-            <Button 
-              onClick={handleFinalApproval}
-              disabled={
-                (signatureChoice === 'new' && !signatureData.signature) ||
-                (signatureChoice === 'saved' && !isOtpValid) ||
-                !signatureChoice
-              }
-              className="bg-[#3E52B9] hover:bg-[#2A3A8F] text-white flex-1"
-            >
-              ยืนยัน
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <SignatureSelectionDialog
+        open={showSignatureDialog}
+        onOpenChange={setShowSignatureDialog}
+        approvalStep={approvalStep}
+        signatureChoice={signatureChoice}
+        signatureData={signatureData}
+        otpValue={otpValue}
+        isOtpValid={isOtpValid}
+        onSignatureChoice={handleSignatureChoice}
+        onSignatureDataChange={setSignatureData}
+        onOTPChange={handleOTPChange}
+        onCancel={() => {
+          setShowSignatureDialog(false);
+          setApprovalStep(1);
+          setSignatureChoice(null);
+        }}
+        onConfirm={handleFinalApproval}
+      />
     </div>
   );
 }

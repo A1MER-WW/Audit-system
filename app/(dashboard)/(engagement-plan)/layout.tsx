@@ -1,18 +1,14 @@
 "use client";
 
-import { useParams } from "next/navigation";
-import { EngagementPlanProvider } from "@/hooks/useEngagementPlan";
+import { EngagementPlanProvider } from "@/contexts/EngagementPlanContext";
 
 export default function EngagementPlanLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const params = useParams();
-  const planId = params?.id as string || "default";
-
   return (
-    <EngagementPlanProvider planId={planId}>
+    <EngagementPlanProvider>
       {children}
     </EngagementPlanProvider>
   );

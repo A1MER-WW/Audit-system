@@ -207,6 +207,7 @@ export default function RiskEvaluationPage() {
             setFilter((prev) => ({ ...prev, category }))
           }
           activeFilter={filter}
+          showApprovalButton={false}
         />
 
         <ActiveFilters

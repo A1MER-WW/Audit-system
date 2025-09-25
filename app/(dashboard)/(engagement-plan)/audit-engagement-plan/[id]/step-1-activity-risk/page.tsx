@@ -4,11 +4,8 @@ import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useEngagementPlan } from "@/hooks/useEngagementPlan";
-import {
-  ArrowLeft,
-  ArrowRight,
-  Settings,
-} from "lucide-react";
+import { DEFAULT_USERS } from "@/constants/default-users";
+import { ArrowLeft, ArrowRight, Settings } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -25,20 +22,16 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
-import {
-  Dialog,
-
-  DialogTrigger,
-} from "@/components/ui/dialog";
+import { Dialog, DialogTrigger } from "@/components/ui/dialog";
 
 import {
   availableActivities,
   riskLevels,
   type Activity,
 } from "@/lib/mock-activity-data";
-import { 
-  PersonSelectionDialog, 
-  ActivityManagementDialog 
+import {
+  PersonSelectionDialog,
+  ActivityManagementDialog,
 } from "@/components/features/engagement-plan/popup";
 import TestDataLoader from "../test-data-loader";
 
@@ -47,8 +40,6 @@ export default function Step1ActivityRiskPage() {
   const id = params?.id as string;
   const router = useRouter();
   const { state, dispatch } = useEngagementPlan();
-
-
 
   // ดึงข้อมูลจาก engagement plan จริง
   const engagementPlan = getProgram(parseInt(id));
@@ -89,15 +80,9 @@ export default function Step1ActivityRiskPage() {
   // State สำหรับ text fields ใหม่
   const [auditedUnit, setAuditedUnit] = useState<string>("");
   const [auditCategory, setAuditCategory] = useState<string>("");
-  const [preparer, setPreparer] = useState<string>(
-    "นางสาวกุสุมา สุขสอน (ผู้ตรวจสอบภายใน)"
-  );
-  const [reviewer, setReviewer] = useState<string>(
-    "นางสาวจิรวรรณ สมัคร (หัวหน้ากลุ่มตรวจสอบภายใน)"
-  );
-  const [approver, setApprover] = useState<string>(
-    "นางสาวจิรวรรณ สมัคร (หัวหน้ากลุ่มตรวจสอบภายใน)"
-  );
+  const [preparer, setPreparer] = useState<string>("");
+  const [reviewer, setReviewer] = useState<string>("");
+  const [approver, setApprover] = useState<string>("");
 
   // Description state
   const [description, setDescription] = useState<string>("");
@@ -125,18 +110,28 @@ export default function Step1ActivityRiskPage() {
       if (state.step1.basicInfo) {
         setAuditedUnit(state.step1.basicInfo.auditedUnit || "");
         setAuditCategory(state.step1.basicInfo.auditCategory || "");
-        setPreparer(state.step1.basicInfo.preparer || "นางสาวกุสุมา สุขสอน (ผู้ตรวจสอบภายใน)");
-        setReviewer(state.step1.basicInfo.reviewer || "นางสาวจิรวรรณ สมัคร (หัวหน้ากลุ่มตรวจสอบภายใน)");
-        setApprover(state.step1.basicInfo.approver || "นางสาวจิรวรรณ สมัคร (หัวหน้ากลุ่มตรวจสอบภายใน)");
+        setPreparer(state.step1.basicInfo.preparer || DEFAULT_USERS.preparer);
+        setReviewer(state.step1.basicInfo.reviewer || DEFAULT_USERS.reviewer);
+        setApprover(state.step1.basicInfo.approver || DEFAULT_USERS.approver);
+      } else {
+        // If no basicInfo exists, set defaults
+        setPreparer(DEFAULT_USERS.preparer);
+        setReviewer(DEFAULT_USERS.reviewer);
+        setApprover(DEFAULT_USERS.approver);
       }
       setDescription(state.step1.description || "");
       // Convert context activities to component activities format
       const contextActivities = state.step1.selectedActivities || [];
-      const convertedActivities = contextActivities.map(activity => ({
+      const convertedActivities = contextActivities.map((activity) => ({
         ...activity,
-        selected: true
+        selected: true,
       }));
       setSelectedActivities(convertedActivities);
+    } else {
+      // If no step1 data exists, set defaults
+      setPreparer(DEFAULT_USERS.preparer);
+      setReviewer(DEFAULT_USERS.reviewer);
+      setApprover(DEFAULT_USERS.approver);
     }
   }, [state.step1]);
 
@@ -155,9 +150,9 @@ export default function Step1ActivityRiskPage() {
         },
         description: description || "ยังไม่ได้กรอกคำอธิบาย",
         selectedActivities,
-      }
+      },
     });
-    
+
     // Navigate to Step 2
     router.push(`/audit-engagement-plan/${id}/step-2-engagement-plan`);
   };
@@ -238,14 +233,8 @@ export default function Step1ActivityRiskPage() {
     );
   };
 
-
-
-
   return (
     <div className="px-6 py-4">
-      {/* Test Data Loader */}
-      <TestDataLoader />
-      
       {/* Header */}
       <div className="mb-6">
         <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
@@ -426,7 +415,9 @@ export default function Step1ActivityRiskPage() {
               <div className="flex items-center justify-center w-8 h-8 bg-gray-200 text-gray-600 rounded-full text-sm font-medium">
                 3
               </div>
-              <span className="ml-2 text-sm text-gray-600 whitespace-nowrap">Audit Program</span>
+              <span className="ml-2 text-sm text-gray-600 whitespace-nowrap">
+                Audit Program
+              </span>
             </div>
             <div className="flex items-center">
               <div className="w-4 h-0.5 bg-gray-300"></div>
@@ -512,8 +503,8 @@ export default function Step1ActivityRiskPage() {
                         colSpan={5}
                         className="text-center py-8 text-gray-500"
                       >
-                        ยังไม่มีกิจกรรมที่เลือก กรุณากดปุ่ม &quot;จัดการกิจกรรม&quot;
-                        เพื่อเลือกกิจกรรม
+                        ยังไม่มีกิจกรรมที่เลือก กรุณากดปุ่ม
+                        &quot;จัดการกิจกรรม&quot; เพื่อเลือกกิจกรรม
                       </TableCell>
                     </TableRow>
                   ) : (

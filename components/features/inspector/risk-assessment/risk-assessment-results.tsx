@@ -63,6 +63,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import RiskSubmitConfirmDialog from "../../popup/submitted-to-the-head-audit";
 import ChangeOrderReasonDialog from "../../popup/reason-for-change";
+import { SignatureSelectionDialog } from "@/components/signature-selection-dialog";
 
 /* ======================== Types ======================== */
 export type TabKey =
@@ -536,8 +537,40 @@ export default function RiskAssessmentResultsPage({
     setOpenSubmitDialog(true);
   }
 
-  // เดิมมี handleConfirm อยู่แล้ว แก้นิดหน่อยให้ปิด SubmitDialog
+  // Handle signature choice
+  const handleSignatureChoice = (choice: 'new' | 'saved') => {
+    setSignatureChoice(choice);
+    if (choice === 'saved') {
+      setApprovalStep(2); // Go to OTP step
+    }
+  };
+
+  // Handle OTP verification
+  const handleOTPChange = (value: string) => {
+    setOtpValue(value);
+    setIsOtpValid(value === "123456"); // Demo OTP validation
+  };
+
+  // เดิมมี handleConfirm อยู่แล้ว แก้ให้เปิด SignatureDialog แทนไปหน้าถัดไปโดยตรง
   const handleConfirm = async () => {
+    // ปิด dialog ก่อน
+    setOpenSubmitDialog(false);
+    
+    // เปิด signature dialog
+    setShowSignatureDialog(true);
+    setApprovalStep(1);
+  };
+
+  // Final submission after signature
+  const handleFinalSubmission = async () => {
+    if (signatureChoice === 'saved' && !isOtpValid) {
+      alert('กรุณากรอกรหัส OTP ให้ถูกต้อง');
+      return;
+    }
+    if (signatureChoice === 'new' && !signatureData.signature) {
+      alert('กรุณาลงลายเซ็น');
+      return;
+    }
     setIsSubmitting(true);
     try {
       // รวบรวมข้อมูลทั้งหมดจากทุก tab สำหรับส่งไปยัง Chief Inspector
@@ -610,7 +643,12 @@ export default function RiskAssessmentResultsPage({
             statusLine,
             totalItems: reorderedData.length,
             reorderTime: new Date().toISOString(),
-            allTabsData: updatedAllTabsData // ใช้ข้อมูลที่อัพเดตแล้ว
+            allTabsData: updatedAllTabsData, // ใช้ข้อมูลที่อัพเดตแล้ว
+            signature: {
+              choice: signatureChoice,
+              data: signatureData,
+              otpUsed: signatureChoice === 'saved' && isOtpValid
+            }
           }
         };
       } else {
@@ -627,12 +665,17 @@ export default function RiskAssessmentResultsPage({
             statusLine,
             totalItems: filteredParents.length,
             submissionTime: new Date().toISOString(),
-            allTabsData // เพิ่มข้อมูลทุก tab
+            allTabsData, // เพิ่มข้อมูลทุก tab
+            signature: {
+              choice: signatureChoice,
+              data: signatureData,
+              otpUsed: signatureChoice === 'saved' && isOtpValid
+            }
           }
         };
       }
 
-      console.log("🚀 Submitting assessment results to chief:", submissionData);
+      console.log("🚀 Submitting assessment results to chief with signature:", submissionData);
       
       const response = await fetch(`/api/chief-risk-assessment-results?year=${year}`, {
         method: "POST",
@@ -649,8 +692,13 @@ export default function RiskAssessmentResultsPage({
       const result = await response.json();
       console.log("✅ Submission successful:", result);
       
-      // ปิด dialog
-      setOpenSubmitDialog(false);
+      // ปิด signature dialog และรีเซ็ตสถานะ
+      setShowSignatureDialog(false);
+      setApprovalStep(1);
+      setSignatureChoice(null);
+      setSignatureData({name: "", signature: null});
+      setOtpValue("");
+      setIsOtpValid(false);
       
       // นำทางไปหน้า overview-of-the-evaluation-results พร้อมระบุว่าข้อมูลมาจาก Inspector
       const actionParam = outerTab === "reorder" ? "&action=reorder" : "";
@@ -660,7 +708,6 @@ export default function RiskAssessmentResultsPage({
       alert("เกิดข้อผิดพลาดในการส่งข้อมูล กรุณาลองใหม่อีกครั้ง");
     } finally {
       setIsSubmitting(false);
-      setOpenSubmitDialog(false);
     }
   };
 
@@ -720,6 +767,12 @@ export default function RiskAssessmentResultsPage({
   const [openSubmitDialog, setOpenSubmitDialog] = useState(false); // สำหรับ RiskSubmitConfirmDialog
   const [openReasonDialog, setOpenReasonDialog] = useState(false); // สำหรับ ChangeOrderReasonDialog
   const [isSubmitting, setIsSubmitting] = useState(false); // สำหรับ loading state
+  const [showSignatureDialog, setShowSignatureDialog] = useState(false); // สำหรับ SignatureSelectionDialog
+  const [approvalStep, setApprovalStep] = useState(1);
+  const [signatureChoice, setSignatureChoice] = useState<'new' | 'saved' | null>(null);
+  const [signatureData, setSignatureData] = useState<{name: string; signature: string | null}>({name: "", signature: null});
+  const [otpValue, setOtpValue] = useState("");
+  const [isOtpValid, setIsOtpValid] = useState(false);
   const [pendingOrderIds, setPendingOrderIds] = useState<string[] | null>(null);
   const [pendingMovedId, setPendingMovedId] = useState<string | null>(null);
   const [reasonById, setReasonById] = useState<Record<string, string>>({});
@@ -1050,6 +1103,32 @@ export default function RiskAssessmentResultsPage({
                   }
                 }}
                 onConfirm={handleConfirmChangeOrder}
+              />
+
+              {/* Signature Selection Dialog */}
+              <SignatureSelectionDialog
+                open={showSignatureDialog}
+                onOpenChange={(open) => !isSubmitting && setShowSignatureDialog(open)}
+                approvalStep={approvalStep}
+                signatureChoice={signatureChoice}
+                signatureData={signatureData}
+                otpValue={otpValue}
+                isOtpValid={isOtpValid}
+                loading={isSubmitting}
+                onSignatureChoice={handleSignatureChoice}
+                onSignatureDataChange={setSignatureData}
+                onOTPChange={handleOTPChange}
+                onCancel={() => {
+                  if (!isSubmitting) {
+                    setShowSignatureDialog(false);
+                    setApprovalStep(1);
+                    setSignatureChoice(null);
+                    setSignatureData({name: "", signature: null});
+                    setOtpValue("");
+                    setIsOtpValid(false);
+                  }
+                }}
+                onConfirm={handleFinalSubmission}
               />
             </>
           </div>

@@ -18,20 +18,18 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import {
-  useSortable,
-} from "@dnd-kit/sortable";
+import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
 // Sortable Components
-function SortableObjective({ 
-  objective, 
-  index, 
-  onRemove 
-}: { 
-  objective: string; 
-  index: number; 
-  onRemove: (index: number) => void; 
+function SortableObjective({
+  objective,
+  index,
+  onRemove,
+}: {
+  objective: string;
+  index: number;
+  onRemove: (index: number) => void;
 }) {
   const {
     attributes,
@@ -83,9 +81,9 @@ function SortableObjective({
   );
 }
 
-function SortableScope({ 
-  scope, 
-  index, 
+function SortableScope({
+  scope,
+  index,
   onRemove,
   onUpdateSubScope,
   onAddSubScope,
@@ -93,16 +91,26 @@ function SortableScope({
   newSubScope,
   setNewSubScope,
   sensors,
-  onSubScopeDragEnd
-}: { 
-  scope: { id: number; text: string; subScopes: { id: number; text: string }[] }; 
-  index: number; 
+  onSubScopeDragEnd,
+}: {
+  scope: {
+    id: number;
+    text: string;
+    subScopes: { id: number; text: string }[];
+  };
+  index: number;
   onRemove: (id: number) => void;
-  onUpdateSubScope: (scopeId: number, subScopeId: number, newText: string) => void;
+  onUpdateSubScope: (
+    scopeId: number,
+    subScopeId: number,
+    newText: string
+  ) => void;
   onAddSubScope: (scopeId: number) => void;
   onRemoveSubScope: (scopeId: number, subScopeId: number) => void;
   newSubScope: { [key: number]: string };
-  setNewSubScope: React.Dispatch<React.SetStateAction<{ [key: number]: string }>>;
+  setNewSubScope: React.Dispatch<
+    React.SetStateAction<{ [key: number]: string }>
+  >;
   sensors: any;
   onSubScopeDragEnd: (scopeId: number) => (event: DragEndEvent) => void;
 }) {
@@ -154,7 +162,7 @@ function SortableScope({
           <X className="h-4 w-4" />
         </Button>
       </div>
-      
+
       {/* Sub-scopes */}
       <div className="ml-8 space-y-2">
         {scope.subScopes.length > 0 && (
@@ -179,13 +187,18 @@ function SortableScope({
             </SortableContext>
           </DndContext>
         )}
-        
+
         {/* Add new sub-scope */}
         <div className="flex items-center gap-2">
           <span className="text-xs text-gray-500 w-4">•</span>
           <Input
             value={newSubScope[scope.id] || ""}
-            onChange={(e) => setNewSubScope(prev => ({ ...prev, [scope.id]: e.target.value }))}
+            onChange={(e) =>
+              setNewSubScope((prev) => ({
+                ...prev,
+                [scope.id]: e.target.value,
+              }))
+            }
             placeholder="เพิ่มรายละเอียดย่อย..."
             className="flex-1 text-sm"
             onKeyPress={(e) => {
@@ -209,13 +222,13 @@ function SortableScope({
   );
 }
 
-function SortableSubScope({ 
-  subScope, 
+function SortableSubScope({
+  subScope,
   scopeId,
   onUpdate,
-  onRemove
-}: { 
-  subScope: { id: number; text: string }; 
+  onRemove,
+}: {
+  subScope: { id: number; text: string };
   scopeId: number;
   onUpdate: (scopeId: number, subScopeId: number, newText: string) => void;
   onRemove: (scopeId: number, subScopeId: number) => void;
@@ -271,13 +284,7 @@ function SortableSubScope({
   );
 }
 
-import {
-  ArrowLeft,
-  ArrowRight,
-  Plus,
-  GripVertical,
-  X,
-} from "lucide-react";
+import { ArrowLeft, ArrowRight, Plus, GripVertical, X } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -286,6 +293,7 @@ import { getProgram } from "@/lib/mock-engagement-plan-programs";
 import { Dialog, DialogTrigger } from "@/components/ui/dialog";
 import { PersonSelectionDialog } from "@/components/features/engagement-plan/popup";
 import { useEngagementPlan } from "@/hooks/useEngagementPlan";
+import { DEFAULT_USERS } from "@/constants/default-users";
 import TestDataLoader from "../test-data-loader";
 
 export default function Step2EngagementPlanPage() {
@@ -330,23 +338,13 @@ export default function Step2EngagementPlanPage() {
         specificObjectives: ["ไม่ระบุ"],
       };
 
-  const [auditedUnit, setAuditedUnit] = useState<string>("");
-  const [auditCategory, setAuditCategory] = useState<string>("");
-  const [preparer, setPreparer] = useState<string>(
-    "นางสาวกุสุมา สุขสอน (ผู้ตรวจสอบภายใน)"
-  );
-  const [reviewer, setReviewer] = useState<string>(
-    "นางสาวจิรวรรณ สมัคร (หัวหน้ากลุ่มตรวจสอบภายใน)"
-  );
-  const [approver, setApprover] = useState<string>(
-    "นางสาวจิรวรรณ สมัคร (หัวหน้ากลุ่มตรวจสอบภายใน)"
-  );
-  const [auditResponsible, setAuditResponsible] = useState<string>(
-    "นางสาวกุสุมา สุขสอน (ผู้ตรวจสอบภายใน)"
-  );
-  const [supervisor, setSupervisor] = useState<string>(
-    "นางสาวจิรวรรณ สมัคร (หัวหน้ากลุ่มตรวจสอบภายใน)"
-  );
+  const [auditedUnit, setAuditedUnit] = useState<string>(state.step1?.basicInfo?.auditedUnit || "");
+  const [auditCategory, setAuditCategory] = useState<string>(state.step1?.basicInfo?.auditCategory || "");
+  const [preparer, setPreparer] = useState<string>(state.step1?.basicInfo?.preparer || DEFAULT_USERS.preparer);
+  const [reviewer, setReviewer] = useState<string>(state.step1?.basicInfo?.reviewer || DEFAULT_USERS.reviewer);
+  const [approver, setApprover] = useState<string>(state.step1?.basicInfo?.approver || DEFAULT_USERS.approver);
+  const [auditResponsible, setAuditResponsible] = useState<string>(state.step2?.auditResponsible || DEFAULT_USERS.auditResponsible);
+  const [supervisor, setSupervisor] = useState<string>(state.step2?.supervisor || DEFAULT_USERS.supervisor);
 
   // State สำหรับ popup dialog
   const [isPersonDialogOpen, setIsPersonDialogOpen] = useState<boolean>(false);
@@ -407,12 +405,22 @@ export default function Step2EngagementPlanPage() {
   );
 
   // State for objectives and scope - Initialize from context
-  const [objectives, setObjectives] = useState<string[]>(state.step2?.objectives || []);
+  const [auditIssues, setAuditIssues] = useState<string>(
+    state.step2?.auditIssues || ""
+  );
+  const [objectives, setObjectives] = useState<string[]>(
+    state.step2?.objectives || []
+  );
   const [scopes, setScopes] = useState<
     { id: number; text: string; subScopes: { id: number; text: string }[] }[]
   >(state.step2?.scopes || []);
-  const [auditDuration, setAuditDuration] = useState<string>(state.step2?.auditDuration || "");
-  const [auditMethodology, setAuditMethodology] = useState<string>(state.step2?.auditMethodology || "");
+  const [auditDuration, setAuditDuration] = useState<string>(
+    state.step2?.auditDuration || ""
+  );
+  const [auditMethodology, setAuditMethodology] = useState<string>(
+    state.step2?.auditMethodology || ""
+  );
+  const [auditBudget, setAuditBudget] = useState<string>("");
 
   // State for adding new items
   const [newObjective, setNewObjective] = useState("");
@@ -425,19 +433,34 @@ export default function Step2EngagementPlanPage() {
 
   // Function to handle next step - save data to context
   const handleNextStep = () => {
-    // Save all Step 2 data to context
+    // Save all Step 2 data to context including auditIssues
     dispatch({
       type: "UPDATE_STEP2",
       payload: {
+        auditIssues,
         objectives,
         scopes,
         auditDuration,
         auditMethodology,
         auditResponsible,
         supervisor,
-      }
+      },
     });
-    
+
+    // Also sync the basic info from step 1 if it was updated in step 2
+    dispatch({
+      type: "UPDATE_STEP1",
+      payload: {
+        basicInfo: {
+          auditedUnit,
+          auditCategory,
+          preparer,
+          reviewer,
+          approver,
+        },
+      },
+    });
+
     // Navigate to Step 3
     router.push(`/audit-engagement-plan/${id}/step-3-audit-program`);
   };
@@ -448,18 +471,19 @@ export default function Step2EngagementPlanPage() {
       const updatedObjectives = [...objectives, newObjective.trim()];
       setObjectives(updatedObjectives);
       setNewObjective("");
-      
+
       // Auto-save to context
       dispatch({
         type: "UPDATE_STEP2",
         payload: {
+          auditIssues,
           objectives: updatedObjectives,
           scopes,
           auditDuration,
           auditMethodology,
           auditResponsible,
           supervisor,
-        }
+        },
       });
     }
   };
@@ -467,22 +491,21 @@ export default function Step2EngagementPlanPage() {
   const removeObjective = (index: number) => {
     const updatedObjectives = objectives.filter((_, i) => i !== index);
     setObjectives(updatedObjectives);
-    
+
     // Auto-save to context
     dispatch({
       type: "UPDATE_STEP2",
       payload: {
+        auditIssues,
         objectives: updatedObjectives,
         scopes,
         auditDuration,
         auditMethodology,
         auditResponsible,
         supervisor,
-      }
+      },
     });
   };
-
-
 
   // Functions for scopes
   const addScope = () => {
@@ -538,16 +561,18 @@ export default function Step2EngagementPlanPage() {
     );
   };
 
-  const updateSubScope = (scopeId: number, subScopeId: number, newText: string) => {
+  const updateSubScope = (
+    scopeId: number,
+    subScopeId: number,
+    newText: string
+  ) => {
     setScopes(
       scopes.map((scope) =>
         scope.id === scopeId
           ? {
               ...scope,
               subScopes: scope.subScopes.map((sub) =>
-                sub.id === subScopeId
-                  ? { ...sub, text: newText }
-                  : sub
+                sub.id === subScopeId ? { ...sub, text: newText } : sub
               ),
             }
           : scope
@@ -559,8 +584,12 @@ export default function Step2EngagementPlanPage() {
   const handleObjectiveDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     if (active.id !== over?.id) {
-      const oldIndex = objectives.findIndex((_, index) => index.toString() === active.id);
-      const newIndex = objectives.findIndex((_, index) => index.toString() === over?.id);
+      const oldIndex = objectives.findIndex(
+        (_, index) => index.toString() === active.id
+      );
+      const newIndex = objectives.findIndex(
+        (_, index) => index.toString() === over?.id
+      );
       if (oldIndex !== -1 && newIndex !== -1) {
         const newObjectives = arrayMove(objectives, oldIndex, newIndex);
         setObjectives(newObjectives);
@@ -571,8 +600,12 @@ export default function Step2EngagementPlanPage() {
   const handleScopeDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     if (active.id !== over?.id) {
-      const oldIndex = scopes.findIndex((scope) => scope.id.toString() === active.id);
-      const newIndex = scopes.findIndex((scope) => scope.id.toString() === over?.id);
+      const oldIndex = scopes.findIndex(
+        (scope) => scope.id.toString() === active.id
+      );
+      const newIndex = scopes.findIndex(
+        (scope) => scope.id.toString() === over?.id
+      );
       if (oldIndex !== -1 && newIndex !== -1) {
         const newScopes = arrayMove(scopes, oldIndex, newIndex);
         setScopes(newScopes);
@@ -583,22 +616,26 @@ export default function Step2EngagementPlanPage() {
   const handleSubScopeDragEnd = (scopeId: number) => (event: DragEndEvent) => {
     const { active, over } = event;
     if (active.id !== over?.id) {
-      const scope = scopes.find(s => s.id === scopeId);
+      const scope = scopes.find((s) => s.id === scopeId);
       if (!scope) return;
 
-      const activeId = active.id.toString().split('-')[1]; // Extract subScope id
-      const overId = over?.id.toString().split('-')[1]; // Extract subScope id
+      const activeId = active.id.toString().split("-")[1]; // Extract subScope id
+      const overId = over?.id.toString().split("-")[1]; // Extract subScope id
 
-      const oldIndex = scope.subScopes.findIndex((sub) => sub.id.toString() === activeId);
-      const newIndex = scope.subScopes.findIndex((sub) => sub.id.toString() === overId);
-      
+      const oldIndex = scope.subScopes.findIndex(
+        (sub) => sub.id.toString() === activeId
+      );
+      const newIndex = scope.subScopes.findIndex(
+        (sub) => sub.id.toString() === overId
+      );
+
       if (oldIndex !== -1 && newIndex !== -1) {
         const newSubScopes = arrayMove(scope.subScopes, oldIndex, newIndex);
-        setScopes(scopes.map(s => 
-          s.id === scopeId 
-            ? { ...s, subScopes: newSubScopes }
-            : s
-        ));
+        setScopes(
+          scopes.map((s) =>
+            s.id === scopeId ? { ...s, subScopes: newSubScopes } : s
+          )
+        );
       }
     }
   };
@@ -607,7 +644,7 @@ export default function Step2EngagementPlanPage() {
     <div className="px-6 py-4">
       {/* Test Data Loader */}
       <TestDataLoader />
-      
+
       {/* Header */}
       <div className="mb-6">
         <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
@@ -788,7 +825,9 @@ export default function Step2EngagementPlanPage() {
               <div className="flex items-center justify-center w-8 h-8 bg-gray-200 text-gray-600 rounded-full text-sm font-medium">
                 3
               </div>
-              <span className="ml-2 text-sm text-gray-600 whitespace-nowrap">Audit Program</span>
+              <span className="ml-2 text-sm text-gray-600 whitespace-nowrap">
+                Audit Program
+              </span>
             </div>
             <div className="flex items-center">
               <div className="w-4 h-0.5 bg-gray-300"></div>
@@ -814,6 +853,39 @@ export default function Step2EngagementPlanPage() {
 
       <div className="space-y-6">
         <div className="space-y-6">
+          {/* ประเด็นการตรวจสอบ */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                ประเด็นการตรวจสอบ
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Textarea
+                placeholder="ระบุประเด็นหรือเรื่องที่ต้องการตรวจสอบ เช่น ประสิทธิภาพการดำเนินงาน ความถูกต้องของข้อมูล การปฏิบัติตามระเบียบ..."
+                value={auditIssues}
+                onChange={(e) => {
+                  setAuditIssues(e.target.value);
+                  // Auto-save to context after user stops typing
+                  dispatch({
+                    type: "UPDATE_STEP2",
+                    payload: {
+                      auditIssues: e.target.value,
+                      objectives,
+                      scopes,
+                      auditDuration,
+                      auditMethodology,
+                      auditResponsible,
+                      supervisor,
+                    },
+                  });
+                }}
+                rows={4}
+                className="w-full"
+              />
+            </CardContent>
+          </Card>
+
           {/* วัตถุประสงค์การตรวจสอบ */}
           <Card>
             <CardHeader>
@@ -830,7 +902,8 @@ export default function Step2EngagementPlanPage() {
             <CardContent className="space-y-4">
               {objectives.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
-                  ยังไม่มีวัตถุประสงค์ กดปุ่ม &quot;เพิ่มวัตถุประสงค์&quot; เพื่อเริ่มต้น
+                  ยังไม่มีวัตถุประสงค์ กดปุ่ม &quot;เพิ่มวัตถุประสงค์&quot;
+                  เพื่อเริ่มต้น
                 </div>
               ) : (
                 <DndContext
@@ -887,7 +960,8 @@ export default function Step2EngagementPlanPage() {
             <CardContent className="space-y-4">
               {scopes.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
-                  ยังไม่มีขอบเขตการตรวจสอบ กดปุ่ม &quot;เพิ่มขอบเขต&quot; เพื่อเริ่มต้น
+                  ยังไม่มีขอบเขตการตรวจสอบ กดปุ่ม &quot;เพิ่มขอบเขต&quot;
+                  เพื่อเริ่มต้น
                 </div>
               ) : (
                 <DndContext
@@ -965,6 +1039,24 @@ export default function Step2EngagementPlanPage() {
                 value={auditMethodology}
                 onChange={(e) => setAuditMethodology(e.target.value)}
                 rows={4}
+              />
+            </CardContent>
+          </Card>
+
+          {/* งบประมาณที่ใช้ในการตรวจสอบ */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                งบประมาณที่ใช้ในการตรวจสอบ
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Textarea
+                placeholder="ระบุงบประมาณที่จะใช้ในการตรวจสอบ เช่น ค่าเดินทาง ค่าใช้จ่ายในการเก็บข้อมูล ค่าวัสดุอุปกรณ์ หรือระบุเป็นจำนวนเงิน..."
+                value={auditBudget}
+                onChange={(e) => setAuditBudget(e.target.value)}
+                rows={3}
+                className="w-full"
               />
             </CardContent>
           </Card>

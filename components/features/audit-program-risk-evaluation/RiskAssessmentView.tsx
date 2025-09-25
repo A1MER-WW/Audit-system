@@ -948,7 +948,7 @@ export default function RiskAssessmentView({ detail, onSave }: Props) {
         <div className="flex justify-between gap-3">
           <div className="flex gap-2">
             {/* Debug: Clear Assessment Data */}
-            <Button
+            {/* <Button
               variant="outline"
               onClick={() => {
                 if (
@@ -963,9 +963,9 @@ export default function RiskAssessmentView({ detail, onSave }: Props) {
               className="text-red-600 hover:text-red-700 hover:bg-red-50"
             >
               🗑️ ล้างข้อมูลทดสอบ
-            </Button>
+            </Button> */}
             {/* Debug: Show Assessment Count */}
-            <Button
+            {/* <Button
               variant="outline"
               onClick={() => {
                 alert(
@@ -981,16 +981,16 @@ export default function RiskAssessmentView({ detail, onSave }: Props) {
               }}
             >
               📊 ดูข้อมูลการประเมิน ({assessments.length})
-            </Button>
+            </Button> */}
           </div>
           <div className="flex gap-3">
-            <Button
+            {/* <Button
               onClick={handleSave}
               className="inline-flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white shadow hover:bg-green-700 active:bg-green-800"
             >
               <Save className="h-4 w-4" />
               บันทึกและดูผลการประเมิน
-            </Button>
+            </Button> */}
             <Button
               onClick={handleNavigateToResults}
               disabled={isNavigating}

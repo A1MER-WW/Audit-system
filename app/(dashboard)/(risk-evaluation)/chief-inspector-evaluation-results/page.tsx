@@ -45,6 +45,12 @@ export default function ChiefInspectorEvaluationResultsPage() {
   const [selectedYear] = useState<number>(2568);
   const [compareYear, setCompareYear] = useState<number>(2567);
   const [showCompareView, setShowCompareView] = useState<boolean>(false);
+  
+
+
+  // State สำหรับสถานะการอนุมัติ
+  const [isApproved, setIsApproved] = useState<boolean>(false);
+  const [approvalTimestamp, setApprovalTimestamp] = useState<string>("");
 
   // State สำหรับเก็บข้อมูลจากตารางเพื่อส่งไปยัง Dashboard
   type RiskSlice = {
@@ -95,6 +101,8 @@ export default function ChiefInspectorEvaluationResultsPage() {
   const handleCompareToggle = (enabled: boolean) => {
     setShowCompareView(enabled);
   };
+
+
 
   // Auto-adjust sorting when outerTab changes
   useEffect(() => {
@@ -181,9 +189,23 @@ export default function ChiefInspectorEvaluationResultsPage() {
 
       {/* หัวข้อหลัก */}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">
-          ผลการประเมินความเสี่ยงและจัดลำดับความเสี่ยง ปีงบประมาณ {selectedYear}
-        </h1>
+        <div className="flex flex-col gap-2">
+          <h1 className="text-2xl font-bold">
+            ผลการประเมินความเสี่ยงและจัดลำดับความเสี่ยง ปีงบประมาณ {selectedYear}
+          </h1>
+          {isApproved && (
+            <div className="flex items-center gap-2 text-sm">
+              <div className="flex items-center gap-1 text-green-600">
+                <div className="w-2 h-2 bg-green-600 rounded-full"></div>
+                <span className="font-medium">หัวหน้ากลุ่มตรวจสอบภายในพิจารณาอนุมัติเรียบร้อยแล้ว</span>
+              </div>
+              <span className="text-muted-foreground">•</span>
+              <span className="text-muted-foreground">{approvalTimestamp}</span>
+            </div>
+          )}
+        </div>
+        
+
       </div>
 
       {/* บล็อกกราฟ/สรุปด้านบน - แสดงเสมอ แต่ในโหมดเปรียบเทียบแสดงแค่ปีปัจจุบัน */}
@@ -191,13 +213,15 @@ export default function ChiefInspectorEvaluationResultsPage() {
         <DashboardSection
           year={selectedYear}
           statusText={
-            dataFromInspector
-              ? dataFromInspector.action === "submit_reorder"
-                ? "ได้รับการจัดลำดับความเสี่ยงใหม่แล้ว - รอพิจารณา"
-                : "ได้รับผลการประเมินแล้ว - รอพิจารณา"
-              : showCompareView 
-                ? `ข้อมูลผลการประเมินความเสี่ยงปี ${selectedYear} (เปรียบเทียบกับปี ${compareYear})`
-                : "ข้อมูลผลการประเมินความเสี่ยงปัจจุบัน"
+            isApproved
+              ? "หัวหน้ากลุ่มตรวจสอบภายในพิจารณาอนุมัติเรียบร้อยแล้ว"
+              : dataFromInspector
+                ? dataFromInspector.action === "submit_reorder"
+                  ? "ได้รับการจัดลำดับความเสี่ยงใหม่แล้ว - รอพิจารณา"
+                  : "ได้รับผลการประเมินแล้ว - รอพิจารณา"
+                : showCompareView 
+                  ? `ข้อมูลผลการประเมินความเสี่ยงปี ${selectedYear} (เปรียบเทียบกับปี ${compareYear})`
+                  : "ข้อมูลผลการประเมินความเสี่ยงปัจจุบัน"
           }
           donut={tableData.donut}
           stacked={tableData.stacked}
@@ -208,6 +232,18 @@ export default function ChiefInspectorEvaluationResultsPage() {
           }
           activeFilter={filter}
           showCompare={false}
+          showApprovalButton={true}
+          isApproved={isApproved}
+          onApprovalComplete={() => {
+            setIsApproved(true);
+            setApprovalTimestamp(new Date().toLocaleString('th-TH', {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit'
+            }));
+          }}
         />
 
         <ActiveFilters

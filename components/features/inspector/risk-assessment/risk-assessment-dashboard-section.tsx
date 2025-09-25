@@ -18,8 +18,12 @@ import {
   Tooltip,
   CartesianGrid,
   Legend,
+  LabelList,
 } from "recharts";
-import { Info } from "lucide-react";
+import { Info, FileText, History } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { ApprovalDialog } from "@/components/features/popup/approval-dialog";
+import { SignatureSelectionDialog } from "@/components/signature-selection-dialog";
 
 /** ---------- Types ---------- */
 type RiskSlice = {
@@ -28,6 +32,66 @@ type RiskSlice = {
   value: number;
   color: string;
   grade: "E" | "H" | "M" | "L" | "N";
+};
+
+/** ---------- Custom Label Component ---------- */
+const CustomPieLabel = ({
+  cx,
+  cy,
+  midAngle,
+  innerRadius,
+  outerRadius,
+  value,
+  name,
+  total,
+  color,
+  ...otherProps
+}: any) => {
+  const RADIAN = Math.PI / 180;
+  const radius = outerRadius + 30; // Distance from chart
+  const x = cx + radius * Math.cos(-midAngle * RADIAN);
+  const y = cy + radius * Math.sin(-midAngle * RADIAN);
+
+  const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : "0.0";
+
+  return (
+    <g>
+      {/* Label line */}
+      <line
+        x1={cx + outerRadius * Math.cos(-midAngle * RADIAN)}
+        y1={cy + outerRadius * Math.sin(-midAngle * RADIAN)}
+        x2={x}
+        y2={y}
+        stroke={color || "#8884d8"}
+        strokeWidth={1}
+      />
+
+      {/* Label text */}
+      <text
+        x={x}
+        y={y - 5}
+        fill="#374151"
+        textAnchor={x > cx ? "start" : "end"}
+        dominantBaseline="central"
+        fontSize={12}
+        fontWeight="500"
+      >
+        {name}
+      </text>
+
+      {/* Value and percentage */}
+      <text
+        x={x}
+        y={y + 10}
+        fill="#6B7280"
+        textAnchor={x > cx ? "start" : "end"}
+        dominantBaseline="central"
+        fontSize={11}
+      >
+        {value} {percentage}%
+      </text>
+    </g>
+  );
 };
 
 type StackedRow = {
@@ -42,10 +106,10 @@ type StackedRow = {
 type MatrixRow = {
   category: string;
   veryLow: number; // น้อยที่สุด (1)
-  low: number;     // น้อย (2)
-  medium: number;  // ปานกลาง (3)
-  high: number;    // มาก (4)
-  veryHigh: number;// มากที่สุด (5)
+  low: number; // น้อย (2)
+  medium: number; // ปานกลาง (3)
+  high: number; // มาก (4)
+  veryHigh: number; // มากที่สุด (5)
 };
 
 // API types
@@ -83,9 +147,8 @@ type ApiResponse = {
 };
 
 // API fetcher
-const fetcher = (url: string) => fetch(url).then((r) => r.json() as Promise<ApiResponse>);
-
-
+const fetcher = (url: string) =>
+  fetch(url).then((r) => r.json() as Promise<ApiResponse>);
 
 /** ---------- Main Section ---------- */
 type DashboardProps = {
@@ -102,6 +165,9 @@ type DashboardProps = {
     category?: string;
   };
   showCompare?: boolean; // แสดงโหมดเปรียบเทียบ
+  showApprovalButton?: boolean; // แสดงปุ่มพิจารณาอนุมัติ
+  isApproved?: boolean; // สถานะการอนุมัติ
+  onApprovalComplete?: () => void; // callback เมื่ออนุมัติเสร็จ
 };
 
 export default function DashboardSection({
@@ -115,8 +181,26 @@ export default function DashboardSection({
   onCategoryClick,
   activeFilter,
   showCompare = false,
+  showApprovalButton = false,
+  isApproved = false,
+  onApprovalComplete,
 }: DashboardProps) {
   const [showMatrixReport, setShowMatrixReport] = useState(false);
+
+  // State สำหรับ Signature Dialog
+  const [showSignatureDialog, setShowSignatureDialog] =
+    useState<boolean>(false);
+  const [comment, setComment] = useState<string>("");
+  const [approvalStep, setApprovalStep] = useState<number>(1);
+  const [signatureChoice, setSignatureChoice] = useState<
+    "new" | "saved" | null
+  >(null);
+  const [signatureData, setSignatureData] = useState<{
+    name: string;
+    signature: string | null;
+  }>({ name: "", signature: null });
+  const [otpValue, setOtpValue] = useState<string>("");
+  const [isOtpValid, setIsOtpValid] = useState<boolean>(false);
 
   // ดึงข้อมูลจาก API
   const { data, error, isLoading } = useSWR<ApiResponse>(
@@ -126,7 +210,9 @@ export default function DashboardSection({
 
   // ดึงข้อมูลปีเปรียบเทียบถ้ามีการเปรียบเทียบ
   const { data: compareData, isLoading: compareLoading } = useSWR<ApiResponse>(
-    showCompare && compareYear ? `/api/chief-risk-assessment-results?year=${compareYear}` : null,
+    showCompare && compareYear
+      ? `/api/chief-risk-assessment-results?year=${compareYear}`
+      : null,
     fetcher
   );
 
@@ -138,7 +224,8 @@ export default function DashboardSection({
         donut: donutProp,
         stacked: stackedProp || [],
         matrix: matrixProp || [],
-        actualStatusText: statusText || (data?.statusLine?.value) || "แสดงข้อมูลจากตาราง"
+        actualStatusText:
+          statusText || data?.statusLine?.value || "แสดงข้อมูลจากตาราง",
       };
     }
 
@@ -148,7 +235,7 @@ export default function DashboardSection({
         donut: [],
         stacked: [],
         matrix: [],
-        actualStatusText: "กำลังโหลดข้อมูล..."
+        actualStatusText: "กำลังโหลดข้อมูล...",
       };
     }
 
@@ -157,23 +244,31 @@ export default function DashboardSection({
         donut: [],
         stacked: [],
         matrix: [],
-        actualStatusText: statusText || "เกิดข้อผิดพลาดในการโหลดข้อมูล"
+        actualStatusText: statusText || "เกิดข้อผิดพลาดในการโหลดข้อมูล",
       };
     }
 
     // ตรวจสอบว่ามีข้อมูลจริงจาก API หรือไม่
-    if (!data || !data.rowsByTab || Object.values(data.rowsByTab).every((v: any) => !v || (Array.isArray(v) && v.length === 0))) {
+    if (
+      !data ||
+      !data.rowsByTab ||
+      Object.values(data.rowsByTab).every(
+        (v: any) => !v || (Array.isArray(v) && v.length === 0)
+      )
+    ) {
       return {
         donut: [],
         stacked: [],
         matrix: [],
-        actualStatusText: statusText || "รอการส่งข้อมูลจากหน่วยตรวจสอบภายใน"
+        actualStatusText: statusText || "รอการส่งข้อมูลจากหน่วยตรวจสอบภายใน",
       };
     }
 
     // รวมทุกแถวจากทุกแท็บ
-    const allRows: Row[] = Object.values(data.rowsByTab).flat().filter((row): row is Row => row !== undefined && row !== null);
-    
+    const allRows: Row[] = Object.values(data.rowsByTab)
+      .flat()
+      .filter((row): row is Row => row !== undefined && row !== null);
+
     // Debug: แสดงข้อมูลจริงจาก API
     console.log("🔍 Dashboard Debug - API Data:", {
       totalRows: allRows.length,
@@ -182,52 +277,89 @@ export default function DashboardSection({
         acc[row.grade] = (acc[row.grade] || 0) + 1;
         return acc;
       }, {}),
-      tabData: Object.keys(data.rowsByTab).map(tab => ({
+      tabData: Object.keys(data.rowsByTab).map((tab) => ({
         tab,
-        count: data.rowsByTab[tab]?.length || 0
-      }))
+        count: data.rowsByTab[tab]?.length || 0,
+      })),
     });
-    
+
     // นับจำนวนตามเกรด (รวมทุกเกรด) - รองรับทั้งระบบ E,H,M,L,N และ H,M,L,"-"
-    const gradeCounts = allRows.reduce((acc, row) => {
-      // แปลง grade จาก API ให้เป็นระบบเดียวกัน
-      const normalizedGrade = row.grade === "-" ? "N" : row.grade;
-      
-      if (normalizedGrade === "E") acc.excellent++;
-      else if (normalizedGrade === "H") acc.high++;
-      else if (normalizedGrade === "M") acc.medium++;
-      else if (normalizedGrade === "L") acc.low++;
-      else if (normalizedGrade === "N" || normalizedGrade === "-") acc.none++;
-      return acc;
-    }, { excellent: 0, high: 0, medium: 0, low: 0, none: 0 });
+    const gradeCounts = allRows.reduce(
+      (acc, row) => {
+        // แปลง grade จาก API ให้เป็นระบบเดียวกัน
+        const normalizedGrade = row.grade === "-" ? "N" : row.grade;
+
+        if (normalizedGrade === "E") acc.excellent++;
+        else if (normalizedGrade === "H") acc.high++;
+        else if (normalizedGrade === "M") acc.medium++;
+        else if (normalizedGrade === "L") acc.low++;
+        else if (normalizedGrade === "N" || normalizedGrade === "-") acc.none++;
+        return acc;
+      },
+      { excellent: 0, high: 0, medium: 0, low: 0, none: 0 }
+    );
 
     // สร้างข้อมูลโดนัท (แสดงเฉพาะเกรดที่มีข้อมูล - ใช้สีที่ตรงกัน)
     const calculatedDonut: RiskSlice[] = [];
-    
+
     if (gradeCounts.excellent > 0) {
-      calculatedDonut.push({ key: "excellent", name: "สูงมาก", value: gradeCounts.excellent, color: gradeColors.E, grade: "E" });
+      calculatedDonut.push({
+        key: "excellent",
+        name: "สูงมาก",
+        value: gradeCounts.excellent,
+        color: gradeColors.E,
+        grade: "E",
+      });
     }
     if (gradeCounts.high > 0) {
-      calculatedDonut.push({ key: "high", name: "สูง", value: gradeCounts.high, color: gradeColors.H, grade: "H" });
+      calculatedDonut.push({
+        key: "high",
+        name: "สูง",
+        value: gradeCounts.high,
+        color: gradeColors.H,
+        grade: "H",
+      });
     }
     if (gradeCounts.medium > 0) {
-      calculatedDonut.push({ key: "medium", name: "ปานกลาง", value: gradeCounts.medium, color: gradeColors.M, grade: "M" });
+      calculatedDonut.push({
+        key: "medium",
+        name: "ปานกลาง",
+        value: gradeCounts.medium,
+        color: gradeColors.M,
+        grade: "M",
+      });
     }
     if (gradeCounts.low > 0) {
-      calculatedDonut.push({ key: "low", name: "น้อย", value: gradeCounts.low, color: gradeColors.L, grade: "L" });
+      calculatedDonut.push({
+        key: "low",
+        name: "น้อย",
+        value: gradeCounts.low,
+        color: gradeColors.L,
+        grade: "L",
+      });
     }
     if (gradeCounts.none > 0) {
-      calculatedDonut.push({ key: "none", name: "น้อยมาก", value: gradeCounts.none, color: gradeColors.N, grade: "N" });
+      calculatedDonut.push({
+        key: "none",
+        name: "น้อยมาก",
+        value: gradeCounts.none,
+        color: gradeColors.N,
+        grade: "N",
+      });
     }
 
     // จัดกลุ่มตามประเภท (รองรับทุกเกรด)
-    const categoryMap = new Map<string, { E: number; H: number; M: number; L: number; N: number }>();
-    
-    allRows.forEach(row => {
+    const categoryMap = new Map<
+      string,
+      { E: number; H: number; M: number; L: number; N: number }
+    >();
+
+    allRows.forEach((row) => {
       let category = "อื่นๆ";
       if (row.work && row.work !== "-") category = "งาน";
       else if (row.project && row.project !== "-") category = "โครงการ";
-      else if (row.carry && row.carry !== "-") category = "โครงการกันเงินเหลื่อมปี";
+      else if (row.carry && row.carry !== "-")
+        category = "โครงการกันเงินเหลื่อมปี";
       else if (row.activity && row.activity !== "-") category = "กิจกรรม";
       else if (row.process && row.process !== "-") category = "กระบวนงาน";
       else if (row.system && row.system !== "-") category = "IT/Non-IT";
@@ -236,11 +368,11 @@ export default function DashboardSection({
       if (!categoryMap.has(category)) {
         categoryMap.set(category, { E: 0, H: 0, M: 0, L: 0, N: 0 });
       }
-      
+
       const counts = categoryMap.get(category)!;
       // แปลง grade จาก API ให้เป็นระบบเดียวกัน
       const normalizedGrade = row.grade === "-" ? "N" : row.grade;
-      
+
       if (normalizedGrade === "E") counts.E++;
       else if (normalizedGrade === "H") counts.H++;
       else if (normalizedGrade === "M") counts.M++;
@@ -249,55 +381,133 @@ export default function DashboardSection({
     });
 
     // สร้างข้อมูลแท่งซ้อน (รวมทุกเกรด)
-    const calculatedStacked: StackedRow[] = Array.from(categoryMap.entries()).map(([name, counts]) => ({
+    const calculatedStacked: StackedRow[] = Array.from(
+      categoryMap.entries()
+    ).map(([name, counts]) => ({
       name,
       veryHigh: counts.E, // Excellent -> veryHigh
-      high: counts.H,     // High -> high 
-      medium: counts.M,   // Medium -> medium
-      low: counts.L,      // Low -> low
-      veryLow: counts.N   // None -> veryLow
+      high: counts.H, // High -> high
+      medium: counts.M, // Medium -> medium
+      low: counts.L, // Low -> low
+      veryLow: counts.N, // None -> veryLow
     }));
 
     // สร้างข้อมูลเมทริกซ์ (ใช้ข้อมูลจริงจาก API)
-    const calculatedMatrix: MatrixRow[] = Array.from(categoryMap.entries()).map(([category, counts]) => {
-      return {
-        category,
-        veryLow: counts.N,   // None/Not Assessed
-        low: counts.L,       // Low Risk
-        medium: counts.M,    // Medium Risk  
-        high: counts.H,      // High Risk
-        veryHigh: counts.E   // Excellent Risk
-      };
-    });
+    const calculatedMatrix: MatrixRow[] = Array.from(categoryMap.entries()).map(
+      ([category, counts]) => {
+        return {
+          category,
+          veryLow: counts.N, // None/Not Assessed
+          low: counts.L, // Low Risk
+          medium: counts.M, // Medium Risk
+          high: counts.H, // High Risk
+          veryHigh: counts.E, // Excellent Risk
+        };
+      }
+    );
 
     return {
       donut: calculatedDonut,
       stacked: calculatedStacked,
       matrix: calculatedMatrix,
-      actualStatusText: data.statusLine?.value || statusText || "-"
+      actualStatusText: data.statusLine?.value || statusText || "-",
     };
   }, [data, error, isLoading, donutProp, stackedProp, matrixProp, statusText]);
 
-  const total = useMemo(
-    () => donut.reduce((s, d) => s + d.value, 0),
-    [donut]
-  );
+  const total = useMemo(() => donut.reduce((s, d) => s + d.value, 0), [donut]);
+  const [showApprovalDialog, setShowApprovalDialog] = useState<boolean>(false);
+  const [isApproving, setIsApproving] = useState<boolean>(false);
 
+  // Handler functions for approval flow
+  const handleApproval = async () => {
+    setIsApproving(true);
+
+    // Simulate API call
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    setShowApprovalDialog(false);
+    setShowSignatureDialog(true);
+    setApprovalStep(1);
+    setIsApproving(false);
+  };
+
+  const handleSignatureSubmit = async () => {
+    console.log("Submitting signature with data:", {
+      signatureData,
+      comment,
+      otpValue,
+    });
+
+    // Simulate API call
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    // Reset states
+    setShowSignatureDialog(false);
+    setComment("");
+    setApprovalStep(1);
+    setSignatureChoice(null);
+    setSignatureData({ name: "", signature: null });
+    setOtpValue("");
+    setIsOtpValid(false);
+
+    // เรียก callback เมื่ออนุมัติเสร็จ
+    if (onApprovalComplete) {
+      onApprovalComplete();
+    }
+  };
   return (
     <section className="space-y-4">
       {/* หัวข้อหลัก + สถานะ */}
       <Card className="border-dashed">
         <CardHeader className="pb-3">
           <div className="flex flex-col gap-2">
-            <CardTitle className="text-base md:text-lg font-medium">
-              ผลการประเมินและจัดลำดับด้านความเสี่ยงแผนการตรวจสอบประจำปี {year}
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              {" "}
+              <CardTitle className="text-base md:text-lg font-medium">
+                ผลการประเมินและจัดลำดับด้านความเสี่ยงแผนการตรวจสอบประจำปี {year}
+              </CardTitle>
+              {showApprovalButton && !isApproved && (
+                <Button
+                  className="bg-[#3E52B9] hover:bg-[#2A3A8F] text-white"
+                  onClick={() => setShowApprovalDialog(true)}
+                  disabled={isApproving}
+                >
+                  พิจารณาอนุมัติ
+                </Button>
+              )}
+              {showApprovalButton && isApproved && (
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    className="flex items-center gap-2"
+                    onClick={() => {
+                      // TODO: Implement export to PDF functionality
+                      alert("กำลังเตรียม Export to PDF...");
+                    }}
+                  >
+                    <FileText className="h-4 w-4" />
+                    Export to PDF
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="flex items-center gap-2"
+                    onClick={() => {
+                      // TODO: Implement audit trail functionality
+                      alert("กำลังเตรียม Audit Trail...");
+                    }}
+                  >
+                    <History className="h-4 w-4" />
+                    Audit Trail
+                  </Button>
+                </div>
+              )}
+            </div>
 
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Info className="h-4 w-4" />
               <span className="text-amber-600 font-medium">สถานะ:</span>
               <span className="text-amber-600">{actualStatusText}</span>
-              
+
               {/* แสดงข้อมูลเพิ่มเติมเมื่อได้รับข้อมูลจาก Inspector */}
               {data?.submissionInfo && (
                 <div className="ml-4 flex items-center gap-2">
@@ -307,7 +517,9 @@ export default function DashboardSection({
                   </span>
                   {data.submissionInfo.submissionTime && (
                     <span className="text-gray-500 text-xs">
-                      {new Date(data.submissionInfo.submissionTime).toLocaleString('th-TH')}
+                      {new Date(
+                        data.submissionInfo.submissionTime
+                      ).toLocaleString("th-TH")}
                     </span>
                   )}
                 </div>
@@ -324,7 +536,10 @@ export default function DashboardSection({
             </h3>
 
             <div className="flex items-center gap-2">
-              <Label htmlFor="matrix-toggle" className="text-sm text-muted-foreground">
+              <Label
+                htmlFor="matrix-toggle"
+                className="text-sm text-muted-foreground"
+              >
                 รายงานเมทริกซ์ความเสี่ยง
               </Label>
               <Switch
@@ -336,16 +551,22 @@ export default function DashboardSection({
           </div>
 
           {/* 2 คอลัมน์: โดนัท / แท่งซ้อน - หรือ 4 คอลัมน์ถ้าเปรียบเทียบ */}
-          <div className={cn(
-            "grid gap-4",
-            showCompare ? "grid-cols-1 lg:grid-cols-2 xl:grid-cols-4" : "grid-cols-1 md:grid-cols-2"
-          )}>
+          <div
+            className={cn(
+              "grid gap-4",
+              showCompare
+                ? "grid-cols-1 lg:grid-cols-2 xl:grid-cols-4"
+                : "grid-cols-1 md:grid-cols-2"
+            )}
+          >
             {/* === โดนัทรวมทั้งองค์กร ปีปัจจุบัน === */}
             <Card className={showCompare ? "lg:col-span-1" : ""}>
               <CardContent className="p-4 md:p-6">
                 <div className="text-sm font-medium mb-3">
                   ผลการประเมินจัดลำดับด้านความเสี่ยงแผนงานภาพรวม
-                  {showCompare && <span className="text-blue-600 ml-2">(ปี {year})</span>}
+                  {showCompare && (
+                    <span className="text-blue-600 ml-2">(ปี {year})</span>
+                  )}
                 </div>
 
                 <div className="relative h-[260px] md:h-[300px]">
@@ -353,7 +574,9 @@ export default function DashboardSection({
                     <div className="flex items-center justify-center h-full text-muted-foreground">
                       <div className="text-center">
                         <div className="text-lg mb-2">ไม่มีข้อมูล</div>
-                        <div className="text-sm">รอการส่งข้อมูลจากหน่วยตรวจสอบภายใน</div>
+                        <div className="text-sm">
+                          รอการส่งข้อมูลจากหน่วยตรวจสอบภายใน
+                        </div>
                       </div>
                     </div>
                   ) : (
@@ -369,19 +592,27 @@ export default function DashboardSection({
                             stroke="#fff"
                             strokeWidth={2}
                             label={(props: any) => {
-                              const value = Number(props.value) || 0;
-                              const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : "0.0";
-                              return `${percentage}%`;
+                              const { key, ...otherProps } = props;
+                              return (
+                                <CustomPieLabel
+                                  key={key}
+                                  {...otherProps}
+                                  total={total}
+                                  color={props.payload?.color || props.fill}
+                                />
+                              );
                             }}
-                            labelLine={true}
+                            labelLine={false}
                           >
                             {donut.map((d) => (
-                              <Cell 
-                                key={d.key} 
+                              <Cell
+                                key={d.key}
                                 fill={d.color}
                                 stroke="#fff"
                                 strokeWidth={2}
-                                style={{ cursor: onGradeClick ? 'pointer' : 'default' }}
+                                style={{
+                                  cursor: onGradeClick ? "pointer" : "default",
+                                }}
                                 onClick={() => {
                                   if (!onGradeClick) return;
                                   onGradeClick(d.grade);
@@ -408,14 +639,16 @@ export default function DashboardSection({
                 <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
                   {donut.map((d) => {
                     const isActive = d.grade === activeFilter?.grade;
-                    const percentage = total > 0 ? ((d.value / total) * 100).toFixed(1) : "0.0";
-                    
+                    const percentage =
+                      total > 0 ? ((d.value / total) * 100).toFixed(1) : "0.0";
+
                     return (
-                      <div 
-                        key={d.key} 
+                      <div
+                        key={d.key}
                         className={cn(
                           "flex items-center gap-2",
-                          onGradeClick && "cursor-pointer hover:bg-gray-50 p-1 rounded",
+                          onGradeClick &&
+                            "cursor-pointer hover:bg-gray-50 p-1 rounded",
                           isActive && "bg-gray-100"
                         )}
                         onClick={() => onGradeClick?.(d.grade)}
@@ -427,7 +660,9 @@ export default function DashboardSection({
                         />
                         <span className="text-muted-foreground">{d.name}</span>
                         <span className="ml-auto font-medium">{d.value}</span>
-                        <span className="text-sm text-muted-foreground">({percentage}%)</span>
+                        <span className="text-sm text-muted-foreground">
+                          ({percentage}%)
+                        </span>
                       </div>
                     );
                   })}
@@ -441,7 +676,9 @@ export default function DashboardSection({
                 <CardContent className="p-4 md:p-6">
                   <div className="text-sm font-medium mb-3">
                     ผลการประเมินจัดลำดับด้านความเสี่ยงแผนงานภาพรวม
-                    <span className="text-orange-600 ml-2">(ปี {compareYear})</span>
+                    <span className="text-orange-600 ml-2">
+                      (ปี {compareYear})
+                    </span>
                   </div>
 
                   <div className="relative h-[260px] md:h-[300px]">
@@ -463,35 +700,89 @@ export default function DashboardSection({
                       <>
                         {/* คำนวณข้อมูล donut สำหรับปีเปรียบเทียบ */}
                         {(() => {
-                          const compareRows: Row[] = Object.values(compareData.rowsByTab).flat().filter((row): row is Row => row !== undefined && row !== null);
-                          const compareGradeCounts = compareRows.reduce((acc, row) => {
-                            const normalizedGrade = row.grade === "-" ? "N" : row.grade;
-                            if (normalizedGrade === "E") acc.excellent++;
-                            else if (normalizedGrade === "H") acc.high++;
-                            else if (normalizedGrade === "M") acc.medium++;
-                            else if (normalizedGrade === "L") acc.low++;
-                            else if (normalizedGrade === "N" || normalizedGrade === "-") acc.none++;
-                            return acc;
-                          }, { excellent: 0, high: 0, medium: 0, low: 0, none: 0 });
+                          const compareRows: Row[] = Object.values(
+                            compareData.rowsByTab
+                          )
+                            .flat()
+                            .filter(
+                              (row): row is Row =>
+                                row !== undefined && row !== null
+                            );
+                          const compareGradeCounts = compareRows.reduce(
+                            (acc, row) => {
+                              const normalizedGrade =
+                                row.grade === "-" ? "N" : row.grade;
+                              if (normalizedGrade === "E") acc.excellent++;
+                              else if (normalizedGrade === "H") acc.high++;
+                              else if (normalizedGrade === "M") acc.medium++;
+                              else if (normalizedGrade === "L") acc.low++;
+                              else if (
+                                normalizedGrade === "N" ||
+                                normalizedGrade === "-"
+                              )
+                                acc.none++;
+                              return acc;
+                            },
+                            {
+                              excellent: 0,
+                              high: 0,
+                              medium: 0,
+                              low: 0,
+                              none: 0,
+                            }
+                          );
 
                           const compareDonut: RiskSlice[] = [];
                           if (compareGradeCounts.excellent > 0) {
-                            compareDonut.push({ key: "excellent", name: "สูงมาก", value: compareGradeCounts.excellent, color: gradeColors.E, grade: "E" });
+                            compareDonut.push({
+                              key: "excellent",
+                              name: "สูงมาก",
+                              value: compareGradeCounts.excellent,
+                              color: gradeColors.E,
+                              grade: "E",
+                            });
                           }
                           if (compareGradeCounts.high > 0) {
-                            compareDonut.push({ key: "high", name: "สูง", value: compareGradeCounts.high, color: gradeColors.H, grade: "H" });
+                            compareDonut.push({
+                              key: "high",
+                              name: "สูง",
+                              value: compareGradeCounts.high,
+                              color: gradeColors.H,
+                              grade: "H",
+                            });
                           }
                           if (compareGradeCounts.medium > 0) {
-                            compareDonut.push({ key: "medium", name: "ปานกลาง", value: compareGradeCounts.medium, color: gradeColors.M, grade: "M" });
+                            compareDonut.push({
+                              key: "medium",
+                              name: "ปานกลาง",
+                              value: compareGradeCounts.medium,
+                              color: gradeColors.M,
+                              grade: "M",
+                            });
                           }
                           if (compareGradeCounts.low > 0) {
-                            compareDonut.push({ key: "low", name: "น้อย", value: compareGradeCounts.low, color: gradeColors.L, grade: "L" });
+                            compareDonut.push({
+                              key: "low",
+                              name: "น้อย",
+                              value: compareGradeCounts.low,
+                              color: gradeColors.L,
+                              grade: "L",
+                            });
                           }
                           if (compareGradeCounts.none > 0) {
-                            compareDonut.push({ key: "none", name: "น้อยมาก", value: compareGradeCounts.none, color: gradeColors.N, grade: "N" });
+                            compareDonut.push({
+                              key: "none",
+                              name: "น้อยมาก",
+                              value: compareGradeCounts.none,
+                              color: gradeColors.N,
+                              grade: "N",
+                            });
                           }
 
-                          const compareTotal = compareDonut.reduce((s, d) => s + d.value, 0);
+                          const compareTotal = compareDonut.reduce(
+                            (s, d) => s + d.value,
+                            0
+                          );
 
                           return (
                             <>
@@ -506,19 +797,31 @@ export default function DashboardSection({
                                     stroke="#fff"
                                     strokeWidth={2}
                                     label={(props: any) => {
-                                      const value = Number(props.value) || 0;
-                                      const percentage = compareTotal > 0 ? ((value / compareTotal) * 100).toFixed(1) : "0.0";
-                                      return `${percentage}%`;
+                                      const { key, ...otherProps } = props;
+                                      return (
+                                        <CustomPieLabel
+                                          key={key}
+                                          {...otherProps}
+                                          total={compareTotal}
+                                          color={
+                                            props.payload?.color || props.fill
+                                          }
+                                        />
+                                      );
                                     }}
-                                    labelLine={true}
+                                    labelLine={false}
                                   >
                                     {compareDonut.map((d) => (
-                                      <Cell 
-                                        key={d.key} 
+                                      <Cell
+                                        key={d.key}
                                         fill={d.color}
                                         stroke="#fff"
                                         strokeWidth={2}
-                                        style={{ cursor: onGradeClick ? 'pointer' : 'default' }}
+                                        style={{
+                                          cursor: onGradeClick
+                                            ? "pointer"
+                                            : "default",
+                                        }}
                                         onClick={() => {
                                           if (!onGradeClick) return;
                                           onGradeClick(d.grade);
@@ -542,15 +845,23 @@ export default function DashboardSection({
                               <div className="absolute bottom-0 left-0 right-0">
                                 <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
                                   {compareDonut.map((d) => {
-                                    const isActive = d.grade === activeFilter?.grade;
-                                    const percentage = compareTotal > 0 ? ((d.value / compareTotal) * 100).toFixed(1) : "0.0";
-                                    
+                                    const isActive =
+                                      d.grade === activeFilter?.grade;
+                                    const percentage =
+                                      compareTotal > 0
+                                        ? (
+                                            (d.value / compareTotal) *
+                                            100
+                                          ).toFixed(1)
+                                        : "0.0";
+
                                     return (
-                                      <div 
-                                        key={d.key} 
+                                      <div
+                                        key={d.key}
                                         className={cn(
                                           "flex items-center gap-2",
-                                          onGradeClick && "cursor-pointer hover:bg-gray-50 p-1 rounded",
+                                          onGradeClick &&
+                                            "cursor-pointer hover:bg-gray-50 p-1 rounded",
                                           isActive && "bg-gray-100"
                                         )}
                                         onClick={() => onGradeClick?.(d.grade)}
@@ -560,9 +871,15 @@ export default function DashboardSection({
                                           style={{ backgroundColor: d.color }}
                                           aria-hidden
                                         />
-                                        <span className="text-muted-foreground">{d.name}</span>
-                                        <span className="ml-auto font-medium">{d.value}</span>
-                                        <span className="text-sm text-muted-foreground">({percentage}%)</span>
+                                        <span className="text-muted-foreground">
+                                          {d.name}
+                                        </span>
+                                        <span className="ml-auto font-medium">
+                                          {d.value}
+                                        </span>
+                                        <span className="text-sm text-muted-foreground">
+                                          ({percentage}%)
+                                        </span>
                                       </div>
                                     );
                                   })}
@@ -583,7 +900,9 @@ export default function DashboardSection({
               <CardContent className="p-4 md:p-6">
                 <div className="text-sm font-medium mb-3">
                   สรุปจำนวนผลการประเมินและจัดลำดับความเสี่ยงแยกตามหมวด
-                  {showCompare && <span className="text-blue-600 ml-2">(ปี {year})</span>}
+                  {showCompare && (
+                    <span className="text-blue-600 ml-2">(ปี {year})</span>
+                  )}
                 </div>
 
                 <div className="h-[260px] md:h-[300px]">
@@ -591,7 +910,9 @@ export default function DashboardSection({
                     <div className="flex items-center justify-center h-full text-muted-foreground">
                       <div className="text-center">
                         <div className="text-lg mb-2">ไม่มีข้อมูล</div>
-                        <div className="text-sm">รอการส่งข้อมูลจากหน่วยตรวจสอบภายใน</div>
+                        <div className="text-sm">
+                          รอการส่งข้อมูลจากหน่วยตรวจสอบภายใน
+                        </div>
                       </div>
                     </div>
                   ) : (
@@ -602,71 +923,196 @@ export default function DashboardSection({
                         <YAxis allowDecimals={false} />
                         <Tooltip />
                         <Legend />
-                        <Bar 
-                          dataKey="veryHigh" 
-                          stackId="a" 
-                          name="สูงมาก" 
+                        <Bar
+                          dataKey="veryHigh"
+                          stackId="a"
+                          name="สูงมาก"
                           fill={gradeColors.E}
-                          fillOpacity={activeFilter?.grade === "E" || !activeFilter?.grade ? 1 : 0.3}
+                          fillOpacity={
+                            activeFilter?.grade === "E" || !activeFilter?.grade
+                              ? 1
+                              : 0.3
+                          }
                           onClick={(data) => {
-                            if (!onGradeClick || !onCategoryClick || !data?.name) return;
+                            if (
+                              !onGradeClick ||
+                              !onCategoryClick ||
+                              !data?.name
+                            )
+                              return;
                             onGradeClick("E");
                             onCategoryClick(data.name);
                           }}
-                          style={{ cursor: (onGradeClick && onCategoryClick) ? 'pointer' : 'default' }}
-                        />
-                        <Bar 
-                          dataKey="high" 
-                          stackId="a" 
-                          name="สูง" 
+                          style={{
+                            cursor:
+                              onGradeClick && onCategoryClick
+                                ? "pointer"
+                                : "default",
+                          }}
+                        >
+                          <LabelList
+                            dataKey="veryHigh"
+                            position="center"
+                            fill="white"
+                            fontSize="12"
+                            fontWeight="bold"
+                            formatter={(value: any) =>
+                              value && value > 0 ? value : ""
+                            }
+                          />
+                        </Bar>
+                        <Bar
+                          dataKey="high"
+                          stackId="a"
+                          name="สูง"
                           fill={gradeColors.H}
-                          fillOpacity={activeFilter?.grade === "H" || !activeFilter?.grade ? 1 : 0.3}
+                          fillOpacity={
+                            activeFilter?.grade === "H" || !activeFilter?.grade
+                              ? 1
+                              : 0.3
+                          }
                           onClick={(data) => {
-                            if (!onGradeClick || !onCategoryClick || !data?.name) return;
+                            if (
+                              !onGradeClick ||
+                              !onCategoryClick ||
+                              !data?.name
+                            )
+                              return;
                             onGradeClick("H");
                             onCategoryClick(data.name);
                           }}
-                          style={{ cursor: (onGradeClick && onCategoryClick) ? 'pointer' : 'default' }}
-                        />
-                        <Bar 
-                          dataKey="medium" 
-                          stackId="a" 
-                          name="ปานกลาง" 
+                          style={{
+                            cursor:
+                              onGradeClick && onCategoryClick
+                                ? "pointer"
+                                : "default",
+                          }}
+                        >
+                          <LabelList
+                            dataKey="high"
+                            position="center"
+                            fill="white"
+                            fontSize="12"
+                            fontWeight="bold"
+                            formatter={(value: any) =>
+                              value && value > 0 ? value : ""
+                            }
+                          />
+                        </Bar>
+                        <Bar
+                          dataKey="medium"
+                          stackId="a"
+                          name="ปานกลาง"
                           fill={gradeColors.M}
-                          fillOpacity={activeFilter?.grade === "M" || !activeFilter?.grade ? 1 : 0.3}
+                          fillOpacity={
+                            activeFilter?.grade === "M" || !activeFilter?.grade
+                              ? 1
+                              : 0.3
+                          }
                           onClick={(data) => {
-                            if (!onGradeClick || !onCategoryClick || !data?.name) return;
+                            if (
+                              !onGradeClick ||
+                              !onCategoryClick ||
+                              !data?.name
+                            )
+                              return;
                             onGradeClick("M");
                             onCategoryClick(data.name);
                           }}
-                          style={{ cursor: (onGradeClick && onCategoryClick) ? 'pointer' : 'default' }}
-                        />
-                        <Bar 
-                          dataKey="low" 
-                          stackId="a" 
-                          name="น้อย" 
+                          style={{
+                            cursor:
+                              onGradeClick && onCategoryClick
+                                ? "pointer"
+                                : "default",
+                          }}
+                        >
+                          <LabelList
+                            dataKey="medium"
+                            position="center"
+                            fill="white"
+                            fontSize="12"
+                            fontWeight="bold"
+                            formatter={(value: any) =>
+                              value && value > 0 ? value : ""
+                            }
+                          />
+                        </Bar>
+                        <Bar
+                          dataKey="low"
+                          stackId="a"
+                          name="น้อย"
                           fill={gradeColors.L}
-                          fillOpacity={activeFilter?.grade === "L" || !activeFilter?.grade ? 1 : 0.3}
+                          fillOpacity={
+                            activeFilter?.grade === "L" || !activeFilter?.grade
+                              ? 1
+                              : 0.3
+                          }
                           onClick={(data) => {
-                            if (!onGradeClick || !onCategoryClick || !data?.name) return;
+                            if (
+                              !onGradeClick ||
+                              !onCategoryClick ||
+                              !data?.name
+                            )
+                              return;
                             onGradeClick("L");
                             onCategoryClick(data.name);
                           }}
-                          style={{ cursor: (onGradeClick && onCategoryClick) ? 'pointer' : 'default' }}
-                        />
-                        <Bar 
-                          dataKey="veryLow" 
-                          stackId="a" 
-                          name="น้อยมาก" 
+                          style={{
+                            cursor:
+                              onGradeClick && onCategoryClick
+                                ? "pointer"
+                                : "default",
+                          }}
+                        >
+                          <LabelList
+                            dataKey="low"
+                            position="center"
+                            fill="white"
+                            fontSize="12"
+                            fontWeight="bold"
+                            formatter={(value: any) =>
+                              value && value > 0 ? value : ""
+                            }
+                          />
+                        </Bar>
+                        <Bar
+                          dataKey="veryLow"
+                          stackId="a"
+                          name="น้อยมาก"
                           fill={gradeColors.N}
-                          fillOpacity={activeFilter?.grade === "N" || !activeFilter?.grade ? 1 : 0.3}
+                          fillOpacity={
+                            activeFilter?.grade === "N" || !activeFilter?.grade
+                              ? 1
+                              : 0.3
+                          }
                           onClick={(data) => {
-                            if (!onGradeClick || !onCategoryClick || !data?.name) return;
+                            if (
+                              !onGradeClick ||
+                              !onCategoryClick ||
+                              !data?.name
+                            )
+                              return;
                             onGradeClick("N");
                             onCategoryClick(data.name);
                           }}
-                          style={{ cursor: (onGradeClick && onCategoryClick) ? 'pointer' : 'default' }}
-                        />
+                          style={{
+                            cursor:
+                              onGradeClick && onCategoryClick
+                                ? "pointer"
+                                : "default",
+                          }}
+                        >
+                          <LabelList
+                            dataKey="veryLow"
+                            position="center"
+                            fill="white"
+                            fontSize="12"
+                            fontWeight="bold"
+                            formatter={(value: any) =>
+                              value && value > 0 ? value : ""
+                            }
+                          />
+                        </Bar>
                       </BarChart>
                     </ResponsiveContainer>
                   )}
@@ -680,7 +1126,9 @@ export default function DashboardSection({
                 <CardContent className="p-4 md:p-6">
                   <div className="text-sm font-medium mb-3">
                     สรุปจำนวนผลการประเมินและจัดลำดับความเสี่ยงแยกตามหมวด
-                    <span className="text-orange-600 ml-2">(ปี {compareYear})</span>
+                    <span className="text-orange-600 ml-2">
+                      (ปี {compareYear})
+                    </span>
                   </div>
 
                   <div className="h-[260px] md:h-[300px]">
@@ -702,118 +1150,286 @@ export default function DashboardSection({
                       <>
                         {/* คำนวณข้อมูล stacked สำหรับปีเปรียบเทียบ */}
                         {(() => {
-                          const compareRows: Row[] = Object.values(compareData.rowsByTab).flat().filter((row): row is Row => row !== undefined && row !== null);
-                          
+                          const compareRows: Row[] = Object.values(
+                            compareData.rowsByTab
+                          )
+                            .flat()
+                            .filter(
+                              (row): row is Row =>
+                                row !== undefined && row !== null
+                            );
+
                           // จัดกลุ่มตามประเภท
-                          const compareCategoryMap = new Map<string, { E: number; H: number; M: number; L: number; N: number }>();
-                          
-                          compareRows.forEach(row => {
+                          const compareCategoryMap = new Map<
+                            string,
+                            {
+                              E: number;
+                              H: number;
+                              M: number;
+                              L: number;
+                              N: number;
+                            }
+                          >();
+
+                          compareRows.forEach((row) => {
                             let category = "อื่นๆ";
                             if (row.work && row.work !== "-") category = "งาน";
-                            else if (row.project && row.project !== "-") category = "โครงการ";
-                            else if (row.carry && row.carry !== "-") category = "โครงการกันเงินเหลื่อมปี";
-                            else if (row.activity && row.activity !== "-") category = "กิจกรรม";
-                            else if (row.process && row.process !== "-") category = "กระบวนงาน";
-                            else if (row.system && row.system !== "-") category = "IT/Non-IT";
-                            else if (row.mission && row.mission !== "-") category = "หน่วยงาน";
+                            else if (row.project && row.project !== "-")
+                              category = "โครงการ";
+                            else if (row.carry && row.carry !== "-")
+                              category = "โครงการกันเงินเหลื่อมปี";
+                            else if (row.activity && row.activity !== "-")
+                              category = "กิจกรรม";
+                            else if (row.process && row.process !== "-")
+                              category = "กระบวนงาน";
+                            else if (row.system && row.system !== "-")
+                              category = "IT/Non-IT";
+                            else if (row.mission && row.mission !== "-")
+                              category = "หน่วยงาน";
 
                             if (!compareCategoryMap.has(category)) {
-                              compareCategoryMap.set(category, { E: 0, H: 0, M: 0, L: 0, N: 0 });
+                              compareCategoryMap.set(category, {
+                                E: 0,
+                                H: 0,
+                                M: 0,
+                                L: 0,
+                                N: 0,
+                              });
                             }
-                            
+
                             const counts = compareCategoryMap.get(category)!;
-                            const normalizedGrade = row.grade === "-" ? "N" : row.grade;
-                            
+                            const normalizedGrade =
+                              row.grade === "-" ? "N" : row.grade;
+
                             if (normalizedGrade === "E") counts.E++;
                             else if (normalizedGrade === "H") counts.H++;
                             else if (normalizedGrade === "M") counts.M++;
                             else if (normalizedGrade === "L") counts.L++;
-                            else if (normalizedGrade === "N" || normalizedGrade === "-") counts.N++;
+                            else if (
+                              normalizedGrade === "N" ||
+                              normalizedGrade === "-"
+                            )
+                              counts.N++;
                           });
 
                           // สร้างข้อมูลแท่งซ้อน
-                          const compareStacked: StackedRow[] = Array.from(compareCategoryMap.entries()).map(([name, counts]) => ({
+                          const compareStacked: StackedRow[] = Array.from(
+                            compareCategoryMap.entries()
+                          ).map(([name, counts]) => ({
                             name,
                             veryHigh: counts.E,
                             high: counts.H,
                             medium: counts.M,
                             low: counts.L,
-                            veryLow: counts.N
+                            veryLow: counts.N,
                           }));
 
                           return (
                             <ResponsiveContainer>
                               <BarChart data={compareStacked}>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                <CartesianGrid
+                                  strokeDasharray="3 3"
+                                  vertical={false}
+                                />
                                 <XAxis dataKey="name" tickMargin={8} />
                                 <YAxis allowDecimals={false} />
                                 <Tooltip />
                                 <Legend />
-                                <Bar 
-                                  dataKey="veryHigh" 
-                                  stackId="a" 
-                                  name="สูงมาก" 
+                                <Bar
+                                  dataKey="veryHigh"
+                                  stackId="a"
+                                  name="สูงมาก"
                                   fill={gradeColors.E}
-                                  fillOpacity={activeFilter?.grade === "E" || !activeFilter?.grade ? 1 : 0.3}
+                                  fillOpacity={
+                                    activeFilter?.grade === "E" ||
+                                    !activeFilter?.grade
+                                      ? 1
+                                      : 0.3
+                                  }
                                   onClick={(data) => {
-                                    if (!onGradeClick || !onCategoryClick || !data?.name) return;
+                                    if (
+                                      !onGradeClick ||
+                                      !onCategoryClick ||
+                                      !data?.name
+                                    )
+                                      return;
                                     onGradeClick("E");
                                     onCategoryClick(data.name);
                                   }}
-                                  style={{ cursor: (onGradeClick && onCategoryClick) ? 'pointer' : 'default' }}
-                                />
-                                <Bar 
-                                  dataKey="high" 
-                                  stackId="a" 
-                                  name="สูง" 
+                                  style={{
+                                    cursor:
+                                      onGradeClick && onCategoryClick
+                                        ? "pointer"
+                                        : "default",
+                                  }}
+                                >
+                                  <LabelList
+                                    dataKey="veryHigh"
+                                    position="center"
+                                    fill="white"
+                                    fontSize="12"
+                                    fontWeight="bold"
+                                    formatter={(value: any) =>
+                                      value && value > 0 ? value : ""
+                                    }
+                                  />
+                                </Bar>
+                                <Bar
+                                  dataKey="high"
+                                  stackId="a"
+                                  name="สูง"
                                   fill={gradeColors.H}
-                                  fillOpacity={activeFilter?.grade === "H" || !activeFilter?.grade ? 1 : 0.3}
+                                  fillOpacity={
+                                    activeFilter?.grade === "H" ||
+                                    !activeFilter?.grade
+                                      ? 1
+                                      : 0.3
+                                  }
                                   onClick={(data) => {
-                                    if (!onGradeClick || !onCategoryClick || !data?.name) return;
+                                    if (
+                                      !onGradeClick ||
+                                      !onCategoryClick ||
+                                      !data?.name
+                                    )
+                                      return;
                                     onGradeClick("H");
                                     onCategoryClick(data.name);
                                   }}
-                                  style={{ cursor: (onGradeClick && onCategoryClick) ? 'pointer' : 'default' }}
-                                />
-                                <Bar 
-                                  dataKey="medium" 
-                                  stackId="a" 
-                                  name="ปานกลาง" 
+                                  style={{
+                                    cursor:
+                                      onGradeClick && onCategoryClick
+                                        ? "pointer"
+                                        : "default",
+                                  }}
+                                >
+                                  <LabelList
+                                    dataKey="high"
+                                    position="center"
+                                    fill="white"
+                                    fontSize="12"
+                                    fontWeight="bold"
+                                    formatter={(value: any) =>
+                                      value && value > 0 ? value : ""
+                                    }
+                                  />
+                                </Bar>
+                                <Bar
+                                  dataKey="medium"
+                                  stackId="a"
+                                  name="ปานกลาง"
                                   fill={gradeColors.M}
-                                  fillOpacity={activeFilter?.grade === "M" || !activeFilter?.grade ? 1 : 0.3}
+                                  fillOpacity={
+                                    activeFilter?.grade === "M" ||
+                                    !activeFilter?.grade
+                                      ? 1
+                                      : 0.3
+                                  }
                                   onClick={(data) => {
-                                    if (!onGradeClick || !onCategoryClick || !data?.name) return;
+                                    if (
+                                      !onGradeClick ||
+                                      !onCategoryClick ||
+                                      !data?.name
+                                    )
+                                      return;
                                     onGradeClick("M");
                                     onCategoryClick(data.name);
                                   }}
-                                  style={{ cursor: (onGradeClick && onCategoryClick) ? 'pointer' : 'default' }}
-                                />
-                                <Bar 
-                                  dataKey="low" 
-                                  stackId="a" 
-                                  name="น้อย" 
+                                  style={{
+                                    cursor:
+                                      onGradeClick && onCategoryClick
+                                        ? "pointer"
+                                        : "default",
+                                  }}
+                                >
+                                  <LabelList
+                                    dataKey="medium"
+                                    position="center"
+                                    fill="white"
+                                    fontSize="12"
+                                    fontWeight="bold"
+                                    formatter={(value: any) =>
+                                      value && value > 0 ? value : ""
+                                    }
+                                  />
+                                </Bar>
+                                <Bar
+                                  dataKey="low"
+                                  stackId="a"
+                                  name="น้อย"
                                   fill={gradeColors.L}
-                                  fillOpacity={activeFilter?.grade === "L" || !activeFilter?.grade ? 1 : 0.3}
+                                  fillOpacity={
+                                    activeFilter?.grade === "L" ||
+                                    !activeFilter?.grade
+                                      ? 1
+                                      : 0.3
+                                  }
                                   onClick={(data) => {
-                                    if (!onGradeClick || !onCategoryClick || !data?.name) return;
+                                    if (
+                                      !onGradeClick ||
+                                      !onCategoryClick ||
+                                      !data?.name
+                                    )
+                                      return;
                                     onGradeClick("L");
                                     onCategoryClick(data.name);
                                   }}
-                                  style={{ cursor: (onGradeClick && onCategoryClick) ? 'pointer' : 'default' }}
-                                />
-                                <Bar 
-                                  dataKey="veryLow" 
-                                  stackId="a" 
-                                  name="น้อยมาก" 
+                                  style={{
+                                    cursor:
+                                      onGradeClick && onCategoryClick
+                                        ? "pointer"
+                                        : "default",
+                                  }}
+                                >
+                                  <LabelList
+                                    dataKey="low"
+                                    position="center"
+                                    fill="white"
+                                    fontSize="12"
+                                    fontWeight="bold"
+                                    formatter={(value: any) =>
+                                      value && value > 0 ? value : ""
+                                    }
+                                  />
+                                </Bar>
+                                <Bar
+                                  dataKey="veryLow"
+                                  stackId="a"
+                                  name="น้อยมาก"
                                   fill={gradeColors.N}
-                                  fillOpacity={activeFilter?.grade === "N" || !activeFilter?.grade ? 1 : 0.3}
+                                  fillOpacity={
+                                    activeFilter?.grade === "N" ||
+                                    !activeFilter?.grade
+                                      ? 1
+                                      : 0.3
+                                  }
                                   onClick={(data) => {
-                                    if (!onGradeClick || !onCategoryClick || !data?.name) return;
+                                    if (
+                                      !onGradeClick ||
+                                      !onCategoryClick ||
+                                      !data?.name
+                                    )
+                                      return;
                                     onGradeClick("N");
                                     onCategoryClick(data.name);
                                   }}
-                                  style={{ cursor: (onGradeClick && onCategoryClick) ? 'pointer' : 'default' }}
-                                />
+                                  style={{
+                                    cursor:
+                                      onGradeClick && onCategoryClick
+                                        ? "pointer"
+                                        : "default",
+                                  }}
+                                >
+                                  <LabelList
+                                    dataKey="veryLow"
+                                    position="center"
+                                    fill="white"
+                                    fontSize="12"
+                                    fontWeight="bold"
+                                    formatter={(value: any) =>
+                                      value && value > 0 ? value : ""
+                                    }
+                                  />
+                                </Bar>
                               </BarChart>
                             </ResponsiveContainer>
                           );
@@ -830,24 +1446,51 @@ export default function DashboardSection({
 
       {/* -------- รายงานเมทริกซ์ความเสี่ยง (Toggle) -------- */}
       {showMatrixReport && (
-        <MatrixReport 
-          data={matrix} 
+        <MatrixReport
+          data={matrix}
           onGradeClick={onGradeClick}
           onCategoryClick={onCategoryClick}
           activeFilter={activeFilter}
         />
       )}
+
+      {/* ApprovalDialog */}
+      <ApprovalDialog
+        open={showApprovalDialog}
+        onOpenChange={setShowApprovalDialog}
+        comment={comment}
+        onCommentChange={setComment}
+        onConfirm={handleApproval}
+        loading={isApproving}
+      />
+
+      {/* SignatureSelectionDialog */}
+      <SignatureSelectionDialog
+        open={showSignatureDialog}
+        onOpenChange={setShowSignatureDialog}
+        approvalStep={approvalStep}
+        signatureChoice={signatureChoice}
+        signatureData={signatureData}
+        otpValue={otpValue}
+        isOtpValid={isOtpValid}
+        loading={false}
+        onSignatureChoice={setSignatureChoice}
+        onSignatureDataChange={setSignatureData}
+        onOTPChange={setOtpValue}
+        onCancel={() => setShowSignatureDialog(false)}
+        onConfirm={handleSignatureSubmit}
+      />
     </section>
   );
 }
 
 /** ---------- Matrix Report Component ---------- */
-function MatrixReport({ 
-  data, 
-  onGradeClick, 
-  onCategoryClick, 
-  activeFilter 
-}: { 
+function MatrixReport({
+  data,
+  onGradeClick,
+  onCategoryClick,
+  activeFilter,
+}: {
   data: MatrixRow[];
   onGradeClick?: (grade: "E" | "H" | "M" | "L" | "N") => void;
   onCategoryClick?: (category: string) => void;
@@ -857,16 +1500,27 @@ function MatrixReport({
   };
 }) {
   const columns = [
-    { key: "veryLow",  label: "น้อยมาก",  color: colorsScale.veryLow, grade: "N" as const },
-    { key: "low",      label: "น้อย",       color: colorsScale.low, grade: "L" as const },
-    { key: "medium",   label: "ปานกลาง",    color: colorsScale.medium, grade: "M" as const },
-    { key: "high",     label: "สูง",        color: colorsScale.high, grade: "H" as const },
-    { key: "veryHigh", label: "สูงมาก",  color: colorsScale.veryHigh, grade: "E" as const },
+    {
+      key: "veryLow",
+      label: "น้อยมาก",
+      color: colorsScale.veryLow,
+      grade: "N" as const,
+    },
+    { key: "low", label: "น้อย", color: colorsScale.low, grade: "L" as const },
+    {
+      key: "medium",
+      label: "ปานกลาง",
+      color: colorsScale.medium,
+      grade: "M" as const,
+    },
+    { key: "high", label: "สูง", color: colorsScale.high, grade: "H" as const },
+    {
+      key: "veryHigh",
+      label: "สูงมาก",
+      color: colorsScale.veryHigh,
+      grade: "E" as const,
+    },
   ] as const;
-
-
-
-
 
   return (
     <Card>
@@ -884,14 +1538,17 @@ function MatrixReport({
               {/* Header */}
               <div className="grid grid-cols-[180px_repeat(5,1fr)]">
                 <div className="p-3 text-sm font-medium border-b">หมวดหมู่</div>
-                {columns.map(col => (
-                  <div 
-                    key={col.key} 
+                {columns.map((col) => (
+                  <div
+                    key={col.key}
                     className={cn(
                       "p-3 text-center text-sm font-medium border-b transition-colors",
                       onGradeClick && "cursor-pointer hover:bg-gray-50",
-                      activeFilter?.grade === col.grade && "bg-blue-50 text-blue-700",
-                      activeFilter?.grade && activeFilter?.grade !== col.grade && "opacity-60"
+                      activeFilter?.grade === col.grade &&
+                        "bg-blue-50 text-blue-700",
+                      activeFilter?.grade &&
+                        activeFilter?.grade !== col.grade &&
+                        "opacity-60"
                     )}
                     onClick={() => onGradeClick?.(col.grade)}
                     title={`กรองตามระดับ: ${col.label}`}
@@ -911,12 +1568,16 @@ function MatrixReport({
                   )}
                 >
                   {/* ชื่อหมวด */}
-                  <div 
+                  <div
                     className={cn(
                       "p-2.5 text-sm font-medium",
-                      onCategoryClick && "cursor-pointer hover:bg-gray-50 rounded-l-md",
-                      activeFilter?.category === row.category && "bg-blue-50 text-blue-700",
-                      activeFilter?.category && activeFilter?.category !== row.category && "opacity-60"
+                      onCategoryClick &&
+                        "cursor-pointer hover:bg-gray-50 rounded-l-md",
+                      activeFilter?.category === row.category &&
+                        "bg-blue-50 text-blue-700",
+                      activeFilter?.category &&
+                        activeFilter?.category !== row.category &&
+                        "opacity-60"
                     )}
                     onClick={() => onCategoryClick?.(row.category)}
                     title={`กรองตามหมวด: ${row.category}`}
@@ -925,26 +1586,43 @@ function MatrixReport({
                   </div>
 
                   {/* Cells */}
-                  {columns.map(col => {
+                  {columns.map((col) => {
                     const v = row[col.key];
-                    const isActiveCell = activeFilter?.grade === col.grade && activeFilter?.category === row.category;
+                    const isActiveCell =
+                      activeFilter?.grade === col.grade &&
+                      activeFilter?.category === row.category;
                     const isActiveGrade = activeFilter?.grade === col.grade;
-                    const isActiveCategory = activeFilter?.category === row.category;
-                    const hasFilter = !!activeFilter?.grade || !!activeFilter?.category;
-                    
+                    const isActiveCategory =
+                      activeFilter?.category === row.category;
+                    const hasFilter =
+                      !!activeFilter?.grade || !!activeFilter?.category;
+
                     return (
                       <div key={col.key} className="p-2.5">
                         <div
                           className={cn(
                             "h-10 rounded-md flex items-center justify-center text-sm font-medium",
                             "border transition-all duration-200",
-                            (onGradeClick || onCategoryClick) && "cursor-pointer hover:scale-105 hover:shadow-md",
-                            isActiveCell && "ring-2 ring-blue-500 ring-offset-1",
-                            hasFilter && !isActiveGrade && !isActiveCategory && "opacity-40"
+                            (onGradeClick || onCategoryClick) &&
+                              "cursor-pointer hover:scale-105 hover:shadow-md",
+                            isActiveCell &&
+                              "ring-2 ring-blue-500 ring-offset-1",
+                            hasFilter &&
+                              !isActiveGrade &&
+                              !isActiveCategory &&
+                              "opacity-40"
                           )}
                           style={{
                             // ใช้สีเฉดตามคอลัมน์และความเข้มจากค่า
-                            backgroundColor: `color-mix(in oklab, ${col.color} ${Math.min(92, Math.max(14, Math.round((v / Math.max(1, v) ) * 72 + 14)))}%, white)`,
+                            backgroundColor: `color-mix(in oklab, ${
+                              col.color
+                            } ${Math.min(
+                              92,
+                              Math.max(
+                                14,
+                                Math.round((v / Math.max(1, v)) * 72 + 14)
+                              )
+                            )}%, white)`,
                             borderColor: `color-mix(in oklab, ${col.color} 35%, transparent)`,
                           }}
                           onClick={() => {
@@ -971,13 +1649,14 @@ function MatrixReport({
               {/* Footer ระดับ (แนวตั้งเหมือนรูป) */}
               <div className="grid grid-cols-[180px_repeat(5,1fr)] border-t bg-gray-50">
                 <div className="p-3 text-sm text-muted-foreground" />
-                {columns.map(col => (
-                  <div 
-                    key={col.key} 
+                {columns.map((col) => (
+                  <div
+                    key={col.key}
                     className={cn(
                       "p-3 text-center text-sm text-muted-foreground transition-colors",
                       onGradeClick && "cursor-pointer hover:text-gray-700",
-                      activeFilter?.grade === col.grade && "text-blue-700 font-medium"
+                      activeFilter?.grade === col.grade &&
+                        "text-blue-700 font-medium"
                     )}
                     onClick={() => onGradeClick?.(col.grade)}
                   >
@@ -999,27 +1678,17 @@ function MatrixReport({
 const gradeColors = {
   // ตามลำดับความเสี่ยง: สูงไปต่ำ (ตรงตามภาพ)
   E: "#DC2626", // red-600 - สูงมาก (แดงเข้ม)
-  H: "#EA580C", // orange-600 - สูง (ส้มแดง) 
+  H: "#EA580C", // orange-600 - สูง (ส้มแดง)
   M: "#FACC15", // yellow-400 - ปานกลาง (เหลือง)
   L: "#65A30D", // lime-600 - น้อย (เขียวอ่อน)
-  N: "#16A34A"  // green-600 - น้อยมาก (เขียวเข้ม)
+  N: "#16A34A", // green-600 - น้อยมาก (เขียวเข้ม)
 };
-
-
-
-
 
 // เฉดสีหลักสำหรับเมทริกซ์ (ตรงกับสีหลัก)
 const colorsScale = {
   veryHigh: "#DC2626", // สูงมาก (E) - แดงเข้ม
-  high:     "#EA580C", // สูง (H) - ส้มแดง
-  medium:   "#FACC15", // ปานกลาง (M) - เหลือง
-  low:      "#65A30D", // น้อย (L) - เขียวอ่อน
-  veryLow:  "#16A34A"  // น้อยมาก (N) - เขียวเข้ม
+  high: "#EA580C", // สูง (H) - ส้มแดง
+  medium: "#FACC15", // ปานกลาง (M) - เหลือง
+  low: "#65A30D", // น้อย (L) - เขียวอ่อน
+  veryLow: "#16A34A", // น้อยมาก (N) - เขียวเข้ม
 } as const;
-
-
-
-
-
-

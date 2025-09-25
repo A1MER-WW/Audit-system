@@ -366,7 +366,7 @@ export default function DragDropRiskTable({
             </p>
           </div>
           <div className="flex gap-2">
-            <Button
+            {/* <Button
               variant="outline"
               size="sm"
               onClick={handleReset}
@@ -388,7 +388,7 @@ export default function DragDropRiskTable({
             >
               <Save className="h-4 w-4" />
               อัพเดทลำดับความเสี่ยง
-            </Button>
+            </Button> */}
           </div>
         </div>
       </div>

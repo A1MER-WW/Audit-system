@@ -1,27 +1,32 @@
 "use client";
 
 import { useMemo, useState } from "react";
-
-import {
-  useEngagementPlanPrograms,
-  createEngagementPlanProgram,
-  deleteEngagementPlanProgram,
-} from "@/hooks/useEngagementPlanPrograms";
+import { useEngagementPlan } from "@/contexts/EngagementPlanContext";
 import EngagementPlanEvaluationTable from "@/components/features/engagement-plan/EngagementPlanEvaluationTable";
+import EngagementPlanStorageStatus from "@/components/features/engagement-plan/EngagementPlanStorageStatus";
 
 export default function AuditEngagementPlanPage() {
   // Year filter
   const yearOptions = [2566, 2567, 2568, 2569];
   const [fiscalYear, setFiscalYear] = useState<number>(2568);
 
-  // Data
-  const { programs, isLoading, refetch } =
-    useEngagementPlanPrograms(fiscalYear);
-  const rows = useMemo(() => programs ?? [], [programs]);
+  // Data from context
+  const {
+    getProgramsByFiscalYear,
+    isLoading,
+    addProgram,
+    deleteProgram,
+    refreshPrograms,
+  } = useEngagementPlan();
+
+  const rows = useMemo(
+    () => getProgramsByFiscalYear(fiscalYear),
+    [getProgramsByFiscalYear, fiscalYear]
+  );
 
   // Actions
   async function handleCreate() {
-    await createEngagementPlanProgram({
+    await addProgram({
       auditTopics: {
         id: Date.now() % 100000,
         category: { id: 1, name: "หน่วยงาน" },
@@ -37,23 +42,24 @@ export default function AuditEngagementPlanPage() {
       director_comment: null,
       version: 1,
     });
-    await refetch();
   }
 
   async function handleDelete(id: number) {
-    await deleteEngagementPlanProgram(id);
-    await refetch();
+    await deleteProgram(id);
   }
 
   return (
-    <EngagementPlanEvaluationTable
-      fiscalYear={fiscalYear}
-      yearOptions={yearOptions}
-      rows={rows}
-      isLoading={isLoading}
-      onFiscalYearChange={setFiscalYear}
-      onCreate={handleCreate}
-      onDelete={handleDelete}
-    />
+    <div className="space-y-6">
+      {/* Main Table */}
+      <EngagementPlanEvaluationTable
+        fiscalYear={fiscalYear}
+        yearOptions={yearOptions}
+        rows={rows}
+        isLoading={isLoading}
+        onFiscalYearChange={setFiscalYear}
+        onCreate={handleCreate}
+        onDelete={handleDelete}
+      />
+    </div>
   );
 }

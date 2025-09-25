@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
+import { Button } from "@/components/ui/button";
 import RiskMatrix from "./RiskMatrix";
 import type { AuditProgramRiskEvaluation } from "@/hooks/useAuditProgramRiskEvaluation";
 
@@ -42,6 +43,8 @@ export default function SubmittedRiskAssessmentView({ detail }: Props) {
     AssessmentResult[]
   >([]);
   const [showRiskMatrix, setShowRiskMatrix] = useState(false);
+  const [filteredAssessments, setFilteredAssessments] = useState<AssessmentResult[]>([]);
+  const [filterInfo, setFilterInfo] = useState<string>("");
 
   // ดึงข้อมูลการประเมินจาก localStorage และประมวลผลให้แสดงในตาราง
   const assessments = useMemo((): AssessmentResult[] => {
@@ -209,6 +212,36 @@ export default function SubmittedRiskAssessmentView({ detail }: Props) {
       lowRisk: riskCounts["น้อย"] + riskCounts["น้อยที่สุด"],
     };
   }, [assessments]);
+
+  // Functions to handle filtering
+  const handleDimensionClick = (dimension: string) => {
+    const filtered = assessments.filter(a => a.dimension === dimension);
+    setFilteredAssessments(filtered);
+    setFilterInfo(`แสดงข้อมูล: ${dimension} (${filtered.length} รายการ)`);
+    setTab("results");
+  };
+
+  const handleRiskLevelClick = (riskLevel: string) => {
+    const filtered = assessments.filter(a => a.riskLevel === riskLevel);
+    setFilteredAssessments(filtered);
+    setFilterInfo(`แสดงข้อมูล: ระดับความเสี่ยง ${riskLevel} (${filtered.length} รายการ)`);
+    setTab("results");
+  };
+
+  const handleMatrixCellClick = (probability: number, impact: number) => {
+    const filtered = assessments.filter(a => a.probability === probability && a.impact === impact);
+    setFilteredAssessments(filtered);
+    setFilterInfo(`แสดงข้อมูล: ความน่าจะเป็น ${probability}, ผลกระทบ ${impact} (${filtered.length} รายการ)`);
+    setTab("results");
+  };
+
+  const clearFilter = () => {
+    setFilteredAssessments([]);
+    setFilterInfo("");
+  };
+
+  // Get current assessments to display (filtered or all)
+  const currentAssessments = filteredAssessments.length > 0 ? filteredAssessments : assessments;
 
   // โหลดข้อมูลลำดับและเหตุผลที่เคยบันทึกไว้
   const loadSavedReorderAndReasons = React.useCallback(() => {
@@ -403,9 +436,12 @@ export default function SubmittedRiskAssessmentView({ detail }: Props) {
           </div>
         </div>
 
-        {/* Statistics Cards */}
+        {/* Statistics Cards - แสดงข้อมูลสรุปตามระดับความเสี่ยง */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
-          <Card className="border-2 border-red-200 bg-gradient-to-br from-red-50 to-red-100">
+          <Card 
+            className="border-2 border-red-200 bg-gradient-to-br from-red-50 to-red-100 cursor-pointer hover:shadow-md transition-shadow"
+            onClick={() => handleRiskLevelClick("สูงมาก")}
+          >
             <CardContent className="p-4 text-center">
               <div className="text-2xl font-bold text-red-700 mb-1">
                 {riskStatistics.riskCounts["สูงมาก"]}
@@ -415,7 +451,10 @@ export default function SubmittedRiskAssessmentView({ detail }: Props) {
             </CardContent>
           </Card>
 
-          <Card className="border-2 border-orange-200 bg-gradient-to-br from-orange-50 to-orange-100">
+          <Card 
+            className="border-2 border-orange-200 bg-gradient-to-br from-orange-50 to-orange-100 cursor-pointer hover:shadow-md transition-shadow"
+            onClick={() => handleRiskLevelClick("สูง")}
+          >
             <CardContent className="p-4 text-center">
               <div className="text-2xl font-bold text-orange-700 mb-1">
                 {riskStatistics.riskCounts["สูง"]}
@@ -425,7 +464,10 @@ export default function SubmittedRiskAssessmentView({ detail }: Props) {
             </CardContent>
           </Card>
 
-          <Card className="border-2 border-yellow-200 bg-gradient-to-br from-yellow-50 to-yellow-100">
+          <Card 
+            className="border-2 border-yellow-200 bg-gradient-to-br from-yellow-50 to-yellow-100 cursor-pointer hover:shadow-md transition-shadow"
+            onClick={() => handleRiskLevelClick("ปานกลาง")}
+          >
             <CardContent className="p-4 text-center">
               <div className="text-2xl font-bold text-yellow-700 mb-1">
                 {riskStatistics.riskCounts["ปานกลาง"]}
@@ -435,7 +477,10 @@ export default function SubmittedRiskAssessmentView({ detail }: Props) {
             </CardContent>
           </Card>
 
-          <Card className="border-2 border-green-200 bg-gradient-to-br from-green-50 to-green-100">
+          <Card 
+            className="border-2 border-green-200 bg-gradient-to-br from-green-50 to-green-100 cursor-pointer hover:shadow-md transition-shadow"
+            onClick={() => handleRiskLevelClick("น้อย")}
+          >
             <CardContent className="p-4 text-center">
               <div className="text-2xl font-bold text-green-700 mb-1">
                 {riskStatistics.riskCounts["น้อย"]}
@@ -445,7 +490,10 @@ export default function SubmittedRiskAssessmentView({ detail }: Props) {
             </CardContent>
           </Card>
 
-          <Card className="border-2 border-gray-200 bg-gradient-to-br from-gray-50 to-gray-100">
+          <Card 
+            className="border-2 border-gray-200 bg-gradient-to-br from-gray-50 to-gray-100 cursor-pointer hover:shadow-md transition-shadow"
+            onClick={() => handleRiskLevelClick("น้อยที่สุด")}
+          >
             <CardContent className="p-4 text-center">
               <div className="text-2xl font-bold text-gray-700 mb-1">
                 {riskStatistics.riskCounts["น้อยที่สุด"]}
@@ -456,17 +504,13 @@ export default function SubmittedRiskAssessmentView({ detail }: Props) {
           </Card>
         </div>
 
-        {/* Conditional display based on switch */}
-        {showRiskMatrix ? (
-          <RiskMatrix assessments={assessments} />
-        ) : (
-          /* Risk Distribution Chart */
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                สรุปจำนวนผลการประเมินและจัดลำดับความเสี่ยงแต่ละด้าน
-              </CardTitle>
-            </CardHeader>
+        {/* Risk Distribution Chart - Always show */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              สรุปจำนวนผลการประเมินและจัดลำดับความเสี่ยงแต่ละด้าน
+            </CardTitle>
+          </CardHeader>
             <CardContent>
             <div className="space-y-6">
               {/* Chart Container */}
@@ -476,7 +520,7 @@ export default function SubmittedRiskAssessmentView({ detail }: Props) {
                     จำนวนความเสี่ยงแยกตามด้านและระดับความเสี่ยง (รายการ)
                   </h3>
                   <div className="text-sm text-gray-600">
-                    จำนวน: {riskStatistics.total}
+                    จำนวนรวม: {riskStatistics.total} รายการ
                   </div>
                 </div>
 
@@ -484,26 +528,60 @@ export default function SubmittedRiskAssessmentView({ detail }: Props) {
                 <div className="relative">
                   {/* Y-axis scale */}
                   <div className="absolute left-0 top-0 h-80 flex flex-col justify-between text-xs text-gray-400 py-2">
-                    <span>40</span>
-                    <span>32</span>
-                    <span>24</span>
-                    <span>16</span>
-                    <span>8</span>
-                    <span>0</span>
+                    {(() => {
+                      // Calculate max count per dimension for better scale
+                      const dimensionCounts = [
+                        "ด้านกลยุทธ์",
+                        "ด้านการเงิน", 
+                        "ด้านการดำเนินงาน",
+                        "ด้านเทคโนโลยีสารสนเทศ",
+                        "ด้านการปฏิบัติตามกฎระเบียบ",
+                        "ด้านการเกิดทุจริต"
+                      ].map(dim => assessments.filter(a => a.dimension === dim).length);
+                      
+                      const maxCount = Math.max(...dimensionCounts, 1);
+                      const maxScale = Math.max(10, Math.ceil(maxCount / 5) * 5); // Round up to nearest 5
+                      const intervals = 5;
+                      const step = maxScale / intervals;
+                      
+                      return Array.from({ length: intervals + 1 }, (_, i) => (
+                        <span key={i}>{Math.round(maxScale - (i * step))}</span>
+                      ));
+                    })()}
                   </div>
 
                   {/* Chart Grid */}
                   <div className="ml-8 h-80 relative border-l border-b border-gray-200">
                     {/* Horizontal grid lines */}
-                    {[0, 8, 16, 24, 32, 40].map((value) => (
-                      <div
-                        key={value}
-                        className="absolute w-full border-t border-gray-100"
-                        style={{ bottom: `${(value / 40) * 100}%` }}
-                      />
-                    ))}
+                    {(() => {
+                      // Calculate max count per dimension for better scale
+                      const dimensionCounts = [
+                        "ด้านกลยุทธ์",
+                        "ด้านการเงิน", 
+                        "ด้านการดำเนินงาน",
+                        "ด้านเทคโนโลยีสารสนเทศ",
+                        "ด้านการปฏิบัติตามกฎระเบียบ",
+                        "ด้านการเกิดทุจริต"
+                      ].map(dim => assessments.filter(a => a.dimension === dim).length);
+                      
+                      const maxCount = Math.max(...dimensionCounts, 1);
+                      const maxScale = Math.max(10, Math.ceil(maxCount / 5) * 5);
+                      const intervals = 5;
+                      const step = maxScale / intervals;
+                      
+                      return Array.from({ length: intervals + 1 }, (_, i) => {
+                        const value = i * step;
+                        return (
+                          <div
+                            key={value}
+                            className="absolute w-full border-t border-gray-100"
+                            style={{ bottom: `${(value / maxScale) * 100}%` }}
+                          />
+                        );
+                      });
+                    })()}
 
-                    {/* Bars Container */}
+                    {/* Bars Container - แสดงตามด้าน */}
                     <div className="flex items-end justify-around h-full px-4 py-2">
                       {[
                         {
@@ -573,13 +651,24 @@ export default function SubmittedRiskAssessmentView({ detail }: Props) {
                         };
 
                         const total = dimensionRisks.length;
-                        const maxValue = 40;
-                        const barHeight = Math.max((total / maxValue) * 280, 4); // 280px is chart height minus padding
+                        // Use same scale calculation as Y-axis
+                        const dimensionCounts = [
+                          "ด้านกลยุทธ์",
+                          "ด้านการเงิน", 
+                          "ด้านการดำเนินงาน",
+                          "ด้านเทคโนโลยีสารสนเทศ",
+                          "ด้านการปฏิบัติตามกฎระเบียบ",
+                          "ด้านการเกิดทุจริต"
+                        ].map(dim => assessments.filter(a => a.dimension === dim).length);
+                        const maxCount = Math.max(...dimensionCounts, 1);
+                        const maxScale = Math.max(10, Math.ceil(maxCount / 5) * 5);
+                        const barHeight = Math.max((total / maxScale) * 280, total > 0 ? 40 : 4); // Minimum 40px if has data
 
                         return (
                           <div
                             key={dimension.key}
-                            className="flex flex-col items-center min-w-[80px]"
+                            className="flex flex-col items-center min-w-[80px] cursor-pointer hover:bg-gray-50 p-2 rounded transition-colors"
+                            onClick={() => handleDimensionClick(dimension.label)}
                           >
                             {/* Stacked Bar */}
                             <div
@@ -735,6 +824,15 @@ export default function SubmittedRiskAssessmentView({ detail }: Props) {
             </div>
           </CardContent>
         </Card>
+
+        {/* Risk Matrix - Show when switch is enabled */}
+        {showRiskMatrix && (
+          <div className="mb-6">
+            <RiskMatrix 
+              assessments={assessments}
+              onCellClick={handleMatrixCellClick}
+            />
+          </div>
         )}
 
         {/* Summary Section */}
@@ -837,6 +935,23 @@ export default function SubmittedRiskAssessmentView({ detail }: Props) {
           </div>
         </section>
       </div>
+      {/* Filter Info */}
+      {filterInfo && (
+        <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-center justify-between">
+          <div className="text-sm text-blue-800 font-medium">
+            {filterInfo}
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={clearFilter}
+            className="text-blue-600 border-blue-300 hover:bg-blue-100"
+          >
+            แสดงทั้งหมด
+          </Button>
+        </div>
+      )}
+
       {/* Tabs */}
       <Tabs value={tab} onValueChange={setTab} className="mt-4">
         <div className="flex justify-between items-center">
@@ -899,8 +1014,8 @@ export default function SubmittedRiskAssessmentView({ detail }: Props) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {assessments.length > 0 ? (
-                  assessments.map((a: AssessmentResult, i: number) => (
+                {currentAssessments.length > 0 ? (
+                  currentAssessments.map((a: AssessmentResult, i: number) => (
                     <TableRow
                       key={a.uniqueKey || `assessment-${i}`}
                       className="hover:bg-gray-50"
@@ -1053,7 +1168,7 @@ export default function SubmittedRiskAssessmentView({ detail }: Props) {
                 <TableBody>
                   {(reorderedAssessments.length > 0
                     ? reorderedAssessments
-                    : assessments
+                    : currentAssessments
                   ).map((assessment, index) => (
                     <TableRow key={assessment.id} className="hover:bg-gray-50">
                       {/* ลำดับ */}

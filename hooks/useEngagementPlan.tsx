@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useReducer, ReactNode } from 'react';
+import { DEFAULT_USERS } from '@/constants/default-users';
 
 // Types
 export interface Activity {
@@ -41,6 +42,7 @@ export interface EngagementPlanState {
 
   // Step 2: แผนการปฏิบัติงาน (Engagement Plan)
   step2: {
+    auditIssues: string;
     objectives: string[];
     scopes: Scope[];
     auditDuration: string;
@@ -75,20 +77,21 @@ const initialState: EngagementPlanState = {
     basicInfo: {
       auditedUnit: '',
       auditCategory: '',
-      preparer: 'นางสาวกุสุมา สุขสอน (ผู้ตรวจสอบภายใน)',
-      reviewer: 'นางสาวจิรวรรณ สมัคร (หัวหน้ากลุ่มตรวจสอบภายใน)',
-      approver: 'นางสาวจิรวรรณ สมัคร (หัวหน้ากลุ่มตรวจสอบภายใน)',
+      preparer: DEFAULT_USERS.preparer,
+      reviewer: DEFAULT_USERS.reviewer,
+      approver: DEFAULT_USERS.approver,
     },
     description: '',
     selectedActivities: [],
   },
   step2: {
+    auditIssues: '',
     objectives: [],
     scopes: [],
     auditDuration: '',
     auditMethodology: '',
-    auditResponsible: 'นางสาวกุสุมา สุขสอน (ผู้ตรวจสอบภายใน)',
-    supervisor: 'นางสาวจิรวรรณ สมัคร (หัวหน้ากลุ่มตรวจสอบภายใน)',
+    auditResponsible: DEFAULT_USERS.auditResponsible,
+    supervisor: DEFAULT_USERS.supervisor,
   },
   step3: {
     auditPrograms: [],
@@ -99,7 +102,7 @@ const initialState: EngagementPlanState = {
     analysisMethod: '',
     dataStorage: '',
     dataSources: '',
-    responsible: '',
+    responsible: DEFAULT_USERS.auditResponsible,
     remarks: '',
   },
   completedSteps: [],
@@ -122,14 +125,28 @@ function engagementPlanReducer(
 ): EngagementPlanState {
   switch (action.type) {
     case 'UPDATE_STEP1':
+      const updatedStep1 = { ...state.step1, ...action.payload };
+      // Ensure basic info always has defaults if not provided
+      if (updatedStep1.basicInfo) {
+        updatedStep1.basicInfo = {
+          ...updatedStep1.basicInfo,
+          preparer: updatedStep1.basicInfo.preparer || DEFAULT_USERS.preparer,
+          reviewer: updatedStep1.basicInfo.reviewer || DEFAULT_USERS.reviewer,
+          approver: updatedStep1.basicInfo.approver || DEFAULT_USERS.approver,
+        };
+      }
       return {
         ...state,
-        step1: { ...state.step1, ...action.payload },
+        step1: updatedStep1,
       };
     case 'UPDATE_STEP2':
+      const updatedStep2 = { ...state.step2, ...action.payload };
+      // Ensure audit responsible and supervisor have defaults if not provided
+      updatedStep2.auditResponsible = updatedStep2.auditResponsible || DEFAULT_USERS.auditResponsible;
+      updatedStep2.supervisor = updatedStep2.supervisor || DEFAULT_USERS.supervisor;
       return {
         ...state,
-        step2: { ...state.step2, ...action.payload },
+        step2: updatedStep2,
       };
     case 'UPDATE_STEP3':
       return {
@@ -137,9 +154,12 @@ function engagementPlanReducer(
         step3: { ...state.step3, ...action.payload },
       };
     case 'UPDATE_STEP4':
+      const updatedStep4 = { ...state.step4, ...action.payload };
+      // Ensure responsible has default if not provided
+      updatedStep4.responsible = updatedStep4.responsible || DEFAULT_USERS.auditResponsible;
       return {
         ...state,
-        step4: { ...state.step4, ...action.payload },
+        step4: updatedStep4,
       };
     case 'COMPLETE_STEP':
       return {

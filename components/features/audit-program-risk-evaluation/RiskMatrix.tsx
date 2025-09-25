@@ -9,9 +9,10 @@ type RiskMatrixProps = {
     impact: number; // 1..5
     riskLevel?: string;
   }>;
+  onCellClick?: (probability: number, impact: number) => void;
 };
 
-export default function RiskMatrix({ assessments }: RiskMatrixProps) {
+export default function RiskMatrix({ assessments, onCellClick }: RiskMatrixProps) {
   /** ---------- สรุปจำนวนต่อช่อง (impact-likelihood) ---------- */
   const matrixData = React.useMemo(() => {
     const matrix: Record<string, number> = {};
@@ -151,7 +152,9 @@ export default function RiskMatrix({ assessments }: RiskMatrixProps) {
                                 ? getRiskColor(impact, likelihood)
                                 : "bg-white text-gray-400",
                               "shadow-[inset_0_0_0_1px_#e5e7eb]", // เส้นแบ่งบางๆ เหมือนภาพ
+                              onCellClick && value > 0 ? "cursor-pointer hover:ring-2 hover:ring-blue-400 transition-all" : "",
                             ].join(" ")}
+                            onClick={() => onCellClick && value > 0 && onCellClick(likelihood, impact)}
                           >
                             {value}
                             {highlighted && (

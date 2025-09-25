@@ -1,8 +1,33 @@
-import { useState, useEffect } from "react";
-import { type EngagementPlanProgram } from "@/lib/mock-engagement-plan-programs";
-import { engagementPlanStorage } from "@/lib/engagement-plan-storage";
+"use client";
 
-// Default data for initialization
+import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { engagementPlanStorage } from "@/lib/engagement-plan-storage";
+import { EngagementPlanProgram } from "@/lib/mock-engagement-plan-programs";
+
+interface EngagementPlanContextType {
+  programs: EngagementPlanProgram[];
+  isLoading: boolean;
+  error: string | null;
+  refreshPrograms: () => Promise<void>;
+  addProgram: (program: Omit<EngagementPlanProgram, "id">) => Promise<EngagementPlanProgram>;
+  updateProgram: (id: number, updates: Partial<Omit<EngagementPlanProgram, "id">>) => Promise<EngagementPlanProgram | null>;
+  deleteProgram: (id: number) => Promise<boolean>;
+  getProgram: (id: number) => EngagementPlanProgram | undefined;
+  getProgramsByFiscalYear: (fiscalYear: number) => EngagementPlanProgram[];
+  isStorageAvailable: boolean;
+  storageStats: {
+    used: number;
+    available: number;
+    percentage: number;
+  };
+}
+
+const EngagementPlanContext = createContext<EngagementPlanContextType | undefined>(undefined);
+
+interface EngagementPlanProviderProps {
+  children: ReactNode;
+}
+
 const initialData: EngagementPlanProgram[] = [
   {
     id: 1,
@@ -128,84 +153,132 @@ const initialData: EngagementPlanProgram[] = [
   },
 ];
 
-export function useEngagementPlanPrograms(fiscalYear: number) {
+export function EngagementPlanProvider({ children }: EngagementPlanProviderProps) {
   const [programs, setPrograms] = useState<EngagementPlanProgram[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isStorageAvailable, setIsStorageAvailable] = useState(true);
+  const [storageStats, setStorageStats] = useState({
+    used: 0,
+    available: 0,
+    percentage: 0,
+  });
 
-  const fetchPrograms = async () => {
+  const checkStorageAvailability = () => {
+    try {
+      const testKey = "__storage_test__";
+      localStorage.setItem(testKey, "test");
+      localStorage.removeItem(testKey);
+      setIsStorageAvailable(true);
+      setError(null);
+    } catch (err) {
+      setIsStorageAvailable(false);
+      setError("Local Storage ไม่พร้อมใช้งาน");
+    }
+  };
+
+  const updateStorageStats = () => {
+    const stats = engagementPlanStorage.getStorageStats();
+    setStorageStats(stats);
+  };
+
+  const refreshPrograms = async () => {
     setIsLoading(true);
+    setError(null);
+    
     try {
       // Initialize default data if localStorage is empty
       engagementPlanStorage.initializeDefaultData(initialData);
       
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 800));
-      
-      // Get programs by fiscal year from localStorage
-      const data = engagementPlanStorage.getProgramsByFiscalYear(fiscalYear);
-      setPrograms(data);
-    } catch (error) {
-      console.error('Error fetching engagement plan programs:', error);
+      const allPrograms = engagementPlanStorage.getPrograms();
+      setPrograms(allPrograms);
+      updateStorageStats();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load programs");
       setPrograms([]);
     } finally {
       setIsLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchPrograms();
-  }, [fiscalYear]);
-
-  const refetch = () => {
-    return fetchPrograms();
+  const addProgram = async (programData: Omit<EngagementPlanProgram, "id">): Promise<EngagementPlanProgram> => {
+    try {
+      const newProgram = engagementPlanStorage.addProgram(programData);
+      await refreshPrograms();
+      return newProgram;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to add program");
+      throw err;
+    }
   };
 
-  return {
+  const updateProgram = async (
+    id: number, 
+    updates: Partial<Omit<EngagementPlanProgram, "id">>
+  ): Promise<EngagementPlanProgram | null> => {
+    try {
+      const updatedProgram = engagementPlanStorage.updateProgram(id, updates);
+      await refreshPrograms();
+      return updatedProgram;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update program");
+      throw err;
+    }
+  };
+
+  const deleteProgram = async (id: number): Promise<boolean> => {
+    try {
+      const success = engagementPlanStorage.removeProgram(id);
+      await refreshPrograms();
+      return success;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete program");
+      throw err;
+    }
+  };
+
+  const getProgram = (id: number): EngagementPlanProgram | undefined => {
+    return programs.find(program => program.id === id);
+  };
+
+  const getProgramsByFiscalYear = (fiscalYear: number): EngagementPlanProgram[] => {
+    return programs.filter(program => program.fiscalYear === fiscalYear);
+  };
+
+  useEffect(() => {
+    checkStorageAvailability();
+    refreshPrograms();
+
+    // Check storage availability periodically
+    const interval = setInterval(checkStorageAvailability, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const value: EngagementPlanContextType = {
     programs,
     isLoading,
-    refetch,
+    error,
+    refreshPrograms,
+    addProgram,
+    updateProgram,
+    deleteProgram,
+    getProgram,
+    getProgramsByFiscalYear,
+    isStorageAvailable,
+    storageStats,
   };
+
+  return (
+    <EngagementPlanContext.Provider value={value}>
+      {children}
+    </EngagementPlanContext.Provider>
+  );
 }
 
-export function createEngagementPlanProgram(input: Omit<EngagementPlanProgram, "id">) {
-  const newProgram = engagementPlanStorage.addProgram(input);
-  return Promise.resolve(newProgram);
-}
-
-export function deleteEngagementPlanProgram(id: number) {
-  engagementPlanStorage.removeProgram(id);
-  return Promise.resolve();
-}
-
-export function updateEngagementPlanProgram(
-  id: number, 
-  updates: Partial<Omit<EngagementPlanProgram, "id">>
-) {
-  const updatedProgram = engagementPlanStorage.updateProgram(id, updates);
-  return Promise.resolve(updatedProgram);
-}
-
-export function getEngagementPlanProgram(id: number) {
-  const program = engagementPlanStorage.getProgram(id);
-  return Promise.resolve(program);
-}
-
-// Additional utility functions for localStorage management
-export function resetEngagementPlanData() {
-  engagementPlanStorage.clearAll();
-  engagementPlanStorage.initializeDefaultData(initialData);
-  return Promise.resolve();
-}
-
-export function exportEngagementPlanData() {
-  return Promise.resolve(engagementPlanStorage.exportData());
-}
-
-export function importEngagementPlanData(data: { programs: EngagementPlanProgram[]; autoId: number }) {
-  engagementPlanStorage.importData(data);
-  return Promise.resolve();
-}
-
-export function getEngagementPlanStorageStats() {
-  return Promise.resolve(engagementPlanStorage.getStorageStats());
+export function useEngagementPlan(): EngagementPlanContextType {
+  const context = useContext(EngagementPlanContext);
+  if (context === undefined) {
+    throw new Error("useEngagementPlan must be used within an EngagementPlanProvider");
+  }
+  return context;
 }

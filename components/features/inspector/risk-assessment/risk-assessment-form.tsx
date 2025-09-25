@@ -40,6 +40,7 @@ import {
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import ScreeningChoiceDialog from "@/components/features/popup/next-topic";
 
 /** ✅ ใช้ hook แบบเดียวกับหน้าบน */
 import {
@@ -171,6 +172,8 @@ function buildGroupsForNav(evals: ApiAnnualEvaluation[]) {
 export default function RiskAssessmentFormPage({ id }: { id: string }) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
+  const [showNextTopicDialog, setShowNextTopicDialog] = useState(false);
+  const [isNavigating, setIsNavigating] = useState(false);
 
   /** สเกลคะแนน */
   const { data: scaleRes } = useSWR<{
@@ -633,6 +636,27 @@ export default function RiskAssessmentFormPage({ id }: { id: string }) {
     }
   }
 
+  /** จัดการปุ่มหัวข้อถัดไป - แสดง popup ก่อน */
+  function handleNextTopic() {
+    if (nextId) {
+      setShowNextTopicDialog(true);
+    }
+  }
+
+  /** จัดการเมื่อยืนยันใน popup - นำทางไปหน้าถัดไป */
+  async function handleNextTopicConfirm(choice: "need" | "none") {
+    console.log("🎯 Next topic choice:", choice);
+    
+    if (nextId) {
+      setIsNavigating(true);
+      try {
+        await handleNavigateWithSave(`/risk-evaluation-form/${nextId}`);
+      } finally {
+        setIsNavigating(false);
+      }
+    }
+  }
+
   // helper UI
   function levelsToOptions(levels?: Levels | null): LikertOption[] | null {
     if (!levels) return null;
@@ -878,9 +902,7 @@ export default function RiskAssessmentFormPage({ id }: { id: string }) {
           variant="outline"
           className="relative h-12 w-full rounded-xl"
           disabled={!nextId}
-          onClick={() =>
-            nextId && handleNavigateWithSave(`/risk-evaluation-form/${nextId}`)
-          }
+          onClick={handleNextTopic}
         >
           <span className="mx-auto">หัวข้อถัดไป</span>
           <ChevronRight className="absolute right-4 h-5 w-5" />
@@ -1084,6 +1106,15 @@ export default function RiskAssessmentFormPage({ id }: { id: string }) {
           </div>
         </>
       )}
+
+      {/* Next Topic Dialog */}
+      <ScreeningChoiceDialog
+        open={showNextTopicDialog}
+        onOpenChange={(open) => !isNavigating && setShowNextTopicDialog(open)}
+        initial="need"
+        onConfirm={handleNextTopicConfirm}
+        loading={isNavigating}
+      />
     </div>
   );
 }
