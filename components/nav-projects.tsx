@@ -307,7 +307,13 @@ export function NavProjects({
                 <Link href="/audit-engagement-plan">
                   <DropdownMenuItem>
                     <Forward className="text-muted-foreground" />
-                    <span>Audit Program / Engagement plan</span>
+                    <span>Audit Program / Engagement plan  (ผู้ตรวจสอบภายใน)</span>
+                  </DropdownMenuItem>
+                </Link>
+                <Link href="/chief-audit-engagement-plan">
+                  <DropdownMenuItem>
+                    <Forward className="text-muted-foreground" />
+                    <span>Audit Program / Engagement plan (หัวหน้าผู้ตรวจสอบภายใน)</span>
                   </DropdownMenuItem>
                 </Link>
               </DropdownMenuContent>

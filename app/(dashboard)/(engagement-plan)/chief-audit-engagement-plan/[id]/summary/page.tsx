@@ -38,20 +38,22 @@ import {
   TableRow,
 } from "../../../../../../components/ui/table";
 import { getProgram } from "../../../../../../lib/mock-engagement-plan-programs";
-import { useEngagementPlan } from "../../../../../../hooks/useEngagementPlan";
-import TestDataLoader from "../test-data-loader";
-import RiskSubmitConfirmDialog from "../../../../../../components/features/popup/submitted-to-the-head-audit";
+import { useEngagementPlan as useEngagementPlanContext } from "../../../../../../contexts/EngagementPlanContext";
+import { EngagementPlanProvider, useEngagementPlan } from "../../../../../../hooks/useEngagementPlan";
+import { ApprovalDialog } from "../../../../../../components/features/popup/approval-dialog";
 import { SignatureSelectionDialog } from "../../../../../../components/signature-selection-dialog";
 
-export default function SummaryPage() {
+// Component สำหรับแสดงเนื้อหาจริง
+function SummaryPageContent() {
   const params = useParams();
   const id = params?.id as string;
   const { state } = useEngagementPlan();
 
-  // States for confirmation dialog
-  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  // States for approval dialog
+  const [showApprovalDialog, setShowApprovalDialog] = useState(false);
   const [showSignatureDialog, setShowSignatureDialog] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [isApproving, setIsApproving] = useState(false);
+  const [comment, setComment] = useState("");
   
   // States for signature process
   const [approvalStep, setApprovalStep] = useState(1);
@@ -64,7 +66,7 @@ export default function SummaryPage() {
   const isOtpValid = otpValue === '123456';
 
   // Debug: ตรวจสอบข้อมูลใน context
-  console.log("Context state:", state);
+  console.log("Chief audit - Context state:", state);
 
   // ดึงข้อมูลจาก engagement plan จริง
   const engagementPlan = getProgram(parseInt(id));
@@ -111,8 +113,7 @@ export default function SummaryPage() {
       scopes: state.step2?.scopes || [],
       auditDuration: state.step2?.auditDuration || "ไม่ได้ระบุ",
       auditMethodology: state.step2?.auditMethodology || "ไม่ได้ระบุ",
-      auditBudget:
-        "งบประมาณประมาณ 50,000 บาท สำหรับค่าเดินทาง ค่าวัสดุอุปกรณ์ และค่าใช้จ่ายในการเก็บรวบรวมข้อมูล", // Mock data for now
+      auditBudget: state.step2?.auditBudget || "ไม่ได้ระบุ",
       auditResponsible: state.step2?.auditResponsible || "ไม่ได้ระบุ",
       supervisor: state.step2?.supervisor || "ไม่ได้ระบุ",
     },
@@ -163,54 +164,39 @@ export default function SummaryPage() {
     </Badge>
   );
 
-  // Handler functions
-  const handleSubmitConfirm = () => {
-    setShowConfirmDialog(false);
+  // Handler functions for approval process
+  const handleApproval = async () => {
+    setIsApproving(true);
+
+    // Simulate API call
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    setShowApprovalDialog(false);
     setShowSignatureDialog(true);
+    setApprovalStep(1);
+    setIsApproving(false);
   };
 
-  const handleSubmitCancel = () => {
-    setShowConfirmDialog(false);
-  };
+  const handleSignatureSubmit = async () => {
+    console.log("Submitting signature with data:", {
+      signatureData,
+      comment,
+      otpValue,
+    });
 
-  const handleSignatureChoice = (choice: 'new' | 'saved') => {
-    setSignatureChoice(choice);
-    if (choice === 'saved') {
-      setApprovalStep(2);
-    }
-  };
+    // Simulate API call
+    await new Promise((resolve) => setTimeout(resolve, 1500));
 
-  const handleSignatureCancel = () => {
+    // Reset states
     setShowSignatureDialog(false);
+    setComment("");
     setApprovalStep(1);
     setSignatureChoice(null);
-    setSignatureData({ name: 'ผู้อนุมัติ', signature: null });
-    setOtpValue('');
-  };
+    setSignatureData({ name: "ผู้อนุมัติ", signature: null });
+    setOtpValue("");
 
-  const handleSignatureConfirm = async () => {
-    setLoading(true);
-    
-    try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Close dialogs and reset states
-      setShowSignatureDialog(false);
-      setApprovalStep(1);
-      setSignatureChoice(null);
-      setSignatureData({ name: 'ผู้อนุมัติ', signature: null });
-      setOtpValue('');
-      
-      // Show success message or redirect
-      alert('เสนอหัวหน้ากลุ่มตรวจสอบภายในเรียบร้อยแล้ว');
-      
-    } catch (error) {
-      console.error('Error submitting:', error);
-      alert('เกิดข้อผิดพลาดในการส่งข้อมูล');
-    } finally {
-      setLoading(false);
-    }
+    // Show success message
+    alert("อนุมัติแผนการปฏิบัติงานตรวจสอบเรียบร้อยแล้ว");
   };
 
   return (
@@ -218,12 +204,15 @@ export default function SummaryPage() {
       {/* Header */}
       <div className="mb-6">
         <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
-          <Link href="/audit-engagement-plan" className="hover:text-blue-600">
+          <Link
+            href="/chief-audit-engagement-plan"
+            className="hover:text-blue-600"
+          >
             การจัดทำ Audit Program / แผนการปฏิบัติงาน (Engagement plan)
           </Link>
           <span>/</span>
           <Link
-            href={`/audit-engagement-plan/${id}`}
+            href={`/chief-audit-engagement-plan/${id}`}
             className="hover:text-blue-600"
           >
             แผนการปฏิบัติงานตรวจสอบ #{id}
@@ -250,10 +239,11 @@ export default function SummaryPage() {
           <div className="flex gap-2">
             <Button 
               size="sm" 
-              className="bg-blue-600 hover:bg-blue-700"
-              onClick={() => setShowConfirmDialog(true)}
+              className="bg-[#3E52B9] hover:bg-[#2A3A8F] text-white"
+              onClick={() => setShowApprovalDialog(true)}
+              disabled={isApproving}
             >
-              เสนอหัวหน้ากลุ่มตรวจสอบภายใน
+              พิจารณาอนุมัติ
             </Button>
           </div>
         </div>
@@ -680,27 +670,17 @@ export default function SummaryPage() {
         </Card>
       </div>
 
-      {/* Footer Actions */}
-      <div className="flex justify-between items-center mt-8 pt-6 border-t">
-        <Link href={`/audit-engagement-plan/${id}/step-4-audit-reporting`}>
-          <Button variant="outline">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            กลับไปขั้นตอนที่ 4
-          </Button>
-        </Link>
-      </div>
-
-      {/* Confirmation Dialog */}
-      <RiskSubmitConfirmDialog
-        open={showConfirmDialog}
-        onOpenChange={setShowConfirmDialog}
-        onConfirm={handleSubmitConfirm}
-        onCancel={handleSubmitCancel}
-        assessmentTitle={`แผนการปฏิบัติงานตรวจสอบ ${mockEngagementPlan.title} ประจำปีงบประมาณ พ.ศ. ${mockEngagementPlan.fiscalYear}`}
-        loading={loading}
+      {/* ApprovalDialog */}
+      <ApprovalDialog
+        open={showApprovalDialog}
+        onOpenChange={setShowApprovalDialog}
+        comment={comment}
+        onCommentChange={setComment}
+        onConfirm={handleApproval}
+        loading={isApproving}
       />
 
-      {/* Signature Selection Dialog */}
+      {/* SignatureSelectionDialog */}
       <SignatureSelectionDialog
         open={showSignatureDialog}
         onOpenChange={setShowSignatureDialog}
@@ -709,13 +689,25 @@ export default function SummaryPage() {
         signatureData={signatureData}
         otpValue={otpValue}
         isOtpValid={isOtpValid}
-        loading={loading}
-        onSignatureChoice={handleSignatureChoice}
+        loading={false}
+        onSignatureChoice={setSignatureChoice}
         onSignatureDataChange={setSignatureData}
         onOTPChange={setOtpValue}
-        onCancel={handleSignatureCancel}
-        onConfirm={handleSignatureConfirm}
+        onCancel={() => setShowSignatureDialog(false)}
+        onConfirm={handleSignatureSubmit}
       />
     </div>
+  );
+}
+
+// Component หลักที่มี Provider wrapping
+export default function SummaryPage() {
+  const params = useParams();
+  const id = params?.id as string;
+
+  return (
+    <EngagementPlanProvider planId={id}>
+      <SummaryPageContent />
+    </EngagementPlanProvider>
   );
 }

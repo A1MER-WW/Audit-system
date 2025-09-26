@@ -59,6 +59,8 @@ export default function AuditEngagementPlanPage() {
         onFiscalYearChange={setFiscalYear}
         onCreate={handleCreate}
         onDelete={handleDelete}
+        showCreateButton={true}
+        basePath="/audit-engagement-plan"
       />
     </div>
   );

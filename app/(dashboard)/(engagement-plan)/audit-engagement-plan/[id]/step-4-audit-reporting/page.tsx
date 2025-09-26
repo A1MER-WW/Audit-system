@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useEngagementPlan } from "@/hooks/useEngagementPlan";
@@ -19,13 +19,21 @@ export default function Step4AuditReportingPage() {
   const params = useParams();
   const id = params?.id as string;
   const router = useRouter();
-  const { state, dispatch } = useEngagementPlan();
+  const { state, dispatch, saveToStorage } = useEngagementPlan();
 
   // State สำหรับผู้รับผิดชอบแต่ละ field
-  const [preparer] = useState<string>(state.step1?.basicInfo?.preparer || DEFAULT_USERS.preparer);
-  const [reviewer] = useState<string>(state.step1?.basicInfo?.reviewer || DEFAULT_USERS.reviewer);
-  const [approver] = useState<string>(state.step1?.basicInfo?.approver || DEFAULT_USERS.approver);
-  const [responsible, setResponsible] = useState<string>(state.step4?.responsible || DEFAULT_USERS.auditResponsible);
+  const [preparer] = useState<string>(
+    state.step1?.basicInfo?.preparer || DEFAULT_USERS.preparer
+  );
+  const [reviewer] = useState<string>(
+    state.step1?.basicInfo?.reviewer || DEFAULT_USERS.reviewer
+  );
+  const [approver] = useState<string>(
+    state.step1?.basicInfo?.approver || DEFAULT_USERS.approver
+  );
+  const [responsible, setResponsible] = useState<string>(
+    state.step4?.responsible || DEFAULT_USERS.auditResponsible
+  );
 
   // State สำหรับ popup dialog
   const [isPersonDialogOpen, setIsPersonDialogOpen] = useState<boolean>(false);
@@ -33,13 +41,57 @@ export default function Step4AuditReportingPage() {
   const [selectedPerson, setSelectedPerson] = useState<string>("");
   const [searchTerm, setSearchTerm] = useState<string>("");
 
-  // Step 4 specific form data
-  const [reportingObjective, setReportingObjective] = useState<string>("");
-  const [reportingMethodText, setReportingMethodText] = useState<string>("");
-  const [analysisMethodText, setAnalysisMethodText] = useState<string>("");
-  const [dataStorageText, setDataStorageText] = useState<string>("");
-  const [dataSourcesText, setDataSourcesText] = useState<string>("");
-  const [remarksText, setRemarksText] = useState<string>("");
+  // Step 4 specific form data - initialize from context
+  const [reportingObjective, setReportingObjective] = useState<string>(state.step4?.reportingObjective || "");
+  const [reportingMethodText, setReportingMethodText] = useState<string>(state.step4?.reportingMethod || "");
+  const [analysisMethodText, setAnalysisMethodText] = useState<string>(state.step4?.analysisMethod || "");
+  const [dataStorageText, setDataStorageText] = useState<string>(state.step4?.dataStorage || "");
+  const [dataSourcesText, setDataSourcesText] = useState<string>(state.step4?.dataSources || "");
+  const [remarksText, setRemarksText] = useState<string>(state.step4?.remarks || "");
+
+  // Load data from context when component mounts
+  useEffect(() => {
+    if (state.step4) {
+      setReportingObjective(state.step4.reportingObjective || "");
+      setReportingMethodText(state.step4.reportingMethod || "");
+      setAnalysisMethodText(state.step4.analysisMethod || "");
+      setDataStorageText(state.step4.dataStorage || "");
+      setDataSourcesText(state.step4.dataSources || "");
+      setRemarksText(state.step4.remarks || "");
+      if (state.step4.responsible) {
+        setResponsible(state.step4.responsible);
+      }
+    }
+  }, [state.step4]);
+
+  // Auto-save to context when data changes
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      dispatch({
+        type: "UPDATE_STEP4",
+        payload: {
+          reportingObjective,
+          reportingMethod: reportingMethodText,
+          analysisMethod: analysisMethodText,
+          dataStorage: dataStorageText,
+          dataSources: dataSourcesText,
+          responsible,
+          remarks: remarksText,
+        },
+      });
+    }, 1000); // Auto-save after 1 second of inactivity
+
+    return () => clearTimeout(timeoutId);
+  }, [
+    reportingObjective,
+    reportingMethodText,
+    analysisMethodText,
+    dataStorageText,
+    dataSourcesText,
+    responsible,
+    remarksText,
+    dispatch,
+  ]);
 
   const handleOpenPersonDialog = (field: string) => {
     setCurrentField(field);
@@ -98,9 +150,6 @@ export default function Step4AuditReportingPage() {
 
   return (
     <div className="px-6 py-4">
-      {/* Test Data Loader */}
-      <TestDataLoader />
-
       {/* Header */}
       <div className="mb-6">
         <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">

@@ -7,13 +7,17 @@ import { useRouter } from "next/navigation";
 import type { EngagementPlanProgram } from "@/lib/mock-engagement-plan-programs";
 
 type Props = {
+  title?: string;
+  subtitle?: string;
   fiscalYear: number;
   yearOptions: number[];
   rows: EngagementPlanProgram[];
   isLoading: boolean;
-  onFiscalYearChange: (year: number) => void;
-  onCreate: () => void;
-  onDelete: (id: number) => void;
+  onFiscalYearChange?: (year: number) => void;
+  onCreate?: () => void;
+  onDelete?: (id: number) => void;
+  showCreateButton?: boolean;
+  basePath?: string;
 };
 
 // รองรับ basePath (ถ้ามี)
@@ -22,12 +26,16 @@ const BASE = RAW_BASE.endsWith("/") ? RAW_BASE.slice(0, -1) : RAW_BASE;
 const href = (p: string) => `${BASE}${p}`;
 
 export default function EngagementPlanEvaluationTable({
+  title = "วางแผนงานตรวจสอบภายใน",
+  subtitle = "การประเมินความเสี่ยงการดำเนินงานของหน่วยงานและกระบวนการทำงาน",
   fiscalYear,
   yearOptions,
   rows,
   isLoading,
   onFiscalYearChange,
   onCreate,
+  showCreateButton = true,
+  basePath = "/audit-engagement-plan",
 }: Props) {
   const router = useRouter();
   const [isNavigating, setIsNavigating] = useState(false);
@@ -72,7 +80,11 @@ export default function EngagementPlanEvaluationTable({
     try {
       // เพิ่ม delay เล็กน้อยเพื่อให้เห็น loading
       await new Promise((resolve) => setTimeout(resolve, 500));
-      await router.push(href(`/audit-engagement-plan/${id}/step-1-activity-risk`));
+      // หัวหน้าผู้ตรวจสอบไปหน้า summary, ผู้ตรวจสอบไปหน้า step-1
+      const targetPath = basePath.includes('chief-audit') 
+        ? `${basePath}/${id}/summary`
+        : `${basePath}/${id}/step-1-activity-risk`;
+      await router.push(href(targetPath));
     } catch (error) {
       console.error("Navigation error:", error);
       setIsNavigating(false);
@@ -109,10 +121,10 @@ export default function EngagementPlanEvaluationTable({
       {/* title + subtitle */}
       <div className="mb-6">
         <h1 className="text-xl font-semibold text-gray-900">
-          วางแผนงานตรวจสอบภายใน
+          {title}
         </h1>
         <p className="mt-1 text-sm text-gray-500">
-          ประเมินความเสี่ยงและการจัดทำแผนการจัดการความเสี่ยง
+          {subtitle}
         </p>
       </div>
 
@@ -129,7 +141,7 @@ export default function EngagementPlanEvaluationTable({
             <select
               id="fy"
               value={fiscalYear}
-              onChange={(e) => onFiscalYearChange(Number(e.target.value))}
+              onChange={(e) => onFiscalYearChange?.(Number(e.target.value))}
               className="peer w-40 appearance-none rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm leading-5 text-gray-900 outline-none ring-0 transition focus:border-gray-400"
             >
               {yearOptions.map((y) => (
@@ -156,13 +168,15 @@ export default function EngagementPlanEvaluationTable({
           </label>
         </div>
 
-        <button
-          onClick={onCreate}
-          className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white shadow hover:bg-blue-700 active:bg-blue-800"
-        >
-          <Plus className="h-4 w-4" />
-          เพิ่มแผนการปฏิบัติการตรวจสอบ
-        </button>
+        {showCreateButton && (
+          <button
+            onClick={onCreate}
+            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white shadow hover:bg-blue-700 active:bg-blue-800"
+          >
+            <Plus className="h-4 w-4" />
+            เพิ่มแผนการปฏิบัติการตรวจสอบ
+          </button>
+        )}
       </div>
 
       {/* card/table */}

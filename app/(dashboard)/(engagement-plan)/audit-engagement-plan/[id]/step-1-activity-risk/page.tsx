@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useEngagementPlan } from "@/hooks/useEngagementPlan";
 import { DEFAULT_USERS } from "@/constants/default-users";
-import { ArrowLeft, ArrowRight, Settings } from "lucide-react";
+import { ArrowLeft, ArrowRight, Settings, Trash } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -33,13 +33,14 @@ import {
   PersonSelectionDialog,
   ActivityManagementDialog,
 } from "@/components/features/engagement-plan/popup";
+import SaveIndicator from "@/components/features/engagement-plan/SaveIndicator";
 import TestDataLoader from "../test-data-loader";
 
 export default function Step1ActivityRiskPage() {
   const params = useParams();
   const id = params?.id as string;
   const router = useRouter();
-  const { state, dispatch } = useEngagementPlan();
+  const { state, dispatch, saveToStorage } = useEngagementPlan();
 
   // ดึงข้อมูลจาก engagement plan จริง
   const engagementPlan = getProgram(parseInt(id));
@@ -134,6 +135,28 @@ export default function Step1ActivityRiskPage() {
       setApprover(DEFAULT_USERS.approver);
     }
   }, [state.step1]);
+
+  // Auto-save when local state changes
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      dispatch({
+        type: "UPDATE_STEP1",
+        payload: {
+          basicInfo: {
+            auditedUnit,
+            auditCategory,
+            preparer,
+            reviewer,
+            approver,
+          },
+          description,
+          selectedActivities,
+        },
+      });
+    }, 1000); // Auto-save after 1 second of inactivity
+
+    return () => clearTimeout(timeoutId);
+  }, [auditedUnit, auditCategory, preparer, reviewer, approver, description, selectedActivities, dispatch]);
 
   // Function to handle next step - save data to context
   const handleNextStep = () => {
@@ -256,13 +279,16 @@ export default function Step1ActivityRiskPage() {
               {mockEngagementPlan.department}
             </div>
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm">
-              ปริ้นท์
-            </Button>
-            <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
-              บันทึกแผนการปฏิบัติงานตรวจสอบ
-            </Button>
+          <div className="flex items-center gap-4">
+            <SaveIndicator />
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm">
+                ปริ้นท์
+              </Button>
+              <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
+                บันทึกแผนการปฏิบัติงานตรวจสอบ
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -531,7 +557,7 @@ export default function Step1ActivityRiskPage() {
                               removeActivityFromSelected(activity.id)
                             }
                           >
-                            🗑️
+                            <Trash></Trash>
                           </Button>
                         </TableCell>
                       </TableRow>

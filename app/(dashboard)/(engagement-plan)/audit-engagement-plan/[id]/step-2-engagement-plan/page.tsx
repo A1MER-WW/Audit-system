@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -26,11 +26,16 @@ function SortableObjective({
   objective,
   index,
   onRemove,
+  onEdit,
 }: {
   objective: string;
   index: number;
   onRemove: (index: number) => void;
+  onEdit: (index: number, newText: string) => void;
 }) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editText, setEditText] = useState(objective);
+
   const {
     attributes,
     listeners,
@@ -47,6 +52,18 @@ function SortableObjective({
     zIndex: isDragging ? 999 : 1,
   };
 
+  const handleSave = () => {
+    if (editText.trim()) {
+      onEdit(index, editText.trim());
+    }
+    setIsEditing(false);
+  };
+
+  const handleCancel = () => {
+    setEditText(objective);
+    setIsEditing(false);
+  };
+
   return (
     <div
       ref={setNodeRef}
@@ -60,6 +77,7 @@ function SortableObjective({
         {...listeners}
         className="p-1 text-gray-400 hover:text-gray-600 cursor-grab active:cursor-grabbing"
         title="ลากเพื่อจัดลำดับ"
+        disabled={isEditing}
       >
         <GripVertical className="h-4 w-4" />
       </button>
@@ -67,16 +85,50 @@ function SortableObjective({
         <span className="text-sm font-medium text-blue-600">
           วัตถุประสงค์ที่ {index + 1}
         </span>
-        <p className="text-gray-700 mt-1">{objective}</p>
+        {isEditing ? (
+          <div className="mt-1 space-y-2">
+            <Textarea
+              value={editText}
+              onChange={(e) => setEditText(e.target.value)}
+              className="w-full"
+              rows={2}
+              autoFocus
+            />
+            <div className="flex gap-2">
+              <Button size="sm" onClick={handleSave}>
+                บันทึก
+              </Button>
+              <Button size="sm" variant="outline" onClick={handleCancel}>
+                ยกเลิก
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <p className="text-gray-700 mt-1 cursor-pointer hover:bg-gray-100 p-1 rounded" onClick={() => setIsEditing(true)}>
+            {objective}
+          </p>
+        )}
       </div>
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={() => onRemove(index)}
-        className="opacity-0 group-hover:opacity-100 transition-opacity text-red-500 hover:text-red-700"
-      >
-        <X className="h-4 w-4" />
-      </Button>
+      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        {!isEditing && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setIsEditing(true)}
+            className="text-blue-500 hover:text-blue-700"
+          >
+            <Edit2 className="h-4 w-4" />
+          </Button>
+        )}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => onRemove(index)}
+          className="text-red-500 hover:text-red-700"
+        >
+          <X className="h-4 w-4" />
+        </Button>
+      </div>
     </div>
   );
 }
@@ -85,6 +137,7 @@ function SortableScope({
   scope,
   index,
   onRemove,
+  onEdit,
   onUpdateSubScope,
   onAddSubScope,
   onRemoveSubScope,
@@ -100,6 +153,7 @@ function SortableScope({
   };
   index: number;
   onRemove: (id: number) => void;
+  onEdit: (id: number, newText: string) => void;
   onUpdateSubScope: (
     scopeId: number,
     subScopeId: number,
@@ -114,6 +168,8 @@ function SortableScope({
   sensors: any;
   onSubScopeDragEnd: (scopeId: number) => (event: DragEndEvent) => void;
 }) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editText, setEditText] = useState(scope.text);
   const {
     attributes,
     listeners,
@@ -144,6 +200,7 @@ function SortableScope({
           {...listeners}
           className="p-1 text-gray-400 hover:text-gray-600 cursor-grab active:cursor-grabbing"
           title="ลากเพื่อจัดลำดับ"
+          disabled={isEditing}
         >
           <GripVertical className="h-4 w-4" />
         </button>
@@ -151,16 +208,58 @@ function SortableScope({
           <span className="text-sm font-medium text-green-600">
             ขอบเขตที่ {index + 1}
           </span>
-          <p className="text-gray-700 mt-1">{scope.text}</p>
+          {isEditing ? (
+            <div className="mt-1 space-y-2">
+              <Textarea
+                value={editText}
+                onChange={(e) => setEditText(e.target.value)}
+                className="w-full"
+                rows={2}
+                autoFocus
+              />
+              <div className="flex gap-2">
+                <Button size="sm" onClick={() => {
+                  if (editText.trim()) {
+                    onEdit(scope.id, editText.trim());
+                  }
+                  setIsEditing(false);
+                }}>
+                  บันทึก
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => {
+                  setEditText(scope.text);
+                  setIsEditing(false);
+                }}>
+                  ยกเลิก
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <p className="text-gray-700 mt-1 cursor-pointer hover:bg-gray-100 p-1 rounded" onClick={() => setIsEditing(true)}>
+              {scope.text}
+            </p>
+          )}
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => onRemove(scope.id)}
-          className="opacity-0 group-hover:opacity-100 transition-opacity text-red-500 hover:text-red-700"
-        >
-          <X className="h-4 w-4" />
-        </Button>
+        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          {!isEditing && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsEditing(true)}
+              className="text-blue-500 hover:text-blue-700"
+            >
+              <Edit2 className="h-4 w-4" />
+            </Button>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onRemove(scope.id)}
+            className="text-red-500 hover:text-red-700"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
       {/* Sub-scopes */}
@@ -175,11 +274,12 @@ function SortableScope({
               items={scope.subScopes.map((sub) => `${scope.id}-${sub.id}`)}
               strategy={verticalListSortingStrategy}
             >
-              {scope.subScopes.map((subScope) => (
+              {scope.subScopes.map((subScope, subIndex) => (
                 <SortableSubScope
-                  key={subScope.id}
+                  key={`subscope-${scope.id}-${subScope.id}-${subIndex}`}
                   subScope={subScope}
                   scopeId={scope.id}
+                  subIndex={subIndex}
                   onUpdate={onUpdateSubScope}
                   onRemove={onRemoveSubScope}
                 />
@@ -190,7 +290,7 @@ function SortableScope({
 
         {/* Add new sub-scope */}
         <div className="flex items-center gap-2">
-          <span className="text-xs text-gray-500 w-4">•</span>
+          <span className="text-xs text-gray-500 w-8">{scope.subScopes.length + 1})</span>
           <Input
             value={newSubScope[scope.id] || ""}
             onChange={(e) =>
@@ -225,11 +325,13 @@ function SortableScope({
 function SortableSubScope({
   subScope,
   scopeId,
+  subIndex,
   onUpdate,
   onRemove,
 }: {
   subScope: { id: number; text: string };
   scopeId: number;
+  subIndex: number;
   onUpdate: (scopeId: number, subScopeId: number, newText: string) => void;
   onRemove: (scopeId: number, subScopeId: number) => void;
 }) {
@@ -265,7 +367,7 @@ function SortableSubScope({
       >
         <GripVertical className="h-3 w-3" />
       </button>
-      <span className="text-xs text-gray-500 w-4">•</span>
+      <span className="text-xs text-gray-500 w-8">{subIndex + 1})</span>
       <Input
         value={subScope.text}
         onChange={(e) => onUpdate(scopeId, subScope.id, e.target.value)}
@@ -284,7 +386,7 @@ function SortableSubScope({
   );
 }
 
-import { ArrowLeft, ArrowRight, Plus, GripVertical, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Plus, GripVertical, X, Edit2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -294,13 +396,14 @@ import { Dialog, DialogTrigger } from "@/components/ui/dialog";
 import { PersonSelectionDialog } from "@/components/features/engagement-plan/popup";
 import { useEngagementPlan } from "@/hooks/useEngagementPlan";
 import { DEFAULT_USERS } from "@/constants/default-users";
+import SaveIndicator from "@/components/features/engagement-plan/SaveIndicator";
 import TestDataLoader from "../test-data-loader";
 
 export default function Step2EngagementPlanPage() {
   const params = useParams();
   const id = params?.id as string;
   const router = useRouter();
-  const { state, dispatch } = useEngagementPlan();
+  const { state, dispatch, saveToStorage } = useEngagementPlan();
 
   // ดึงข้อมูลจาก engagement plan จริง
   const engagementPlan = getProgram(parseInt(id));
@@ -420,16 +523,68 @@ export default function Step2EngagementPlanPage() {
   const [auditMethodology, setAuditMethodology] = useState<string>(
     state.step2?.auditMethodology || ""
   );
-  const [auditBudget, setAuditBudget] = useState<string>("");
+  const [auditBudget, setAuditBudget] = useState<string>(state.step2?.auditBudget || "");
 
   // State for adding new items
   const [newObjective, setNewObjective] = useState("");
   const [newScope, setNewScope] = useState("");
   const [newSubScope, setNewSubScope] = useState<{ [key: number]: string }>({});
 
-  // Counter for unique IDs
-  const [nextScopeId, setNextScopeId] = useState(1);
-  const [nextSubScopeId, setNextSubScopeId] = useState(1);
+  // Counter for unique IDs - initialize based on existing data
+  const [nextScopeId, setNextScopeId] = useState(() => {
+    const maxScopeId = scopes.length > 0 ? Math.max(...scopes.map(s => s.id)) : 0;
+    return maxScopeId + 1;
+  });
+  const [nextSubScopeId, setNextSubScopeId] = useState(() => {
+    const allSubScopes = scopes.flatMap(s => s.subScopes);
+    const maxSubScopeId = allSubScopes.length > 0 ? Math.max(...allSubScopes.map(s => s.id)) : 0;
+    return maxSubScopeId + 1;
+  });
+
+  // Load data from context when component mounts
+  useEffect(() => {
+    if (state.step2) {
+      setAuditIssues(state.step2.auditIssues || "");
+      setObjectives(state.step2.objectives || []);
+      setScopes(state.step2.scopes || []);
+      setAuditDuration(state.step2.auditDuration || "");
+      setAuditMethodology(state.step2.auditMethodology || "");
+      setAuditBudget(state.step2.auditBudget || "");
+      setAuditResponsible(state.step2.auditResponsible || DEFAULT_USERS.auditResponsible);
+      setSupervisor(state.step2.supervisor || DEFAULT_USERS.supervisor);
+    }
+  }, [state.step2]);
+
+  // Update counters when scopes change from context
+  useEffect(() => {
+    const maxScopeId = scopes.length > 0 ? Math.max(...scopes.map(s => s.id)) : 0;
+    const allSubScopes = scopes.flatMap(s => s.subScopes);
+    const maxSubScopeId = allSubScopes.length > 0 ? Math.max(...allSubScopes.map(s => s.id)) : 0;
+    
+    setNextScopeId(Math.max(nextScopeId, maxScopeId + 1));
+    setNextSubScopeId(Math.max(nextSubScopeId, maxSubScopeId + 1));
+  }, [scopes]);
+
+  // Auto-save to context when data changes
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      dispatch({
+        type: "UPDATE_STEP2",
+        payload: {
+          auditIssues,
+          objectives,
+          scopes,
+          auditDuration,
+          auditMethodology,
+          auditBudget,
+          auditResponsible,
+          supervisor,
+        },
+      });
+    }, 1000); // Auto-save after 1 second of inactivity
+
+    return () => clearTimeout(timeoutId);
+  }, [auditIssues, objectives, scopes, auditDuration, auditMethodology, auditBudget, auditResponsible, supervisor, dispatch]);
 
   // Function to handle next step - save data to context
   const handleNextStep = () => {
@@ -442,6 +597,7 @@ export default function Step2EngagementPlanPage() {
         scopes,
         auditDuration,
         auditMethodology,
+        auditBudget,
         auditResponsible,
         supervisor,
       },
@@ -481,6 +637,7 @@ export default function Step2EngagementPlanPage() {
           scopes,
           auditDuration,
           auditMethodology,
+          auditBudget,
           auditResponsible,
           supervisor,
         },
@@ -501,6 +658,28 @@ export default function Step2EngagementPlanPage() {
         scopes,
         auditDuration,
         auditMethodology,
+        auditBudget,
+        auditResponsible,
+        supervisor,
+      },
+    });
+  };
+
+  const editObjective = (index: number, newText: string) => {
+    const updatedObjectives = [...objectives];
+    updatedObjectives[index] = newText;
+    setObjectives(updatedObjectives);
+
+    // Auto-save to context
+    dispatch({
+      type: "UPDATE_STEP2",
+      payload: {
+        auditIssues,
+        objectives: updatedObjectives,
+        scopes,
+        auditDuration,
+        auditMethodology,
+        auditBudget,
         auditResponsible,
         supervisor,
       },
@@ -518,11 +697,49 @@ export default function Step2EngagementPlanPage() {
       setScopes([...scopes, newScopeItem]);
       setNewScope("");
       setNextScopeId(nextScopeId + 1);
+      
+      // Force save to context immediately
+      setTimeout(() => {
+        dispatch({
+          type: "UPDATE_STEP2",
+          payload: {
+            auditIssues,
+            objectives,
+            scopes: [...scopes, newScopeItem],
+            auditDuration,
+            auditMethodology,
+            auditResponsible,
+            supervisor,
+          },
+        });
+      }, 100);
     }
   };
 
   const removeScope = (scopeId: number) => {
     setScopes(scopes.filter((scope) => scope.id !== scopeId));
+  };
+
+  const editScope = (scopeId: number, newText: string) => {
+    const updatedScopes = scopes.map((scope) => 
+      scope.id === scopeId ? { ...scope, text: newText } : scope
+    );
+    setScopes(updatedScopes);
+
+    // Auto-save to context
+    dispatch({
+      type: "UPDATE_STEP2",
+      payload: {
+        auditIssues,
+        objectives,
+        scopes: updatedScopes,
+        auditDuration,
+        auditMethodology,
+        auditBudget,
+        auditResponsible,
+        supervisor,
+      },
+    });
   };
 
   const addSubScope = (scopeId: number) => {
@@ -642,8 +859,6 @@ export default function Step2EngagementPlanPage() {
 
   return (
     <div className="px-6 py-4">
-      {/* Test Data Loader */}
-      <TestDataLoader />
 
       {/* Header */}
       <div className="mb-6">
@@ -666,13 +881,16 @@ export default function Step2EngagementPlanPage() {
               {mockEngagementPlan.department}
             </div>
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm">
-              ปริ้นท์
-            </Button>
-            <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
-              บันทึกแผนการปฏิบัติงานตรวจสอบ
-            </Button>
+          <div className="flex items-center gap-4">
+            <SaveIndicator />
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm">
+                ปริ้นท์
+              </Button>
+              <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
+                บันทึกแผนการปฏิบัติงานตรวจสอบ
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -866,19 +1084,6 @@ export default function Step2EngagementPlanPage() {
                 value={auditIssues}
                 onChange={(e) => {
                   setAuditIssues(e.target.value);
-                  // Auto-save to context after user stops typing
-                  dispatch({
-                    type: "UPDATE_STEP2",
-                    payload: {
-                      auditIssues: e.target.value,
-                      objectives,
-                      scopes,
-                      auditDuration,
-                      auditMethodology,
-                      auditResponsible,
-                      supervisor,
-                    },
-                  });
                 }}
                 rows={4}
                 className="w-full"
@@ -918,10 +1123,11 @@ export default function Step2EngagementPlanPage() {
                     <div className="space-y-3">
                       {objectives.map((objective, index) => (
                         <SortableObjective
-                          key={index}
+                          key={`objective-${index}-${objective.slice(0, 20)}`}
                           objective={objective}
                           index={index}
                           onRemove={removeObjective}
+                          onEdit={editObjective}
                         />
                       ))}
                     </div>
@@ -976,10 +1182,11 @@ export default function Step2EngagementPlanPage() {
                     <div className="space-y-4">
                       {scopes.map((scope, index) => (
                         <SortableScope
-                          key={scope.id}
+                          key={`scope-${scope.id}-${index}`}
                           scope={scope}
                           index={index}
                           onRemove={removeScope}
+                          onEdit={editScope}
                           onUpdateSubScope={updateSubScope}
                           onAddSubScope={addSubScope}
                           onRemoveSubScope={removeSubScope}

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Dialog, DialogTrigger } from "@/components/ui/dialog";
 import { PersonSelectionDialog } from "@/components/features/engagement-plan/popup";
 import { DEFAULT_USERS } from "@/constants/default-users";
@@ -18,7 +18,7 @@ export default function Step3AuditProgramPage() {
   const params = useParams();
   const id = params?.id as string;
   const router = useRouter();
-  const { state, dispatch } = useEngagementPlan();
+  const { state, dispatch, saveToStorage } = useEngagementPlan();
 
   // ดึงข้อมูลจาก engagement plan จริง
   const engagementPlan = getProgram(parseInt(id));
@@ -64,11 +64,72 @@ export default function Step3AuditProgramPage() {
   const [reviewer, setReviewer] = useState<string>(state.step1?.basicInfo?.reviewer || DEFAULT_USERS.reviewer);
   const [approver, setApprover] = useState<string>(state.step1?.basicInfo?.approver || DEFAULT_USERS.approver);
 
+  // Load saved audit programs data when component mounts
+  useEffect(() => {
+    if (state.step3?.auditPrograms && state.step3.auditPrograms.length > 0) {
+      const loadedAuditData = state.step3.auditPrograms.map(program => ({
+        method: program.method || "",
+        analysis: program.analysis || "",
+        storage: program.storage || "",
+        source: program.source || "",
+        responsible: program.responsible || "",
+      }));
+      setAuditData(loadedAuditData);
+    } else if (objectives.length > 0) {
+      // Initialize with objectives if no saved data
+      setAuditData(objectives.map(() => ({
+        method: "",
+        analysis: "",
+        storage: "",
+        source: "",
+        responsible: "",
+      })));
+    }
+  }, [state.step3, objectives]);
+
   // State สำหรับ popup dialog
   const [isPersonDialogOpen, setIsPersonDialogOpen] = useState<boolean>(false);
   const [currentField, setCurrentField] = useState<string | null>(null);
   const [selectedPerson, setSelectedPerson] = useState<string>("");
   const [searchTerm, setSearchTerm] = useState<string>("");
+
+  // Auto-save to context when data changes
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      // Save audit programs data
+      const auditPrograms = auditData.map((data, index) => ({
+        objective: objectives[index] || `วัตถุประสงค์ที่ ${index + 1}`,
+        method: data.method,
+        analysis: data.analysis,
+        storage: data.storage,
+        source: data.source,
+        responsible: data.responsible,
+      }));
+
+      dispatch({
+        type: "UPDATE_STEP3",
+        payload: {
+          auditPrograms,
+        }
+      });
+
+      // Also save the personnel data back to step 1 to keep it synchronized
+      dispatch({
+        type: "UPDATE_STEP1",
+        payload: {
+          basicInfo: {
+            auditedUnit: state.step1?.basicInfo?.auditedUnit || "",
+            auditCategory: state.step1?.basicInfo?.auditCategory || "",
+            preparer,
+            reviewer,
+            approver,
+          },
+        },
+      });
+    }, 1000); // Auto-save after 1 second of inactivity
+
+    return () => clearTimeout(timeoutId);
+  }, [auditData, preparer, reviewer, approver, objectives, dispatch, state.step1?.basicInfo]);
 
   // Function to handle next step - save data to context
   const handleNextStep = () => {

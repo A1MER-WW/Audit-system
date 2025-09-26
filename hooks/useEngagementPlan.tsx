@@ -47,6 +47,7 @@ export interface EngagementPlanState {
     scopes: Scope[];
     auditDuration: string;
     auditMethodology: string;
+    auditBudget: string;
     auditResponsible: string;
     supervisor: string;
   };
@@ -90,6 +91,7 @@ const initialState: EngagementPlanState = {
     scopes: [],
     auditDuration: '',
     auditMethodology: '',
+    auditBudget: '',
     auditResponsible: DEFAULT_USERS.auditResponsible,
     supervisor: DEFAULT_USERS.supervisor,
   },
@@ -123,6 +125,8 @@ function engagementPlanReducer(
   state: EngagementPlanState, 
   action: EngagementPlanAction
 ): EngagementPlanState {
+  console.log('Reducer action:', action.type, 'payload' in action ? action.payload : 'no payload'); // Debug log
+  
   switch (action.type) {
     case 'UPDATE_STEP1':
       const updatedStep1 = { ...state.step1, ...action.payload };
@@ -135,19 +139,23 @@ function engagementPlanReducer(
           approver: updatedStep1.basicInfo.approver || DEFAULT_USERS.approver,
         };
       }
-      return {
+      const newState1 = {
         ...state,
         step1: updatedStep1,
       };
+      console.log('Updated Step 1 state:', newState1.step1); // Debug log
+      return newState1;
     case 'UPDATE_STEP2':
       const updatedStep2 = { ...state.step2, ...action.payload };
       // Ensure audit responsible and supervisor have defaults if not provided
       updatedStep2.auditResponsible = updatedStep2.auditResponsible || DEFAULT_USERS.auditResponsible;
       updatedStep2.supervisor = updatedStep2.supervisor || DEFAULT_USERS.supervisor;
-      return {
+      const newState2 = {
         ...state,
         step2: updatedStep2,
       };
+      console.log('Updated Step 2 state:', newState2.step2); // Debug log
+      return newState2;
     case 'UPDATE_STEP3':
       return {
         ...state,
@@ -184,6 +192,8 @@ interface EngagementPlanContextType {
   saveProgress: (step: number) => void;
   isStepCompleted: (step: number) => boolean;
   getAllStepsCompleted: () => boolean;
+  saveToStorage: () => void;
+  clearStorage: () => void;
 }
 
 const EngagementPlanContext = createContext<EngagementPlanContextType | undefined>(undefined);
@@ -195,24 +205,47 @@ interface EngagementPlanProviderProps {
 }
 
 export function EngagementPlanProvider({ children, planId }: EngagementPlanProviderProps) {
-  const [state, dispatch] = useReducer(engagementPlanReducer, initialState);
-
-  // Load state from localStorage on mount
-  React.useEffect(() => {
-    const savedState = localStorage.getItem(`engagement-plan-${planId}`);
-    if (savedState) {
-      try {
-        const parsedState = JSON.parse(savedState);
-        dispatch({ type: 'LOAD_STATE', payload: parsedState });
-      } catch (error) {
-        console.error('Error loading saved state:', error);
-      }
+  // Initialize state with data from localStorage if available
+  const [state, dispatch] = useReducer(engagementPlanReducer, initialState, (initial) => {
+    if (typeof window === 'undefined') {
+      return initial;
     }
-  }, [planId]);
+    
+    try {
+      const savedState = localStorage.getItem(`engagement-plan-${planId}`);
+      if (savedState) {
+        const parsedState = JSON.parse(savedState);
+        // Merge with initial state to ensure all required properties exist
+        return {
+          ...initial,
+          ...parsedState,
+          step1: { ...initial.step1, ...parsedState.step1 },
+          step2: { ...initial.step2, ...parsedState.step2 },
+          step3: { ...initial.step3, ...parsedState.step3 },
+          step4: { ...initial.step4, ...parsedState.step4 },
+        };
+      }
+    } catch (error) {
+      console.error('Error loading saved state:', error);
+    }
+    
+    return initial;
+  });
 
-  // Save state to localStorage whenever state changes
+  // Save state to localStorage whenever state changes (debounced)
   React.useEffect(() => {
-    localStorage.setItem(`engagement-plan-${planId}`, JSON.stringify(state));
+    if (typeof window === 'undefined') return;
+    
+    const timeoutId = setTimeout(() => {
+      try {
+        localStorage.setItem(`engagement-plan-${planId}`, JSON.stringify(state));
+        console.log('Saved state to localStorage:', planId); // Debug log
+      } catch (error) {
+        console.error('Error saving state to localStorage:', error);
+      }
+    }, 500); // Debounce by 500ms
+
+    return () => clearTimeout(timeoutId);
   }, [state, planId]);
 
   const saveProgress = (step: number) => {
@@ -227,12 +260,36 @@ export function EngagementPlanProvider({ children, planId }: EngagementPlanProvi
     return state.completedSteps.length >= 4; // 4 main steps
   };
 
+  const saveToStorage = () => {
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(`engagement-plan-${planId}`, JSON.stringify(state));
+        console.log('Manually saved state to localStorage');
+      } catch (error) {
+        console.error('Error manually saving state:', error);
+      }
+    }
+  };
+
+  const clearStorage = () => {
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.removeItem(`engagement-plan-${planId}`);
+        console.log('Cleared state from localStorage');
+      } catch (error) {
+        console.error('Error clearing state:', error);
+      }
+    }
+  };
+
   const value: EngagementPlanContextType = {
     state,
     dispatch,
     saveProgress,
     isStepCompleted,
     getAllStepsCompleted,
+    saveToStorage,
+    clearStorage,
   };
 
   return (
