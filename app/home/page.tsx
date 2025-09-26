@@ -151,6 +151,7 @@ export default function HomeLayout() {
                     transition={{ type: "spring", stiffness: 300, damping: 20 }}
                     className="w-full max-w-sm mx-auto"
                 >
+                    <Link href="/login">
                     <Card className="w-full transition-colors duration-300 hover:bg-[#3E52B9] hover:text-white cursor-pointer group h-full">
                         <CardHeader className="flex justify-center">
                             <CardTitle>
@@ -166,6 +167,7 @@ export default function HomeLayout() {
                             </p>
                         </CardContent>
                     </Card>
+                    </Link>
                 </motion.div>
 
                 {/* Card 2 */}
@@ -175,6 +177,7 @@ export default function HomeLayout() {
                     transition={{ type: "spring", stiffness: 300, damping: 20 }}
                     className="w-full max-w-sm mx-auto"
                 >
+                    <Link href="/consult-system">
                     <Card className="w-full transition-colors duration-300 bg-[#E6EFFF] hover:bg-[#3E52B9] hover:text-white cursor-pointer group h-full">
                         <CardHeader className="flex justify-center">
                             <CardTitle>
@@ -190,6 +193,7 @@ export default function HomeLayout() {
                             </p>
                         </CardContent>
                     </Card>
+                    </Link>
                 </motion.div>
             </motion.div>
         </motion.div>
